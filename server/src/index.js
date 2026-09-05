@@ -2,6 +2,7 @@
 
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const RoomManager = require('./RoomManager');
 const { EVENTS } = require('../../shared/constants');
@@ -11,7 +12,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL : '*',
     methods: ['GET', 'POST'],
   },
 });
@@ -19,9 +20,20 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const rooms = new RoomManager();
 
+// Serve client static files
+const clientDist = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDist));
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Serve index.html for all non-API routes (SPA)
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/socket.io')) {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  }
 });
 
 // Socket.io connection handling
