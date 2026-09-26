@@ -449,6 +449,36 @@ bell frees, whatever the percentage happens to be. The NN% in the
 front-end text is authored per level to describe roughly how much has to
 come down to get at that block — not a rule the game enforces.
 
+### Movement and gravity — **Confirmed**
+
+Velocities are 16.16 fixed point, in pixels per frame, and every moving
+entity goes through one shared step (VA 0x22d31):
+
+    x += vx                                    # entity +0x24 += +0x30
+    if not on the ground: vy += 0x4800         # entity +0x34, 0.28125 px/frame²
+    if y - fall_start > 0x1660000: …           # +0x68 records where the fall began
+
+**A fall longer than 358 pixels is special-cased** — the entity's `+0x68`
+holds the y it started falling from, and crossing that distance branches
+away before the normal landing code.
+
+Horizontal movement is **not** a velocity set from the key, which is what
+the clone does. It accelerates (VA 0x257c0):
+
+    if vx > -maxspeed:  vx -= accel            # still speeding up
+    else:               vx -= (maxspeed + vx) >> 5   # ease onto the cap
+
+so Jack builds up speed and eases into his top speed rather than starting
+and stopping dead. `maxspeed` is the player struct's `+0x14` and `accel`
+its `+0x1c`; the struct is 360 bytes, four of them from VA 0x28b97c, and
+the current one is cached at VA 0x28bf2c.
+
+`initialise_a_player` (VA 0x21337) writes `accel = 12000` (0.183
+px/frame²) but puts a *pointer* in `+0x14`, so the top speed is filled in
+later — plausibly from the chosen hammer, since the game lets each Jack
+carry a different one and the hammer records are full of numbers. Not
+confirmed.
+
 ### Counters — **Confirmed**
 
 A level-state record (pointer at VA 0x317ca8) holds the three counters
