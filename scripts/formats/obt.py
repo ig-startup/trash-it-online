@@ -9,9 +9,14 @@ width*8 x height*8 pixels.
 
 Record: 8 bytes, 4 x u16 little-endian.
 
-    0   graphic id. 0xffff and 0xfffe are sentinels (the game stores -1
-        for both, and 0xfffe additionally sets a flag bit); other values
-        seen are round numbers like 60000, 40000, 3000.
+    0   **hit points.** Not a graphic id — the shape comes from `.I`.
+        The level loader copies this into the object entity at +0x18,
+        and the damage routine subtracts the force of a hit from it and
+        destroys the object when it runs out (see "How a structure
+        collapses" in README.md). 0xffff and 0xfffe both mean
+        indestructible (stored as -1; 0xfffe also sets a flag bit).
+        Across the archive: 2216 of 6560 types are indestructible, and
+        the rest run from 50 to 60000.
     2   width in 8x8 tiles
     4   height in 8x8 tiles
     6   a per-type quantity, forced to 1 when stored as 0. Co-varies

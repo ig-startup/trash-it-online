@@ -449,6 +449,47 @@ bell frees, whatever the percentage happens to be. The NN% in the
 front-end text is authored per level to describe roughly how much has to
 come down to get at that block — not a rule the game enforces.
 
+### How a structure collapses — **Confirmed**
+
+This is the game's own mechanic, and the clone has nothing like it.
+
+Every object carries **hit points** in its entity at `+0x18`, loaded
+straight from `.OBT` field 0 (see below — that field is not a graphic
+id). A hit does not destroy a block; it applies a **force**, and the
+force travels through the structure:
+
+    damage(object, force):                      # VA 0x689e6
+        if object is indestructible: return
+        if force / object.resistance > 2:
+            for every tile in the row directly beneath it:
+                if occupied: damage(that object, force)
+        if force < object.hp: object.hp -= force
+        else:                 destroy(object)
+
+So hitting the top of a stack presses down through everything holding it
+up, and whichever block runs out of hit points first gives way. The
+`> 2` test is the cutoff: a force has to be more than twice an object's
+resistance before it passes through at all.
+
+There are two of these, mirrored:
+
+| routine | travels | resistance field |
+|---|---|---|
+| VA 0x689e6 | **down** — the row at `tileY + tileHeight` | `+0x5e` |
+| VA 0x68a91 | **up** — the row at `tileY - 1` | `+0x5c` |
+
+so an object resists force from above and from below by different
+amounts. Where `+0x5c` and `+0x5e` are filled from is not yet found.
+
+Destroying a block (`remove_object_data`, VA 0x68724) does not simply
+remove it: it clears the block's tiles from the occupancy map
+(VA 0x68980), turns the block itself into flying rubble with a
+randomised velocity, and spawns a dust puff that cycles through eight
+variants (VA 0x1f784).
+
+What the hammer's force actually is has not been traced — it arrives in
+a register, and the hammer catalogue is full of unread numbers.
+
 ### Movement and gravity — **Confirmed**
 
 Velocities are 16.16 fixed point, in pixels per frame, and every moving
