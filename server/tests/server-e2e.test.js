@@ -13,6 +13,7 @@ const path = require('path');
 const http = require('http');
 const { fork } = require('child_process');
 const { io: ioc } = require('socket.io-client');
+const { HAMMER_FORCE } = require('../../shared/constants');
 
 const PORT = 3123;
 const URL = `http://localhost:${PORT}`;
@@ -136,12 +137,36 @@ describe('room lifecycle over the real server', () => {
     expect(echoed).toBe(false);
   });
 
-  test('breaking a block tells the room which one went', async () => {
+  // The first block in a level is often one the original marks unbreakable,
+  // so pick one the room actually tracks.
+  const SOFT_BLOCK = require('../../client/src/levels/level_0C.json')
+    .destructibles.find((o) => !o.solid).id;
+
+  test('an unbreakable block is not even tracked', async () => {
+    let destroyed = false;
+    guest.once('object_destroyed', () => { destroyed = true; });
+    host.emit('object_hit', { objectId: 'o0', force: HAMMER_FORCE });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(destroyed).toBe(false);
+  });
+
+  test('a blow too weak to matter leaves the block standing', async () => {
+    // Blocks carry the original's own hit points now, in the thousands, so
+    // a nominal hit does nothing. This is the half of the model that is
+    // easy to break by accident.
+    let destroyed = false;
+    guest.once('object_destroyed', () => { destroyed = true; });
+    host.emit('object_hit', { objectId: SOFT_BLOCK, force: 1 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(destroyed).toBe(false);
+  });
+
+  test('a full-force blow breaks it and tells the room which one went', async () => {
     // Ids come from the level json exported from the original game ("o0", …),
-    // and the client sends that same string back.
+    // and the client sends that same string back, with the force it applied.
     const destroyed = once(guest, 'object_destroyed');
-    host.emit('object_hit', { objectId: 'o0' });
-    expect(await destroyed).toEqual({ objectId: 'o0' });
+    host.emit('object_hit', { objectId: SOFT_BLOCK, force: HAMMER_FORCE });
+    expect(await destroyed).toEqual({ objectId: SOFT_BLOCK });
   });
 
   test('the clock ticks for everyone', async () => {

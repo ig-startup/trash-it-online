@@ -153,11 +153,20 @@ def export(name):
             sizes[key] = {"width": o["w"], "height": o["h"]}
     aw, ah = build_atlas(shapes, palette, out_dir)
 
+    # Hit points are the original's own, from `.OBT` field 0 — which the
+    # notes used to call a graphic id. 0xffff and 0xfffe mean the block
+    # cannot be broken at all; those are the scenery and the structure.
+    def hit_points(o):
+        if o["gid"] in (0xffff, 0xfffe):
+            return None
+        return o["gid"] or 1
+
     destructibles = [{
         "id": "o%d" % i,
         "x": o["x"], "y": o["y"] + HEADROOM,
         "width": o["w"], "height": o["h"],
-        "hp": 1,
+        "hp": hit_points(o) or 0,
+        "solid": hit_points(o) is None,
         "shape": "%d_%dx%d" % (o["shape"], o["w"], o["h"]),
         "type": o["type"],
         "param": o["param"],

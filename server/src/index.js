@@ -203,7 +203,7 @@ io.on('connection', (socket) => {
   socket.on(EVENTS.OBJECT_HIT, (data = {}) => {
     const room = rooms.getPlayerRoom(socket.id);
     if (!room) return;
-    room.handleObjectHit(socket.id, data.objectId);
+    room.handleObjectHit(socket.id, data.objectId, data.force);
     console.log(`[object_hit] room=${room.code} socket=${socket.id} objectId=${data.objectId}`);
   });
 

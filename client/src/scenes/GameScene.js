@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import Player from '../entities/Player.js';
 import RemotePlayer from '../entities/RemotePlayer.js';
 import SocketManager from '../network/SocketManager.js';
-import { EVENTS, PLAYER_COLORS } from '../../../shared/constants.mjs';
+import { EVENTS, PLAYER_COLORS, HAMMER_FORCE } from '../../../shared/constants.mjs';
 import { getLevel, nextLevelId, DEFAULT_LEVEL_ID } from '../levels';
 import { WORLD_COLORS } from '../palette';
 import { buildBackground } from '../entities/drawBackground';
@@ -10,6 +10,8 @@ import { preloadRealJackFrames } from '../entities/jackSprites';
 import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/props';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
+const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
+const SUPPORT_GAP = 2;       // px of slack when deciding what rests on what
 
 
 /**
@@ -128,7 +130,10 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.existing(rect, true);
       }
       this._destructibles.add(rect);
-      this._destructibleMap.set(d.id, { rect, hp: d.hp, id: d.id });
+      this._destructibleMap.set(d.id, {
+        rect, id: d.id, hp: d.hp, solid: !!d.solid,
+        width: d.width, height: d.height,
+      });
     });
 
     // ── Bell (original palette gold) ────────────────────────────────────────────
@@ -298,31 +303,75 @@ export default class GameScene extends Phaser.Scene {
 
   _checkHammerDestructibles() {
     const reach = this._hammerReach();
+    const struck = [];
     this._destructibleMap.forEach((entry) => {
       if (!entry.rect.active) return;
-
-      const rectBounds = entry.rect.getBounds();
-
-      if (Phaser.Geom.Intersects.RectangleToRectangle(reach, rectBounds)) {
-        entry.hp -= 1;
-
-        if (entry.hp <= 0) {
-          entry.rect.destroy();
-          this._destructibles.remove(entry.rect, true, true);
-          this._destructibleMap.delete(entry.id);
-          // `this.emit` used to be called here. A Phaser Scene is not an
-          // EventEmitter — it has `events` — so every block destroyed threw
-          // "this.emit is not a function" out of the update loop. Nothing
-          // listened for it either; telling the room is the line below.
-          const sm = SocketManager.getInstance();
-          if (sm.socket) sm.emit(EVENTS.OBJECT_HIT, { objectId: entry.id });
-        } else if (entry.rect.setFillStyle) {
-          entry.rect.setFillStyle(WORLD_COLORS.rubbleDark); // plain rectangle
-        } else {
-          entry.rect.setTint(0x996655); // real block: darken the artwork
-        }
+      if (Phaser.Geom.Intersects.RectangleToRectangle(reach, entry.rect.getBounds())) {
+        struck.push(entry);
       }
     });
+    struck.forEach((entry) => this._applyForce(entry, HAMMER_FORCE, 0));
+  }
+
+  /**
+   * One blow, the way the original spreads it (VA 0x689e6).
+   *
+   * A hit is a *force*, not a kill: the block subtracts it from its hit
+   * points and only goes when it runs out. Before that the force carries
+   * on into whatever is holding the block up, recursively, so smashing
+   * the top of a stack presses down through the supports and the weakest
+   * link gives way.
+   *
+   * The original gates that with a separate resistance field per object,
+   * which has not been found; the block's own hit points stand in, so a
+   * block that cannot absorb the blow passes it on and a solid one
+   * stops it.
+   *
+   * @param {object} entry the block from `_destructibleMap`
+   * @param {number} force
+   * @param {number} depth guard against a pathological chain
+   */
+  _applyForce(entry, force, depth) {
+    if (!entry || !entry.rect.active || entry.solid) return;
+    if (depth < FORCE_MAX_DEPTH && Math.floor(force / Math.max(1, entry.hp)) > 2) {
+      this._blocksUnder(entry).forEach((below) => {
+        this._applyForce(below, force, depth + 1);
+      });
+    }
+
+    entry.hp -= force;
+    const sm = SocketManager.getInstance();
+    if (sm.socket) sm.emit(EVENTS.OBJECT_HIT, { objectId: entry.id, force });
+
+    if (entry.hp <= 0) {
+      entry.rect.destroy();
+      this._destructibles.remove(entry.rect, true, true);
+      this._destructibleMap.delete(entry.id);
+      // `this.emit` used to be called here. A Phaser Scene is not an
+      // EventEmitter — it has `events` — so every block destroyed threw
+      // "this.emit is not a function" out of the update loop.
+    } else if (entry.rect.setFillStyle) {
+      entry.rect.setFillStyle(WORLD_COLORS.rubbleDark); // plain rectangle
+    } else {
+      entry.rect.setTint(0x996655); // real block: darken the artwork
+    }
+  }
+
+  /** Blocks whose top edge rests on this one's bottom edge. */
+  _blocksUnder(entry) {
+    const out = [];
+    const bottom = entry.rect.y + entry.height / 2;
+    const left = entry.rect.x - entry.width / 2;
+    const right = entry.rect.x + entry.width / 2;
+    this._destructibleMap.forEach((other) => {
+      if (other === entry || !other.rect.active) return;
+      const top = other.rect.y - other.height / 2;
+      if (Math.abs(top - bottom) > SUPPORT_GAP) return;
+      const oLeft = other.rect.x - other.width / 2;
+      const oRight = other.rect.x + other.width / 2;
+      if (oRight > left && oLeft < right) out.push(other);
+    });
+    return out;
   }
 
   _checkHammerBell() {

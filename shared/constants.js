@@ -31,4 +31,18 @@ const GAME_CONFIG = {
   PLAYER_COLORS,
 };
 
-module.exports = { EVENTS, GAME_CONFIG, PLAYER_COLORS };
+/**
+ * What one hammer blow is worth against a block's hit points, which come
+ * from the original's own `.OBT` table and run from 50 to 60000.
+ *
+ * The game's own figure has not been recovered — it reaches the damage
+ * routine through several registers — so this is ours. 0x9000 is
+ * the value, which does appear in the code around this machinery, and
+ * against the real hit points it splits the archive cleanly: 57% of
+ * blocks go in one blow and the remaining 43% in two, with nothing
+ * needing three. See "How a structure collapses" in
+ * scripts/formats/README.md.
+ */
+const HAMMER_FORCE = 36864;
+
+module.exports = { EVENTS, GAME_CONFIG, PLAYER_COLORS, HAMMER_FORCE };
