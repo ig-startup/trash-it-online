@@ -45,6 +45,7 @@ SHARED_ORDER = os.path.join(REPO, "shared", "levels.json")
 # Room above the tallest structure so a player can stand on the roof — the
 # original's own coordinates start the top band at y=8.
 HEADROOM = 64
+GROUND_OVERHANG = 240  # how far the floor runs past each side edge
 TIME_LIMIT = 240
 PAD = 1  # transparent gutter between packed shapes
 
@@ -187,6 +188,20 @@ def export(name):
                        "data": "%s/shapes.json" % prefix},
         "shapes": sizes,
         "spawnPoints": spawn_pts,
+        # The bottom edge of a level is solid ground in the original. It is
+        # not made of objects — in 0B all 179 are destructible and nothing
+        # sits under the start at all — but every level's authored start is
+        # a few pixels above the bottom edge (3 to 33 across the archive),
+        # which only works if Jack is standing on it. Without this the
+        # players simply fall out of the level.
+        #
+        # It reaches past both side edges because some authored positions
+        # are off the left edge (see the clamp above): whatever the reason
+        # for that, they still need a floor.
+        "ground": {"x": -GROUND_OVERHANG,
+                   "y": (lv["tiles_h"] + HEADROOM // 8) * 8,
+                   "width": lv["width"] + GROUND_OVERHANG * 2,
+                   "height": 32},
         "platforms": [],
         "destructibles": destructibles,
         "bell": bell,

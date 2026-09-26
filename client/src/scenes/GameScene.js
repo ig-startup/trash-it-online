@@ -93,6 +93,19 @@ export default class GameScene extends Phaser.Scene {
       this._platforms.add(rect);
     });
 
+    // ── Ground ──────────────────────────────────────────────────────────────
+    // Invisible: the level artwork already draws the ground. This is only
+    // the body that stops the players falling out of the world, and the
+    // original's own start positions sit on it.
+    if (level.ground) {
+      const g = level.ground;
+      const floor = this.add.rectangle(
+        g.x + g.width / 2, g.y + g.height / 2, g.width, g.height,
+      ).setVisible(false);
+      this.physics.add.existing(floor, true);
+      this._platforms.add(floor);
+    }
+
     // ── Destructibles (rubble, original palette) ────────────────────────────────
     this._destructibles = this.physics.add.staticGroup();
     this._destructibleMap = new Map(); // id → { rect, hp }
