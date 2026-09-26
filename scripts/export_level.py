@@ -109,6 +109,18 @@ def build_atlas(shapes, palette, out_dir, image_name="shapes.png"):
     return aw, ah
 
 
+def _floor_strip(layer, palette, sample=150, tolerance=12):
+    """How many rows at the bottom of a background are floor, not wall."""
+    w, h = scn.LAYER_W, scn.LAYER_H
+    mean = [sum(sum(palette[v]) for v in layer[y * w:(y + 1) * w]) / w / 3
+            for y in range(h)]
+    wall = sum(mean[:sample]) / sample
+    for y in range(h - 1, sample, -1):
+        if abs(mean[y] - wall) < tolerance:
+            return h - 1 - y
+    return 0
+
+
 def export(name):
     palette = pal.merge(pal.decode(os.path.join(LEVELS, name + ".PAL")),
                         pal.decode(os.path.join(SPR, "JACKS.PAL")))
@@ -123,9 +135,13 @@ def export(name):
     scn_path = os.path.join(SPR, name + ".SCN")
     if os.path.exists(scn_path):
         _, layers = scn.decode(scn_path)
+        # A `.SCN` is one 320x200 screen, and its last few rows are the
+        # floor, not the wall. Tiling the whole thing laid that strip down
+        # every 200 pixels. Crop it off and what is left tiles cleanly.
+        rows = scn.LAYER_H - _floor_strip(layers[0], palette)
         _png.write_rgb(os.path.join(out_dir, "background.png"),
-                       scn.LAYER_W, scn.LAYER_H,
-                       [palette[v] for v in layers[0]])
+                       scn.LAYER_W, rows,
+                       [palette[v] for v in layers[0][:scn.LAYER_W * rows]])
         background = "%s/background.png" % prefix
 
     # one atlas frame per (shape, size) actually used

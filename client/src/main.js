@@ -20,6 +20,9 @@ class BootScene extends Phaser.Scene {
 
 const config = {
   type: Phaser.AUTO,
+  // Every texture here is 1997 pixel art; without this the browser
+  // smooths it and the brickwork turns to mush.
+  pixelArt: true,
   width: 800,
   height: 600,
   backgroundColor: '#1a1a2e',
