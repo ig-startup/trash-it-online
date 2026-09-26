@@ -304,6 +304,46 @@ block's centre and underside —
 So the bell is released by demolition, not reached by walking. The
 timmies work the same way (`*** timmy has no block to lock to?? ***`).
 
+### Jack's animation table — **Confirmed**
+
+The client's poses were picked off a numbered contact sheet by eye, and
+several are wrong — a frame lifted out of the middle of a sequence reads
+as a different action entirely. The game keeps the real thing: a flat
+array of pointers at VA 0xa11ca, **79 slots**, each pointing at a list of
+u16 frame numbers into `SPR/JACKS.SPR`.
+
+A list's length needs both bounds: the lists are packed back to back, so
+one runs until the next list the array references, *and* a list shorter
+than that gap ends on an `0xffff` sentinel — take whichever comes first.
+The long walk cycles carry no sentinel; the short lists do.
+
+The top two bits of a frame entry (`0x4000`, `0x8000`) are event markers,
+not part of the frame number. They fall on the frames where a swing
+connects.
+
+Identified so far (`scripts/formats/anims.py` prints the table, and
+renders any slot as a strip to check by eye):
+
+| slots | frames | what |
+|---|---|---|
+| 2, 5 | 1-16, 21-36 | the two walk/run cycles |
+| 26-29, 68 | 59-70 | **crouched hammer swing**, five paddings of the same frames — this is how hammers get different swing speeds; the event flag marks the connect |
+| 12, 13 | 71-90 and reversed | **standing hammer swing**, forward and back |
+| 10, 11, 72, 73 | 71-90 + 113-122 | the standing swing joined to a second arm run |
+| 14 | 91-100 | **duck down into the hard hat** |
+| 15 | 100-91 | come back up out of it |
+| 16, 24 | 101-112 | **hard-hat mode**, moving and still |
+| 33, 34, 36, 37, 38 | 140-174 | sit onto the grey drum, ride it, crash off |
+| 57, 58, 59 | 252-288 | **tumble through the air**, in three parts |
+| 60 | 301-316 | hard landing and get up |
+| 65, 67 | 323-325 | **a hammer lying on the ground** |
+
+Two of these settle open questions about the clone: there really is a
+hard-hat mode Jack ducks into, and the hammer exists as a pickup.
+
+Not every slot is a frame list — slot 6 points at 0xa10d0, whose values
+are too small and too repetitive to be frames.
+
 ### Objectives — **Confirmed** (from `F.EXE`)
 
 `F.EXE` is the front end, not the editor, and it carries the mission
@@ -355,6 +395,7 @@ same blitter, positioned by the frame's own origin.
 | `le_loader.py` | DOS/4GW LE executable loader (objects, pages, fixups) — how `G.EXE` was read |
 | `disasm.py` | disassembly workbench over the LE image: functions, xrefs, strings, constant search, stream-advance tracing |
 | `ob.py` | `.OB` startup-code decoder (partial — see above) |
+| `anims.py` | Jack's animation table from `G.EXE` |
 | `rle.py` | the shared scanline codec |
 | `pal.py` `scn.py` `g2.py` `spr.py` `obt.py` | per-format decoders |
 | `level.py` | assembles a whole level from `.WAM` + `.I` + `.OBT` + `.G2` |
