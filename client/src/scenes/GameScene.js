@@ -14,6 +14,9 @@ const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
 const SUPPORT_GAP = 2;       // px of slack when deciding what rests on what
 /** Player states during which a swing connects (see STATES in Player.js). */
 const STRIKE_STATES = new Set(['strikeSide', 'strikeOver']);
+const RUBBLE_LIMIT = 120;    // pieces kept on screen before the oldest goes
+const RUBBLE_SPREAD = 90;    // px/s sideways, randomised as the game does
+const RUBBLE_LIFT = 260;     // px/s upward kick
 
 
 /**
@@ -232,6 +235,9 @@ export default class GameScene extends Phaser.Scene {
     // ── Throttle timestamp ────────────────────────────────────────────────────
     this._lastUpdateSent = 0;
 
+    /** Debris from smashed blocks, oldest first. */
+    this._rubble = [];
+
     // ── Remote players ────────────────────────────────────────────────────────
     this.remotePlayers = new Map();
 
@@ -360,6 +366,7 @@ export default class GameScene extends Phaser.Scene {
     if (sm.socket) sm.emit(EVENTS.OBJECT_HIT, { objectId: entry.id, force });
 
     if (entry.hp <= 0) {
+      this._throwRubble(entry);
       entry.rect.destroy();
       this._destructibles.remove(entry.rect, true, true);
       this._destructibleMap.delete(entry.id);
@@ -371,6 +378,40 @@ export default class GameScene extends Phaser.Scene {
     } else {
       entry.rect.setTint(0x996655); // real block: darken the artwork
     }
+  }
+
+  /**
+   * A smashed block does not vanish. The game turns it into a piece of
+   * rubble with a randomised velocity and lets it fall
+   * (`remove_object_data`, VA 0x68724): the block's own artwork is kept
+   * and only its draw routine is swapped, and the spread comes from two
+   * bit masks on the hammer's record — every value in those columns is
+   * 2^n-1, which is how you mask a random number.
+   *
+   * The debris is what is left lying about afterwards, and in the
+   * original it is what the hoover is for. Ours lands and stays; the
+   * hoover is not built yet.
+   */
+  _throwRubble(entry) {
+    if (this._rubble.length >= RUBBLE_LIMIT) {
+      const oldest = this._rubble.shift();
+      if (oldest && oldest.active) oldest.destroy();
+    }
+    const src = entry.rect;
+    const piece = src.texture && src.frame
+      ? this.add.image(src.x, src.y, src.texture.key, src.frame.name)
+      : this.add.rectangle(src.x, src.y, entry.width, entry.height,
+        WORLD_COLORS.rubbleBrown);
+    piece.setDepth(1);   // in front of the blocks, behind the HUD
+    this.physics.add.existing(piece);
+    piece.body.setVelocity(
+      Phaser.Math.Between(-RUBBLE_SPREAD, RUBBLE_SPREAD),
+      Phaser.Math.Between(-RUBBLE_LIFT, -RUBBLE_LIFT / 3),
+    );
+    piece.body.setCollideWorldBounds(false);
+    this.physics.add.collider(piece, this._platforms);
+    this.physics.add.collider(piece, this._destructibles);
+    this._rubble.push(piece);
   }
 
   /** Blocks whose top edge rests on this one's bottom edge. */
