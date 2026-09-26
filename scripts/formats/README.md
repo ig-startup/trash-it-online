@@ -268,6 +268,48 @@ something not yet found.
 
 `.COL` is still untouched and still looks like editor data.
 
+## Reading the binary with Ghidra
+
+Hand-reading assembly was the slow part. Ghidra decompiles the whole image
+to C at once, and on this binary it finds **1019 functions and decompiles
+1017** of them into about 1 MB of greppable code — which turns "who
+compares anything against a percentage" from an afternoon into a `grep`.
+
+It does not replace the anchors. The binary is stripped, so the output is
+`FUN_00033e79` and `*(short *)(param_2 + 0x58)`; what makes it readable is
+still the strings, the file loader and the routine tables. What changes is
+the cost per function.
+
+Two things are needed to get there, neither obvious:
+
+**Ghidra cannot load DOS/4GW LE.** `scripts/formats/export_flat.py` writes
+the mapped image — objects placed, pages copied, fixups applied — as one
+flat binary. Load that as raw, `x86:LE:32:default`, base `0x10000`, and
+the addresses match the ones in this file.
+
+**A raw binary has no entry points**, so auto-analysis alone finds almost
+nothing. `scripts/ghidra/MarkFunctions.java` seeds it from a list we
+already have: every direct call target from a capstone sweep plus the 47
+constructors in the class registry. 600 seeds in, 1019 functions out.
+
+On Apple Silicon there is a third: the official distribution ships native
+binaries for Linux and Windows only, so the decompiler has to be built
+from the C++ sources that come with it —
+`make -j8 ghidra_opt` in `Ghidra/Features/Decompiler/src/decompile/cpp`,
+then copy `ghidra_opt` to `Ghidra/Features/Decompiler/os/mac_arm_64/decompile`.
+Its Makefile hardcodes `-arch x86_64`; the result runs under Rosetta.
+
+    analyzeHeadless <proj> TrashIt -import G.flat.bin \
+      -processor x86:LE:32:default \
+      -loader BinaryLoader -loader-baseAddr 0x10000 \
+      -scriptPath scripts/ghidra \
+      -preScript MarkFunctions.java entries.txt \
+      -postScript DumpDecomp.java G_decomp.c
+
+The decompiled C is not committed: it is derived from Atari's binary, and
+this repository keeps the original's files out (see the root README). Run
+the recipe against a local copy to regenerate it.
+
 ## Game logic
 
 ### The tile → object map — **Confirmed**
@@ -373,6 +415,19 @@ text for the level-select screen in five languages:
 So "run to the bell and win" is not the game for most levels. Which
 objective a level carries, and where the percentage is enforced, is not
 yet traced.
+
+### There is no percentage check — **Confirmed**
+
+The mission text promises "trash NN% to free the bell", and the game does
+compute that percentage: when an object is destroyed it increments a
+counter and stores `destroyed * 100 / total_objects` into the word at
+VA 0x410464 (destroyed at 0x410490, the level's object total at 0x41045a).
+
+**Nothing reads it back.** It is a display value. The gate is the bell's
+locked block and nothing else: demolish the block the bell sits on and the
+bell frees, whatever the percentage happens to be. The NN% in the
+front-end text is authored per level to describe roughly how much has to
+come down to get at that block — not a rule the game enforces.
 
 ### Counters — **Confirmed**
 
