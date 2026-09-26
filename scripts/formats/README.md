@@ -505,6 +505,36 @@ variants (VA 0x1f784).
 What the hammer's force actually is has not been traced — it arrives in
 a register, and the hammer catalogue is full of unread numbers.
 
+### Jack's state machine — **Confirmed**
+
+Jack is not a handful of flags. He is **46 states and 174 transitions**,
+each state a function, and the clone's player logic — written from the
+outside in, by guessing at what the animations implied — is where every
+animation complaint from play-testing came from.
+
+An entity's current state lives at `+0x10`, and switching is always the
+same pair:
+
+    mov edx, <state function>
+    call 0x21d30          # set_state(entity in eax, routine in edx)
+
+A state announces its animation the same way, `mov eax, <slot>` then
+`call 0x21c26`, and the slot indexes the table `anims.py` already reads
+and that play-testing already named. So each state can be named by what
+Jack looks like while he is in it.
+
+Two states are hubs: **0x22892**, which 19 transitions lead to and which
+sets animation slot 1, and **0x256e9** with 29. Everything comes back to
+one of them.
+
+`scripts/formats/states.py` extracts the whole graph, and will draw it
+with `--dot`.
+
+Worth noting for the clone: the hard-hat animations (slots 14, 15, 16)
+belong to **no state in this list**. Whatever hard-hat mode is, it is
+not one of Jack's states — which fits it being a mode he stays in rather
+than a pose he holds while a key is down.
+
 ### Movement and gravity — **Confirmed**
 
 Velocities are 16.16 fixed point, in pixels per frame, and every moving
@@ -573,6 +603,7 @@ same blitter, positioned by the frame's own origin.
 | `ob.py` | `.OB` startup-code decoder (partial — see above) |
 | `anims.py` | Jack's animation table from `G.EXE` |
 | `hammers.py` | the 37-hammer catalogue (partial — see its docstring) |
+| `states.py` | Jack's 46-state machine and its transitions |
 | `rle.py` | the shared scanline codec |
 | `pal.py` `scn.py` `g2.py` `spr.py` `obt.py` | per-format decoders |
 | `level.py` | assembles a whole level from `.WAM` + `.I` + `.OBT` + `.G2` |
