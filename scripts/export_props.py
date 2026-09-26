@@ -2,7 +2,8 @@
 Export the props the client needs — the bell and Jack's sledgehammer —
 from the original game's sprite files.
 
-The bell is BELL.SPR frame 0. The hammer is SPA.SPR, which holds a
+The bell is BELL.SPR frame 0, the timmies are TIMMY.SPR. The hammer is
+SPA.SPR, which holds a
 61-frame rotation of the sledgehammer: the game draws the tool as its own
 entity spinning through that arc, so we pick three frames that read as an
 overhead-to-ground swing and hang them off Jack's hands.
@@ -34,6 +35,10 @@ PREFIX = "sprites/props"
 PROPS = {
     "bell": ("BELL.SPR", [0]),
     "hammer": ("SPA.SPR", [45, 2, 60]),   # raised, mid-swing, struck down
+    # Timmies are the most common object in the game by a wide margin —
+    # about 2000 records across three quarters of the levels. TIMMY.SPR
+    # holds 35 frames; these six read as a walk cycle.
+    "timmy": ("TIMMY.SPR", [0, 1, 2, 3, 4, 5]),
 }
 
 

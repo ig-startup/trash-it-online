@@ -24,6 +24,7 @@ haven't decoded: hit points (the
 """
 import json
 import os
+import struct
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +47,8 @@ SHARED_ORDER = os.path.join(REPO, "shared", "levels.json")
 # original's own coordinates start the top band at y=8.
 HEADROOM = 64
 GROUND_OVERHANG = 240  # how far the floor runs past each side edge
+#: Every class whose template spawns a TIMMY.SPR.
+TIMMY_CLASSES = (14, 17, 32)
 TIME_LIMIT = 240
 PAD = 1  # transparent gutter between packed shapes
 
@@ -187,6 +190,15 @@ def export(name):
         left = min(o["x"] for o in lv["objects"])
         spawn_pts = [{"x": left + 40 + i * 60, "y": ground} for i in range(4)]
 
+    # Timmies. Classes 14, 17 and 32 all spawn one (their templates point
+    # at TIMMY.SPR), and between them they are about 2000 records across
+    # the archive — the most common thing in the game. Position is the
+    # first two words of the record.
+    timmies = [{"x": x, "y": y + HEADROOM}
+               for cid, _off, payload in placed if cid in TIMMY_CLASSES
+               for x, y in [struct.unpack_from("<hh", payload, 0)]
+               if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
+
     rung = ob.bells(placed)
     if rung:
         bx, by, _subtype = rung[0]
@@ -208,6 +220,7 @@ def export(name):
                        "data": "%s/shapes.json" % prefix},
         "shapes": sizes,
         "spawnPoints": spawn_pts,
+        "timmies": timmies,
         # The bottom edge of a level is solid ground in the original. It is
         # not made of objects — in 0B all 179 are destructible and nothing
         # sits under the start at all — but every level's authored start is

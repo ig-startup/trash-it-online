@@ -31,6 +31,54 @@
       "ax": 13,
       "ay": 41,
       "src": "SPA.SPR:60"
+    },
+    "timmy_00": {
+      "file": "sprites/props/timmy_00.png",
+      "w": 17,
+      "h": 20,
+      "ax": 9,
+      "ay": 18,
+      "src": "TIMMY.SPR:0"
+    },
+    "timmy_01": {
+      "file": "sprites/props/timmy_01.png",
+      "w": 18,
+      "h": 19,
+      "ax": 10,
+      "ay": 18,
+      "src": "TIMMY.SPR:1"
+    },
+    "timmy_02": {
+      "file": "sprites/props/timmy_02.png",
+      "w": 17,
+      "h": 19,
+      "ax": 10,
+      "ay": 18,
+      "src": "TIMMY.SPR:2"
+    },
+    "timmy_03": {
+      "file": "sprites/props/timmy_03.png",
+      "w": 16,
+      "h": 20,
+      "ax": 6,
+      "ay": 20,
+      "src": "TIMMY.SPR:3"
+    },
+    "timmy_04": {
+      "file": "sprites/props/timmy_04.png",
+      "w": 19,
+      "h": 20,
+      "ax": 8,
+      "ay": 20,
+      "src": "TIMMY.SPR:4"
+    },
+    "timmy_05": {
+      "file": "sprites/props/timmy_05.png",
+      "w": 20,
+      "h": 19,
+      "ax": 9,
+      "ay": 20,
+      "src": "TIMMY.SPR:5"
     }
   },
   "anims": {
@@ -41,6 +89,14 @@
       "hammer_00",
       "hammer_01",
       "hammer_02"
+    ],
+    "timmy": [
+      "timmy_00",
+      "timmy_01",
+      "timmy_02",
+      "timmy_03",
+      "timmy_04",
+      "timmy_05"
     ]
   }
 }

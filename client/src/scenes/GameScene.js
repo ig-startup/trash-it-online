@@ -17,6 +17,7 @@ const STRIKE_STATES = new Set(['strikeSide', 'strikeOver']);
 const RUBBLE_LIMIT = 120;    // pieces kept on screen before the oldest goes
 const RUBBLE_SPREAD = 90;    // px/s sideways, randomised as the game does
 const RUBBLE_LIFT = 260;     // px/s upward kick
+const TIMMY_FRAME_MS = 120;  // timmy walk-cycle rate
 
 
 /**
@@ -154,6 +155,20 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.existing(this._bellGraphics, true);
     this._bellHit = false;
 
+    // ── Timmies ───────────────────────────────────────────────────────────
+    // The most common object in the game: about 2000 records across the
+    // archive, from three classes that all spawn TIMMY.SPR. They are
+    // drawn and counted here; collecting them is the hoover's job and
+    // the hoover is not built, so nothing picks them up yet.
+    this._timmies = [];
+    (level.timmies || []).forEach((t) => {
+      if (!hasProps(this)) return;
+      const sprite = this.add.image(t.x, t.y, PROP_ANIMS.timmy[0]).setDepth(2);
+      applyPropFrame(sprite, PROP_ANIMS.timmy[0]);
+      sprite.setData('phase', Math.random() * 1000);
+      this._timmies.push(sprite);
+    });
+
     // ── Local player ─────────────────────────────────────────────────────────
     const myPlayerData = this._players.find((p) => p.id === this._myPlayerId)
       || this._players[0]
@@ -276,6 +291,18 @@ export default class GameScene extends Phaser.Scene {
       this._checkHammerBell();
     } else {
       this._player.bellHit = false; // reset so bell can be hit again after leaving
+    }
+
+    // Timmies mill about on the spot; each keeps its own phase so they
+    // do not step in unison.
+    if (this._timmies.length) {
+      const frames = PROP_ANIMS.timmy;
+      this._timmies.forEach((t) => {
+        if (!t.active) return;
+        const i = Math.floor((time + t.getData('phase')) / TIMMY_FRAME_MS)
+          % frames.length;
+        applyPropFrame(t, frames[i]);
+      });
     }
 
     // ── Throttled player update (for future socket send) ──────────────────────
