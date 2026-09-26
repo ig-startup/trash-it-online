@@ -184,12 +184,34 @@ same *type* (same size/strength) wear different graphics.
 | 67072 | 64000 | layer 1 |
 | 131072 | 64000 | layer 2 (only in 195072-byte files) |
 
-## `.SDE` — per-level settings — **Inferred**
+## `.SDE` — background settings + scene sprites — **Confirmed**
 
-A small fixed block (max 1824 bytes) of u32 fields copied into globals
-one by one at VA 0x18255; several are unpacked as four bytes each
-(`>>24, >>16, >>8, &0xff`). So it is a settings record, not an array.
-Individual field meanings not determined.
+Not a flat settings block: a 0x40-byte header followed by an array.
+
+| offset | size | field |
+|---|---|---|
+| 0x00 | 7 x u32 | background/parallax parameters, unpacked into globals at VA 0x18255; the last two are also split into four bytes each |
+| 0x3c | u16 | scene sprite count N (max 40) |
+| 0x40 | N x 44 | scene sprite records |
+
+**Verified: all 147 `.SDE` files are exactly `0x40 + 44*N` bytes**, with N
+read from offset 0x3c (0 to 36 across the archive).
+
+The array is the level's decorative sprites — `G.EXE` calls them scene
+sprites (`num_scene_sprites: %d`), caps them at 40
+(`Warning. Reached MAX_SCENE_SPRITES!`, VA 0x17f8b) and sorts them by the
+dword at record +0x0c before drawing, so that field is a depth key. A
+record is filled from a live entity at VA 0x17fa2: `+0x00` = the entity's
+type word, `+0x04..+0x0f` = its `+0x24..+0x2f` (which puts x at record
++0x06 and y at +0x0a).
+
+One header field is identified: the u32 at 0x00 feeds the horizon
+calculation at VA 0x1c7ad, which scales by 20.0 in 16.16 fixed point and
+clamps the result to rows 0..199. It is a background scroll reference,
+not gameplay.
+
+**`.SDE` holds no gameplay placement** — no spawns, no bell. Those are in
+`.OB`.
 
 ## `.STP` — **Inferred, not decoded to meaning**
 
@@ -199,16 +221,116 @@ shows it is *written* by the game as a debug dump, and it is read back
 into a 64 KB buffer (VA 0x10be9). Rendering it as a bitmap gives a
 structured grid, not a picture. Not needed to reconstruct a level.
 
-## `.OB`, `.COL` — editor data, not used by the game
+## `.OB` — the level's startup code — **Partially decoded**
 
-`G.EXE` never opens a `.OB` or `.COL` file. Enumerating every call to
-the file loader (VA 0x2df37) gives the complete list of what the game
-reads: `PMAP.MAP`, `PMAP.PAL`, `TRASHIT.DAT`, `%s.WVL`, `%s.XMI`
-(XMIDI music), `%s.STP`, and per level `%s.WAM`, `%s.I`, `%s.G2`,
-`%s.G2R`, `%s.PAL`, `%s.SCN`, `%s.SDE`, plus `%s.OBT`. `.OB`/`.COL`
-therefore belong to the level editor (`F.EXE`) — which is why the first
-pass could not find one fixed record size for `.OB`. They are not
-needed to reconstruct a level.
+The earlier conclusion here was that `.OB` is editor data the game never
+reads. The premise was right — no call to the file loader at VA 0x2df37
+opens a `.OB` — but the conclusion was wrong. `G.EXE` interprets a
+**spawn bytecode stream** (VA 0x1e60c), and `.OB` is that stream:
+
+    id = *(u16*)stream; stream += 2
+    find id in the class registry at VA 0x992c4
+    call its constructor, which reads its own parameters off `stream`
+
+The registry holds **47 classes** (8-byte records: `u16 id`, pad,
+`u32 constructor`; terminated by id -1). An id with no entry logs
+`could not find object id %d in startup code.`
+
+Each class's payload length is its constructor's net advance of the
+stream pointer (global 0x28b924). `scripts/formats/ob.py` carries the
+table; `disasm.py` recovers it by tracking that pointer symbolically,
+summing every `lea`/`add` from the load to the store — reading only the
+last step gives wrong lengths.
+
+**Identified classes:**
+
+| id | what |
+|---|---|
+| 9, 10, 11, 12 | start position for player 1..4 |
+| 13 | sprite entity; a subtype word selects the behaviour, subtype 16 is the bell |
+
+Each player constructor (VA 0x1f513/0x1f517/0x1f51e/0x1f525 — identical
+but for the player index) reads `u16 x, u16 y` and stores the spawn as
+**y + 20** (VA 0x1f54f), then seeds the player entity's fixed-point
+position `+0x24 = x<<16`, `+0x28 = y<<16`.
+
+**Status: 51 of 147 files parse to exactly their length.** The other 96
+desynchronise, so at least one class has a content-dependent payload
+(id 13 is the suspect — its constructor branches on the subtype), and
+four classes (17, 25, 29, 30) tail-call shared code and never store the
+pointer themselves, so their length is still unknown. Where a file does
+parse, the result corroborates itself: the four player spawns come out
+clustered within a few pixels, as a four-Jack start line should be.
+
+Open: several parsed spawns have a small negative x (e.g. -55, -130),
+which either means levels carry an off-screen margin or x is relative to
+something not yet found.
+
+`.COL` is still untouched and still looks like editor data.
+
+## Game logic
+
+### The tile → object map — **Confirmed**
+
+Collision is not rectangle-vs-rectangle. The level keeps one u16 per 8x8
+tile naming the object that occupies it, and the lookup (VA 0x69e6a) is:
+
+    if x < 0 or x >= [0x410484] or y < 0 or y >= [0x410482]: return 0
+    return tilemap[ row_offset[y >> 3] + (x >> 3) ]
+
+with `row_offset` a dword-per-row table at VA 0x3f5928 and the map itself
+at `[0x40f330]`. 0 means empty. Entities are 112-byte records based at
+VA 0x3f6178, so the returned index `i` is entity `0x3f6178 + i*112`.
+
+Entity fields seen so far: `+0x08`/`+0x0c` 16.16 position used by the
+blitter, `+0x10` behaviour function, `+0x24`/`+0x28` fixed-point x/y,
+`+0x26`/`+0x2a` integer x/y, `+0x40` flag byte, `+0x4e`/`+0x50` width and
+height, `+0x54`/`+0x56` draw offsets, `+0x58` linked entity, `+0x64`
+shape pointer, `+0x68` draw routine.
+
+### The bell is locked to a block — **Confirmed**
+
+The bell does not sit at a free-floating coordinate and it is not won by
+touching it. Its constructor (VA 0x33ef2) looks up the object at
+`(bell.x, bell.y - 2)` through the tile map and stores it in `+0x58`;
+failing that it logs `*** Bell has no block to lock to?? ***`.
+
+Its per-frame routine (VA 0x33f58) then does nothing at all while bit 0
+of the locked block's first word is set. When that block dies the bit
+clears and the bell frees: it takes a new behaviour, and moves to the
+block's centre and underside —
+`x = block.x + block.width/2`, `y = block.y + block.height`.
+
+So the bell is released by demolition, not reached by walking. The
+timmies work the same way (`*** timmy has no block to lock to?? ***`).
+
+### Objectives — **Confirmed** (from `F.EXE`)
+
+`F.EXE` is the front end, not the editor, and it carries the mission
+text for the level-select screen in five languages:
+
+- `trash NN% to free the bell` — seen with 28, 34, 48, 58, 61, 85, 90
+- `get to the bell`
+- `ring the bell`
+- `hit the bell`
+- `collect the timmies`
+
+So "run to the bell and win" is not the game for most levels. Which
+objective a level carries, and where the percentage is enforced, is not
+yet traced.
+
+### Counters — **Confirmed**
+
+A level-state record (pointer at VA 0x317ca8) holds the three counters
+the debug print names (`timmies %d rubble %d timer %d`, VA 0x10abd):
+`+0x14` timmies, `+0x0c` rubble, `+0x1c` timer. `+0x26` is a state enum
+taking 2, 3, 0x10 and 0x11. Separately, the level loader counts objects
+by their `.G2R` routine into 0x3f166a (static) and 0x3f166c
+(destructible) — and reads neither back, so they are diagnostics.
+
+`.G2R` really is validated to 1 or 2 only (VA 0x2d0d3): the 1/2/4/8/16
+values dispatched at VA 0x33e79 are the `.OB` sprite subtypes, a
+different thing.
 
 ## How a level is put together
 
@@ -231,6 +353,8 @@ same blitter, positioned by the frame's own origin.
 | file | what |
 |---|---|
 | `le_loader.py` | DOS/4GW LE executable loader (objects, pages, fixups) — how `G.EXE` was read |
+| `disasm.py` | disassembly workbench over the LE image: functions, xrefs, strings, constant search, stream-advance tracing |
+| `ob.py` | `.OB` startup-code decoder (partial — see above) |
 | `rle.py` | the shared scanline codec |
 | `pal.py` `scn.py` `g2.py` `spr.py` `obt.py` | per-format decoders |
 | `level.py` | assembles a whole level from `.WAM` + `.I` + `.OBT` + `.G2` |
@@ -244,8 +368,10 @@ same blitter, positioned by the frame's own origin.
   second u16; `.OBT` fields 0 and 6.
 - `.WVL` / `.XMI` audio (XMIDI is a documented format; `.WVL` is not
   examined at all).
-- Game logic proper: physics of a collapsing structure, scoring, the
-  level-complete condition. The entity struct is 112 bytes (base
-  VA 0x3f6178) with `+0x0a`/`+0x0e` = y/x, `+0x4e`/`+0x50` = size,
-  `+0x64` = shape pointer, `+0x68` = routine pointer — a starting point
-  if that is ever worth chasing.
+- `.OB`: the content-dependent record length that desynchronises 96 of
+  147 files, and the four classes (17, 25, 29, 30) whose length is
+  unknown. Everything else about level placement depends on this.
+- Where the "trash NN%" threshold lives and what counts toward it.
+- What the remaining 45 `.OB` classes are. Timmies and the king timmy
+  are in there; so, probably, are the enemies and pickups.
+- Physics of a collapsing structure, scoring, block strength.
