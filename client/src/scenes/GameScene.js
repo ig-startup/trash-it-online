@@ -250,11 +250,14 @@ export default class GameScene extends Phaser.Scene {
     if (!this._player || !this._cursors) return;
 
     // Combine Z and X as hammer keys
-    const hammerActive = this._hammerKey.isDown
-      ? this._hammerKey
-      : this._hammerKeyAlt;
+    // Either key swings, and a tap shorter than a frame still counts:
+    // JustDown latches it, where testing isDown would miss a key that was
+    // already back up by the time we looked.
+    const swing = Phaser.Input.Keyboard.JustDown(this._hammerKey)
+      || Phaser.Input.Keyboard.JustDown(this._hammerKeyAlt)
+      || this._hammerKey.isDown || this._hammerKeyAlt.isDown;
 
-    this._player.update(this._cursors, hammerActive, delta);
+    this._player.update(this._cursors, swing, delta);
 
     // ── Hammer interactions ───────────────────────────────────────────────────
     if (this._player.state === 'hammer') {

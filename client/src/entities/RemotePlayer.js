@@ -70,21 +70,28 @@ export default class RemotePlayer extends Phaser.GameObjects.Image {
     this.setFlipX(this.dir === 'left');
 
     const now = this.scene.time.now;
-    if (this._remoteState === 'hammer') {
-      // Mid-swing: the strike's own frames are not synced, so pick the
-      // middle of the sideways one rather than send 18 frames over the wire.
-      this._show('hammerSide', Math.floor(this._frameCount('hammerSide') / 2));
-    } else if (this._remoteState === 'jump') {
-      this._show('jump');
-    } else if (this._remoteState === 'helmet') {
+    // State names are the game's own now (see STATES in Player.js). The
+    // frame a remote player is on is not synced, only the state, so each
+    // one shows a representative frame rather than its own cycle.
+    if (this._remoteState === 'strikeSide' || this._remoteState === 'strikeOver') {
+      const pose = this._remoteState === 'strikeOver' ? 'hammerOver' : 'hammerSide';
+      this._show(pose, Math.floor(this._frameCount(pose) / 2));
+    } else if (this._remoteState === 'hat' || this._remoteState === 'hatIn'
+        || this._remoteState === 'hatOut') {
       if (now - this._animTimer >= RUN_FRAME_MS) {
         this._animTimer = now;
         this._animFrame += 1;
       }
       this._show('helmetMove', this._animFrame);
+    } else if (this._remoteState === 'fall') {
+      this._show('fall');
+    } else if (this._remoteState === 'rise') {
+      this._show('run', 4);
+    } else if (this._remoteState === 'land') {
+      this._show('land');
     } else if (this._remoteState === 'skid') {
       this._show('skid');
-    } else if (this._remoteState === 'run') {
+    } else if (this._remoteState === 'walk') {
       if (now - this._animTimer >= RUN_FRAME_MS) {
         this._animTimer = now;
         this._animFrame += 1;
