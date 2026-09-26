@@ -60,6 +60,15 @@ ANIMS = {
     "helmetIn": list(range(91, 101)),    # slot 14 — duck into the hard hat
     "helmetMove": list(range(101, 113)), # slot 16 — travelling as the hat
     "airRoll": list(range(252, 265)),    # slot 57 — roll for extra distance
+    # The hoover. Jack reaches into his hard hat (slot 12), pulls it out
+    # (slot 11), then carries it: slot 30 is a single standing frame and
+    # slot 31 the walk. Those are two of the game's states — 0x256e9 and
+    # 0x25813 — and the second hub of its whole graph, so carrying the
+    # hoover is a mode Jack is in, not an action he performs.
+    "hatReach": list(range(71, 91)),     # slot 12
+    "hooverOut": list(range(113, 123)),  # slot 11, second half
+    "hooverIdle": [139],                 # slot 30
+    "hooverWalk": list(range(123, 139)), # slot 31
 }
 
 #: Where the held-button strike starts inside `hammerSide` (frame 47).

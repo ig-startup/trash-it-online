@@ -18,6 +18,10 @@ const RUBBLE_LIMIT = 120;    // pieces kept on screen before the oldest goes
 const RUBBLE_SPREAD = 90;    // px/s sideways, randomised as the game does
 const RUBBLE_LIFT = 260;     // px/s upward kick
 const TIMMY_FRAME_MS = 120;  // timmy walk-cycle rate
+const HOOVER_HEIGHT = 20;    // px above his feet the nozzle sits
+const HOOVER_REACH = 110;    // px the suction reaches — ours, not the game's
+const HOOVER_SWALLOW = 16;   // px at which a timmy is taken
+const HOOVER_PULL = 3.2;     // px per tick a caught timmy is drawn in
 
 
 /**
@@ -197,6 +201,8 @@ export default class GameScene extends Phaser.Scene {
     this._hammerKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     // Also support X as alt hammer key
     this._hammerKeyAlt = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
+    // The hoover. Ours, not the game's — see the note in Player.js STATES.
+    this._hooverKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
 
     // ── Camera ────────────────────────────────────────────────────────────────
     this.cameras.main.setBounds(0, 0, levelWidth, levelHeight);
@@ -242,6 +248,13 @@ export default class GameScene extends Phaser.Scene {
       color: '#555555',
     }).setScrollFactor(0);
 
+    this._timmyText = this.add.text(16, 100, `ТИММИ ${this._timmyCount}`, {
+      fontSize: '16px',
+      fill: '#ffcc33',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setScrollFactor(0).setDepth(10);
+
     this._debugText = this.add.text(10, 28, '', {
       fontSize: '11px',
       color: '#556655',
@@ -252,6 +265,8 @@ export default class GameScene extends Phaser.Scene {
 
     /** Debris from smashed blocks, oldest first. */
     this._rubble = [];
+    /** Timmies hoovered up. The game keeps this tally too. */
+    this._timmyCount = 0;
 
     // ── Remote players ────────────────────────────────────────────────────────
     this.remotePlayers = new Map();
@@ -280,7 +295,10 @@ export default class GameScene extends Phaser.Scene {
       || Phaser.Input.Keyboard.JustDown(this._hammerKeyAlt)
       || this._hammerKey.isDown || this._hammerKeyAlt.isDown;
 
-    this._player.update(this._cursors, swing, delta);
+    const hoover = Phaser.Input.Keyboard.JustDown(this._hooverKey);
+    this._player.update(this._cursors, swing, delta, hoover);
+
+    if (this._player.hooverOut) this._suckTimmies();
 
     // ── Hammer interactions ───────────────────────────────────────────────────
     // Both strikes count. This used to test for a state called 'hammer',
@@ -439,6 +457,38 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.collider(piece, this._platforms);
     this.physics.add.collider(piece, this._destructibles);
     this._rubble.push(piece);
+  }
+
+  /**
+   * The hoover pulls nearby timmies in and swallows them.
+   *
+   * The game's own reach and pull strength are not decoded — the sucker
+   * is its own object class, 154 of them across 72 levels — so the
+   * numbers here are ours. What is the game's is that the hoover is what
+   * collects timmies at all, and that they are counted: the level state
+   * keeps a timmy tally alongside rubble and the clock.
+   */
+  _suckTimmies() {
+    if (!this._timmies.length) return;
+    const jx = this._player.x;
+    const jy = this._player.y - HOOVER_HEIGHT;
+    for (let i = this._timmies.length - 1; i >= 0; i -= 1) {
+      const t = this._timmies[i];
+      if (!t.active) { this._timmies.splice(i, 1); continue; }
+      const dx = jx - t.x;
+      const dy = jy - t.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > HOOVER_REACH) continue;
+      if (dist < HOOVER_SWALLOW) {
+        t.destroy();
+        this._timmies.splice(i, 1);
+        this._timmyCount += 1;
+        if (this._timmyText) this._timmyText.setText(`ТИММИ ${this._timmyCount}`);
+        continue;
+      }
+      t.x += (dx / dist) * HOOVER_PULL;
+      t.y += (dy / dist) * HOOVER_PULL;
+    }
   }
 
   /** Blocks whose top edge rests on this one's bottom edge. */

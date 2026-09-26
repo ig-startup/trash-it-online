@@ -40,6 +40,7 @@ const STOP_THRESHOLD = 12;      // px/s below which Jack just stops
 const MAX_STEP_MS = 50;         // ignore hitches longer than this
 const FALL_VELOCITY = 80;       // downward speed at which rising becomes falling
 const HAT_SPEED = 120;          // the hat travels slower than Jack on his feet
+const HOOVER_SPEED = 150;       // carrying it slows him down
 const ANIM_CATCHUP_LIMIT = 8;   // frames one tick may make up after a hitch
 
 /**
@@ -83,7 +84,21 @@ const STATES = {
   hatIn: { anim: 'helmetIn', ms: 45, next: 'hat', locks: true },
   hat: { anim: 'helmetMove', ms: 60, loop: true },
   hatOut: { anim: 'helmetIn', ms: 45, next: 'stand', locks: true, reverse: true },
+
+  // The hoover, and the second half of the game's state graph. Jack
+  // reaches into his hard hat (0x24346), the hoover comes out, and from
+  // then on he is in a carrying mode with its own standing and walking
+  // states — 0x256e9 and 0x25813, the latter of which 29 transitions
+  // lead to. Carrying it is a mode, not an action.
+  hatReach: { anim: 'hatReach', ms: 30, next: 'hooverOut', locks: true },
+  hooverOut: { anim: 'hooverOut', ms: 40, next: 'hooverIdle', locks: true },
+  hooverIdle: { anim: 'hooverIdle', ms: 400, loop: true, hoover: true },
+  hooverWalk: { anim: 'hooverWalk', ms: 70, loop: true, hoover: true },
+  hooverAway: { anim: 'hatReach', ms: 30, next: 'stand', locks: true, reverse: true },
 };
+
+/** States in which the hoover is out and sucking. */
+const HOOVER_STATES = new Set(['hooverIdle', 'hooverWalk']);
 
 /**
  * Where Jack's grip is through a swing, relative to his feet (x is mirrored
@@ -195,6 +210,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.hammer.setPosition(this.x + grip.x * dir, this.y + grip.y);
   }
 
+  /** True while the hoover is out and able to suck. */
+  get hooverOut() {
+    return HOOVER_STATES.has(this.state);
+  }
+
   /** True when Jack is facing left. */
   get facingLeft() {
     return this._facingLeft;
@@ -203,8 +223,10 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   /**
    * @param {Phaser.Types.Input.Keyboard.CursorKeys} cursors
    * @param {boolean} swingPressed  the hammer key, latched by the scene
+   * @param {number} delta  ms since the last tick
+   * @param {boolean} hooverPressed  the hoover key, latched by the scene
    */
-  update(cursors, swingPressed, delta = 1000 / 60) {
+  update(cursors, swingPressed, delta = 1000 / 60, hooverPressed = false) {
     const body = this.body;
     const onGround = body.blocked.down;
     const now = this.scene.time.now;
@@ -228,6 +250,24 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     if (this.state === 'hat') {
       this._steer(cursors, body, dt, HAT_SPEED);
+      return;
+    }
+
+    // ── The hoover ────────────────────────────────────────────────────────
+    // In the game this comes off the same Down press as the hard hat —
+    // reaching into the hat is one state, and where it goes next is a
+    // branch that has not been traced. Until it is, it gets a key of its
+    // own so the mode can be used at all; that binding is ours, not the
+    // game's.
+    if (hooverPressed && onGround) {
+      this._enter(HOOVER_STATES.has(this.state) ? 'hooverAway' : 'hatReach', now);
+      body.setVelocityX(0);
+      return;
+    }
+
+    if (HOOVER_STATES.has(this.state)) {
+      const moved = this._steer(cursors, body, dt, HOOVER_SPEED);
+      this._enter(moved ? 'hooverWalk' : 'hooverIdle', now);
       return;
     }
 
