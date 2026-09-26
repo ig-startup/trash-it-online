@@ -132,6 +132,8 @@ export default class GameScene extends Phaser.Scene {
       this._destructibles.add(rect);
       this._destructibleMap.set(d.id, {
         rect, id: d.id, hp: d.hp, solid: !!d.solid,
+        // Zero for every block a level file describes; see _applyForce.
+        resistance: d.resistance || 0,
         width: d.width, height: d.height,
       });
     });
@@ -322,10 +324,15 @@ export default class GameScene extends Phaser.Scene {
    * the top of a stack presses down through the supports and the weakest
    * link gives way.
    *
-   * The original gates that with a separate resistance field per object,
-   * which has not been found; the block's own hit points stand in, so a
-   * block that cannot absorb the blow passes it on and a solid one
-   * stops it.
+   * The gate is the game's own, including the part that matters: an
+   * object only passes a blow on if its *resistance* is non-zero and the
+   * force is more than twice it. Blocks loaded from a level never get a
+   * resistance — the loader does not set that field and nothing else
+   * fills it — so in the original a blow stops at the block it lands on,
+   * and the recursion is there for the spawned objects that do carry
+   * one. Keeping the real condition means this behaves as the game does
+   * today, and starts cascading by itself if the field's source is ever
+   * found and the exporter fills it in.
    *
    * @param {object} entry the block from `_destructibleMap`
    * @param {number} force
@@ -333,7 +340,8 @@ export default class GameScene extends Phaser.Scene {
    */
   _applyForce(entry, force, depth) {
     if (!entry || !entry.rect.active || entry.solid) return;
-    if (depth < FORCE_MAX_DEPTH && Math.floor(force / Math.max(1, entry.hp)) > 2) {
+    if (depth < FORCE_MAX_DEPTH && entry.resistance > 0
+        && Math.floor(force / entry.resistance) > 2) {
       this._blocksUnder(entry).forEach((below) => {
         this._applyForce(below, force, depth + 1);
       });

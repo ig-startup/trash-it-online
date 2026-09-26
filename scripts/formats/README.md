@@ -479,7 +479,22 @@ There are two of these, mirrored:
 | VA 0x68a91 | **up** — the row at `tileY - 1` | `+0x5c` |
 
 so an object resists force from above and from below by different
-amounts. Where `+0x5c` and `+0x5e` are filled from is not yet found.
+amounts.
+
+**And that is where it stops for ordinary blocks.** The `.WAM` loader
+never writes `+0x5c` or `+0x5e`, nothing else does for a level's blocks,
+and the entity array is only partly cleared between levels (VA 0x69d33
+zeroes `+0x00` and `+0x04` and nothing else) — so a block's resistance is
+zero, the `resistance != 0` test fails, and **a blow stops at the block
+it lands on**. The recursion is there for the spawned objects that do
+carry a resistance: `initialise_a_player's_hammer` (VA 0x216c0) fills the
+hammer entity's `+0x58`, `+0x5a` and `+0x5c` from its record's `+0x5e`,
+`+0x60` and `+0x62`, and the generic spawner takes them as arguments.
+
+Worth being blunt about, because it is tempting to read the recursion as
+"structures collapse" — they do not, in any level the game ships. You
+chip the building down block by block, which is what the "trash NN%"
+mission text describes.
 
 Destroying a block (`remove_object_data`, VA 0x68724) does not simply
 remove it: it clears the block's tiles from the occupancy map
