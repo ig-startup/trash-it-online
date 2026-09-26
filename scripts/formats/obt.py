@@ -16,8 +16,9 @@ Record: 8 bytes, 4 x u16 little-endian.
     4   height in 8x8 tiles
     6   a per-type quantity, forced to 1 when stored as 0. Co-varies
         with field 0 in round pairs (60000/40000, 40000/20000,
-        3000/200) — reads like mass/score or health/points, but the
-        exact meaning is not pinned down.
+        3000/200). **Not hit points**: across the exported levels it
+        takes 26 distinct values including 54411, 50000 and 40000, which
+        no block survives. Score is the likely reading.
 
 Record 0 is all zeros in every sample (the unused "no type" slot).
 

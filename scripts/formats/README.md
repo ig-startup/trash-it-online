@@ -309,7 +309,18 @@ shipped level uses 16 — they use 1 (90x), 8 (39x) and 2 (6x). Reading
 of looking for a bell that was in front of us the whole time.
 
 Which means the locking behaviour described above is real but not what
-most levels do. What 1, 2 and 8 actually do is still open.
+most levels do.
+
+**What subtype 1 does — the behaviour 90 of the 135 levels use — is
+simply "touch it and the level is over".** Its per-frame routine
+(VA 0x34114) runs the usual collision helper, and when the bell comes up
+touched it sets `+0x162` on the player who did it and hands off to the
+code that puts the level state at 2. No percentage, no block, no gate.
+
+So a clone that ends the level when a player reaches the bell is right
+for almost every shipped level, and the elaborate locking variant is the
+exception that no level actually ships. Subtypes 2 and 8 are still
+unread.
 
 ### Start positions still do not all fit
 

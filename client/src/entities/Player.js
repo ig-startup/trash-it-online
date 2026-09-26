@@ -10,6 +10,7 @@ const JUMP = -450;
 const RUN_FRAME_MS = 70; // run-cycle frame swap interval
 const IDLE_FRAME_MS = 500;
 const FALL_VELOCITY = 80; // downward speed at which the jump pose becomes a fall
+const RISING_RUN_FRAME = 4;  // mid-stride, stands in for a jump pose
 const SWING_FRAME_MS = 22;  // a strike runs its whole frame list at this rate
 const SKID_FRAME_MS = 45;
 const HELMET_FRAME_MS = 45;
@@ -324,7 +325,9 @@ export default class Player extends Phaser.Physics.Arcade.Image {
    */
   _show(pose, frame = 0) {
     const keys = this._frames[pose];
-    if (keys && keys.length) applyJackFrame(this.art, keys[frame % keys.length]);
+    if (!keys || !keys.length) return false;
+    applyJackFrame(this.art, keys[frame % keys.length]);
+    return true;
   }
 
   /**
@@ -336,7 +339,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       // 'fall' is the game's own falling frame. The pose that used to be
       // here came out of the middle of a get-up sequence and read as
       // climbing down a ladder.
-      this._show(this.body.velocity.y > FALL_VELOCITY ? 'fall' : 'jump');
+      if (this.body.velocity.y > FALL_VELOCITY) this._show('fall');
+      // Going up has no pose of its own in the game's table — nothing
+      // there has been identified as a jump — so a mid-stride run frame
+      // stands in rather than inventing one.
+      else this._show('jump', 0) || this._show('run', RISING_RUN_FRAME);
       return;
     }
     if (this.state === 'skid') {
