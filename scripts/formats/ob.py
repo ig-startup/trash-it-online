@@ -66,6 +66,40 @@ CLASSES = {
     32: 'TIMMY.SPR',
     44: 'CRAWL.SPR',
     46: 'PANEL.SPR',
+    7: 'CFIR.SPR — part of the crane',
+    16: "the level's rules record — see RULES below",
+    27: 'TELLY.SPR',
+    31: 'BON/UFO.SPR',
+    32: 'TIMMY.SPR',
+}
+
+#: Class 16 is in 146 of the 147 levels and carries the largest payload
+#: (72 bytes). Its constructor (VA 0x1ae49) is nothing but a bank of
+#: switches: each word either sets a bit in the global option byte at
+#: VA 0x98224 or is copied into a global of its own. It is what makes one
+#: level play differently from another.
+#:
+#: offset -> what the constructor does with it, and how the 146 levels
+#: are spread across the values.
+RULES = {
+    0x0e: 'bit 1 -> option 0x10, bit 2 -> option 0x20   (12 levels)',
+    0x12: 'bit 1 -> option 0x01                          (1 level)',
+    0x16: 'bit 1 -> option 0x02                          (no level uses it)',
+    0x1a: 'bit 1 -> option 0x04                         (14 levels)',
+    0x1e: 'bit 1 -> option 0x08                         (12 levels)',
+    0x2a: 'selector: 1/2/4/8 pick one of four           (1 in 122, 4 in 14, 8 in 10)',
+    0x2e: 'bit 1 -> option 0x1000                       (10 levels)',
+    0x32: 'bit 1 -> option 0x2000, and sets 0x9385c      (10 levels)',
+    0x36: '== 2 -> option 0x400000                      (0 in 84, 2 in 39, 1 in 23)',
+    0x38: 'a score, added in fives through a packed-BCD add (VA 0x19b9d) — '
+          '0 in 40 levels, otherwise 200..630',
+    0x3a: 'overwrites a pointer-table word when non-zero (1 level)',
+    0x3c: 'a count, 5..20                                (17 levels)',
+    0x3e: 'a count, 4..30                                (77 levels)',
+    0x40: 'large: 150, 1000, 15000                      (9 levels)',
+    0x42: 'never non-zero in any level',
+    0x44: 'large: 2000..30000                           (14 levels)',
+    0x46: '2 or 3                                        (8 levels)',
 }
 
 #: Class 13 draws the bell wherever its record puts it, offset by this.

@@ -458,6 +458,46 @@ So "run to the bell and win" is not the game for most levels. Which
 objective a level carries, and where the percentage is enforced, is not
 yet traced.
 
+### What the levels are actually made of — **Confirmed**
+
+Counting every `.OB` record across all 147 levels says plainly where the
+game's content is, and it is not where the clone has put its effort:
+
+| class | records | levels | what |
+|---|---|---|---|
+| 14, 32, 17 | 1142, 551, 307 | 64, 76, 61 | **timmies** — about 2000 records, far the most of anything |
+| 2 | 147 | **147** | in every level, positions a player-linked entity |
+| 9 | 147 | **147** | player 1's start |
+| 16 | 146 | 146 | **the level's rules record** — see below |
+| 13 | 135 | 135 | the bell |
+| 15 | 202 | 42 | dynamite |
+| 22 | 154 | 72 | the hoover's sucker |
+| 27 | 93 | 22 | tellies |
+| 0, 6, 1 | 61, 60, 57 | 43, 44, 42 | buzz saw, crane, `LEAD` |
+
+The sprite table has 256 entries and the game ships art for a great deal
+more than that: bombs, explosions, sparks, fire, a helicopter, a UFO, a
+clock, red buttons, gates, a drain, a vending machine, and the whole
+hammer catalogue. Most of it never appears in the shipped levels.
+
+### The level's rules record — **Confirmed**
+
+Class 16 is in 146 of the 147 levels and has the largest payload of any
+class, 72 bytes. Its constructor (VA 0x1ae49) does one thing: it is a
+bank of switches. Each word either sets a bit in the global option byte
+at VA 0x98224 or is copied into a global of its own. This is what makes
+one level play differently from another, and `scripts/formats/ob.py`
+lists every field with how the 146 levels spread across its values.
+
+Two worth calling out. The word at +0x2a is a four-way selector that
+122 levels leave at 1, 14 set to 4 and 10 to 8. And +0x38 is a score:
+its value is added in fives through a packed-BCD adder (VA 0x19b9d),
+the arcade way of ticking a total up on screen — 40 levels leave it at
+zero and the rest sit between 200 and 630.
+
+What the individual option bits *do* is not traced yet. The field list
+is the map for doing it.
+
 ### There is no percentage check — **Confirmed**
 
 The mission text promises "trash NN% to free the bell", and the game does
