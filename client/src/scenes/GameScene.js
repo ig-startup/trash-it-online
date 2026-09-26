@@ -239,7 +239,7 @@ export default class GameScene extends Phaser.Scene {
 
   // ── Update loop ───────────────────────────────────────────────────────────
 
-  update(time) {
+  update(time, delta) {
     if (!this._player || !this._cursors) return;
 
     // Combine Z and X as hammer keys
@@ -247,7 +247,7 @@ export default class GameScene extends Phaser.Scene {
       ? this._hammerKey
       : this._hammerKeyAlt;
 
-    this._player.update(this._cursors, hammerActive);
+    this._player.update(this._cursors, hammerActive, delta);
 
     // ── Hammer interactions ───────────────────────────────────────────────────
     if (this._player.state === 'hammer') {

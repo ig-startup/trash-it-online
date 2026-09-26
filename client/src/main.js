@@ -38,4 +38,9 @@ const config = {
 
 const game = new Phaser.Game(config);
 
+// Exposed on purpose. The client is checked by driving a headless browser
+// (see the session notes), and reading the real scene beats inferring the
+// game's state from screenshots of the debug HUD.
+window.game = game;
+
 export default game;

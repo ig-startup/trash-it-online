@@ -5,14 +5,23 @@ import {
 import { PROP_ANIMS, applyPropFrame, hasProps } from './props';
 import manifest from './jackFrames.json';
 
-const SPEED = 200;
+const SPEED = 200;          // top speed, px/s
+// Reaching top speed takes about a third of a second, and letting go
+// coasts down a little faster than that. The original's numbers are in
+// pixels per frame at its own tick rate, which we do not know, so the
+// shape is copied and the scale is ours.
+const ACCEL = SPEED / 0.35;
+const DECEL = SPEED / 0.25;
+const EASE_INTO_TOP = 1 / 32;   // the original's `>> 5` as it nears the cap
+const STOP_THRESHOLD = 12;      // px/s below which Jack just stops
+const MAX_STEP_MS = 50;         // ignore hitches longer than this
 const JUMP = -450;
 const RUN_FRAME_MS = 70; // run-cycle frame swap interval
 const IDLE_FRAME_MS = 500;
 const FALL_VELOCITY = 80; // downward speed at which the jump pose becomes a fall
 const RISING_RUN_FRAME = 4;  // mid-stride, stands in for a jump pose
 const SWING_FRAME_MS = 22;  // a strike runs its whole frame list at this rate
-const SKID_FRAME_MS = 45;
+const SKID_FRAME_MS = 45;   // frame rate of the skid animation
 const HELMET_FRAME_MS = 45;
 const HELMET_SPEED = 120;   // the hat travels slower than Jack on his feet
 
@@ -81,7 +90,6 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._helmetPhase = null;
     this._helmetFrame = 0;
     this._helmetTimer = 0;
-    this._skidUntil = 0;
     this._isCrouching = false;
     this._bellHit = false; // prevent repeated bell events
     this._animTimer = 0;
@@ -141,7 +149,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
    * @param {Phaser.Types.Input.Keyboard.CursorKeys} cursors
    * @param {Phaser.Input.Keyboard.Key} hammerKey  Z key
    */
-  update(cursors, hammerKey) {
+  update(cursors, hammerKey, delta = 1000 / 60) {
     const body = this.body;
     const onGround = body.blocked.down;
     const now = this.scene.time.now;
@@ -172,23 +180,28 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     // ── Horizontal movement ───────────────────────────────────────────────────
-    const wasMoving = Math.abs(body.velocity.x) > 1;
-    if (cursors.left.isDown) {
-      body.setVelocityX(-SPEED);
-      this._facingLeft = true;
-      this.state = onGround ? 'run' : 'jump';
-    } else if (cursors.right.isDown) {
-      body.setVelocityX(SPEED);
-      this._facingLeft = false;
+    // The original does not assign a speed when you press a direction: it
+    // accelerates toward a top speed and eases onto it, and coasts back
+    // down when you let go (VA 0x257c0, see scripts/formats/README.md).
+    // Assigning the velocity is what made this feel stiff, and it also
+    // made the skid animation a lie — Jack played it while stopping dead.
+    const dt = Math.min(delta, MAX_STEP_MS) / 1000;
+    const vx = body.velocity.x;
+
+    if (cursors.left.isDown || cursors.right.isDown) {
+      const dir = cursors.left.isDown ? -1 : 1;
+      this._facingLeft = dir < 0;
+      body.setVelocityX(this._accelerate(vx, dir, dt));
       this.state = onGround ? 'run' : 'jump';
     } else {
-      // Let go at speed and Jack skids to a halt instead of stopping dead.
-      if (wasMoving && onGround && this.state === 'run') {
-        this._skidUntil = now + this._frameCount('skid') * SKID_FRAME_MS;
-      }
-      body.setVelocityX(0);
-      if (now < this._skidUntil && onGround) this.state = 'skid';
-      else this.state = onGround ? 'idle' : 'jump';
+      const slowed = Math.abs(vx) <= STOP_THRESHOLD
+        ? 0
+        : vx - Math.sign(vx) * DECEL * dt;
+      body.setVelocityX(slowed);
+      // Skidding is now a real state: it lasts exactly as long as Jack is
+      // still carrying speed with nothing pressed.
+      if (onGround) this.state = slowed !== 0 ? 'skid' : 'idle';
+      else this.state = 'jump';
     }
 
     // ── Jump ─────────────────────────────────────────────────────────────────
@@ -198,6 +211,23 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     this._applyAnimFrame(now);
+  }
+
+  /**
+   * One step of the original's horizontal acceleration: build up at a
+   * constant rate, then ease onto the top speed instead of hitting it.
+   * @param {number} vx current velocity
+   * @param {number} dir -1 or 1
+   * @param {number} dt seconds
+   */
+  _accelerate(vx, dir, dt) {
+    const top = dir * SPEED;
+    if (Math.abs(vx) < SPEED && Math.sign(vx) !== -dir) {
+      return Phaser.Math.Clamp(vx + dir * ACCEL * dt, -SPEED, SPEED);
+    }
+    // Turning around, or already at the cap: ease toward the target.
+    const eased = vx + (top - vx) * EASE_INTO_TOP * (dt * 60);
+    return Phaser.Math.Clamp(eased + dir * ACCEL * dt, -SPEED, SPEED);
   }
 
   /** How many frames a pose has, 1 if it is missing. */
