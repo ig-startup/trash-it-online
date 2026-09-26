@@ -58,9 +58,16 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const rooms = new RoomManager();
 
-// Serve client static files
+// Serve client static files. The bundle's name carries its hash so it can
+// be cached hard, but `index.html` points at that name and must never be:
+// a stale copy asks for a bundle that no longer exists, and the page looks
+// unchanged when it has in fact failed to load.
 const clientDist = path.join(__dirname, '../../client/dist');
-app.use(express.static(clientDist));
+app.use(express.static(clientDist, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+  },
+}));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

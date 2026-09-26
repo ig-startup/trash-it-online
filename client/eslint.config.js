@@ -18,6 +18,7 @@ export default [
         localStorage: 'readonly',
         sessionStorage: 'readonly',
         URLSearchParams: 'readonly',
+        __BUILD_STAMP__: 'readonly',
       }
     },
     rules: { 'no-unused-vars': 'warn', 'no-console': 'off' }

@@ -33,7 +33,7 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   create() {
-    const { width } = this.scale;
+    const { width, height } = this.scale;
     const cx = width / 2;
 
     const sm = SocketManager.getInstance();
@@ -115,6 +115,14 @@ export default class MenuScene extends Phaser.Scene {
       fontSize: '16px',
       color: '#ff4444',
     }).setOrigin(0.5);
+
+    // ── Build stamp ───────────────────────────────────────────────────────────
+    // Read this before reporting that nothing changed: if it does not match
+    // the build you expect, the page is being served from cache.
+    this.add.text(width - 8, height - 8, `build ${__BUILD_STAMP__}`, {
+      fontSize: '11px',
+      color: '#555566',
+    }).setOrigin(1, 1);
 
     // ── Socket listeners ──────────────────────────────────────────────────────
     this._onRoomCreated = (data) => {
