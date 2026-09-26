@@ -3,7 +3,11 @@ import Player from '../entities/Player.js';
 import RemotePlayer from '../entities/RemotePlayer.js';
 import SocketManager from '../network/SocketManager.js';
 import { EVENTS, PLAYER_COLORS } from '../../../shared/constants.mjs';
-import levelData from '../levels/level01.json';
+import { getLevel, nextLevelId, DEFAULT_LEVEL_ID } from '../levels';
+import { WORLD_COLORS } from '../palette';
+import { buildBackground } from '../entities/drawBackground';
+import { preloadRealJackFrames } from '../entities/jackSprites';
+import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/props';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 
@@ -24,48 +28,103 @@ export default class GameScene extends Phaser.Scene {
     this._roomCode = data.roomCode || '';
     this._players = data.players || [];
     this._mode = data.mode || 'coop';
-    this._levelId = data.levelId || 'level_01';
+    this._levelId = data.levelId || DEFAULT_LEVEL_ID;
     this._myPlayerId = data.myPlayerId || (data.players && data.players[0] ? data.players[0].id : 'local');
     this._hostId = data.hostId || null;
   }
 
   preload() {
-    // No assets — primitives only for MVP
+    preloadRealJackFrames(this);
+    preloadProps(this);
+
+    // Levels converted from the original game bring their own artwork:
+    // one texture per building block plus the wall behind them.
+    const level = getLevel(this._levelId);
+    this._level = level;
+    if (level.background) {
+      this.load.image(this._bgKey(level), level.background);
+    }
+    if (level.shapeAtlas) {
+      // All of a level's block artwork in one packed texture.
+      this.load.atlas(this._atlasKey(level),
+        level.shapeAtlas.image, level.shapeAtlas.data);
+    }
+  }
+
+  /** @returns {string} texture key for a level's background wall */
+  _bgKey(level) {
+    return `lvlbg_${level.id}`;
+  }
+
+  /** @returns {string} texture key for a level's packed block artwork */
+  _atlasKey(level) {
+    return `shapes_${level.id}`;
   }
 
   create() {
-    const level = levelData;
-    const levelWidth = level.widthTiles * level.tileSize;   // 3200
-    const levelHeight = level.heightTiles * level.tileSize; // 640
+    const level = this._level || getLevel(this._levelId);
+    const levelWidth = level.widthTiles * level.tileSize;
+    const levelHeight = level.heightTiles * level.tileSize;
 
     // ── Background ────────────────────────────────────────────────────────────
-    this.add.rectangle(levelWidth / 2, levelHeight / 2, levelWidth, levelHeight, 0x1a1a2e);
+    if (level.background && this.textures.exists(this._bgKey(level))) {
+      // The original's own wall texture, repeated behind the level. Laid out
+      // as plain images rather than a TileSprite: the source is 320x200, and
+      // WebGL TileSprites rescale non-power-of-two textures, which would
+      // stretch the brickwork.
+      const bg = this.textures.get(this._bgKey(level)).getSourceImage();
+      for (let y = 0; y < levelHeight; y += bg.height) {
+        for (let x = 0; x < levelWidth; x += bg.width) {
+          this.add.image(x, y, this._bgKey(level)).setOrigin(0, 0).setDepth(-10);
+        }
+      }
+    } else {
+      buildBackground(this, levelWidth, levelHeight);
+    }
 
-    // ── Platforms (static, grey) ──────────────────────────────────────────────
+    // ── Platforms (concrete, original palette) ──────────────────────────────────
     this._platforms = this.physics.add.staticGroup();
     level.platforms.forEach((p) => {
       const cx = p.x + p.width / 2;
       const cy = p.y + p.height / 2;
-      const rect = this.add.rectangle(cx, cy, p.width, p.height, 0x668866);
+      const rect = this.add.rectangle(cx, cy, p.width, p.height, WORLD_COLORS.concrete);
+      rect.setStrokeStyle(2, WORLD_COLORS.concreteDark);
       this.physics.add.existing(rect, true); // isStatic = true
       this._platforms.add(rect);
     });
 
-    // ── Destructibles (dynamic, brown) ───────────────────────────────────────
+    // ── Destructibles (rubble, original palette) ────────────────────────────────
     this._destructibles = this.physics.add.staticGroup();
     this._destructibleMap = new Map(); // id → { rect, hp }
     level.destructibles.forEach((d) => {
       const cx = d.x + d.width / 2;
       const cy = d.y + d.height / 2;
-      const rect = this.add.rectangle(cx, cy, d.width, d.height, 0x885533);
-      this.physics.add.existing(rect, true);
+      const atlasKey = this._atlasKey(level);
+      const hasShape = d.shape && this.textures.exists(atlasKey)
+        && this.textures.get(atlasKey).has(d.shape);
+
+      let rect;
+      if (hasShape) {
+        // Real block from the original: the frame is exactly the object's
+        // size, so the static body matches it without any tweaking.
+        rect = this.physics.add.staticImage(cx, cy, atlasKey, d.shape);
+      } else {
+        rect = this.add.rectangle(cx, cy, d.width, d.height, WORLD_COLORS.rubbleBrown);
+        rect.setStrokeStyle(2, WORLD_COLORS.rubbleDark);
+        this.physics.add.existing(rect, true);
+      }
       this._destructibles.add(rect);
       this._destructibleMap.set(d.id, { rect, hp: d.hp, id: d.id });
     });
 
-    // ── Bell (yellow circle) ──────────────────────────────────────────────────
+    // ── Bell (original palette gold) ────────────────────────────────────────────
     const bell = level.bell;
-    this._bellGraphics = this.add.circle(bell.x, bell.y, 20, 0xffdd00);
+    if (hasProps(this)) {
+      this._bellGraphics = this.add.image(bell.x, bell.y, PROP_ANIMS.bell[0]);
+      applyPropFrame(this._bellGraphics, PROP_ANIMS.bell[0]);
+    } else {
+      this._bellGraphics = this.add.circle(bell.x, bell.y, 20, WORLD_COLORS.bell);
+    }
     this.physics.add.existing(this._bellGraphics, true);
     this._bellHit = false;
 
@@ -77,6 +136,8 @@ export default class GameScene extends Phaser.Scene {
     const spawnIndex = this._players.findIndex((p) => p.id === myPlayerData.id);
     const spawn = level.spawnPoints[Math.max(0, spawnIndex)] || level.spawnPoints[0];
 
+    this._spawn = spawn;
+    this._levelHeight = levelHeight;
     this._player = new Player(
       this,
       spawn.x,
@@ -188,6 +249,14 @@ export default class GameScene extends Phaser.Scene {
       this._emitPlayerUpdate();
     }
 
+    // ── Fell out of the level ─────────────────────────────────────────────────
+    // Levels converted from the original are open at the bottom, so a missed
+    // jump drops you into nothing. Put the player back on the start ledge.
+    if (this._player.y > this._levelHeight + 120) {
+      this._player.setPosition(this._spawn.x, this._spawn.y);
+      this._player.body.setVelocity(0, 0);
+    }
+
     // ── Remote players interpolation ──────────────────────────────────────────
     this.remotePlayers.forEach((rp) => rp.update());
 
@@ -200,14 +269,27 @@ export default class GameScene extends Phaser.Scene {
 
   // ── Private helpers ───────────────────────────────────────────────────────
 
+  /**
+   * The patch of world a hammer blow reaches: a small box in front of Jack,
+   * at chest height. Using his whole body would smash whatever he is
+   * standing on, which on a level built from the original's own blocks means
+   * knocking the floor out from under himself on every swing.
+   */
+  _hammerReach() {
+    const b = this._player.getBounds();
+    const reach = 18;
+    const x = this._player.facingLeft ? b.left - reach : b.right;
+    return new Phaser.Geom.Rectangle(x, b.top + b.height * 0.25, reach, b.height * 0.6);
+  }
+
   _checkHammerDestructibles() {
+    const reach = this._hammerReach();
     this._destructibleMap.forEach((entry) => {
       if (!entry.rect.active) return;
 
-      const playerBounds = this._player.getBounds();
       const rectBounds = entry.rect.getBounds();
 
-      if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, rectBounds)) {
+      if (Phaser.Geom.Intersects.RectangleToRectangle(reach, rectBounds)) {
         entry.hp -= 1;
         console.log(`[GameScene] hit destructible ${entry.id}, hp left: ${entry.hp}`);
 
@@ -216,10 +298,14 @@ export default class GameScene extends Phaser.Scene {
           this._destructibles.remove(entry.rect, true, true);
           this._destructibleMap.delete(entry.id);
           this.emit('object_hit', { objectId: entry.id });
+          // Tell the room, so everyone else sees the same rubble.
+          const sm = SocketManager.getInstance();
+          if (sm.socket) sm.emit(EVENTS.OBJECT_HIT, { objectId: entry.id });
           console.log(`[GameScene] object_destroyed: ${entry.id}`);
+        } else if (entry.rect.setFillStyle) {
+          entry.rect.setFillStyle(WORLD_COLORS.rubbleDark); // plain rectangle
         } else {
-          // Darken to show damage
-          entry.rect.setFillStyle(0x663311);
+          entry.rect.setTint(0x996655); // real block: darken the artwork
         }
       }
     });
@@ -231,15 +317,21 @@ export default class GameScene extends Phaser.Scene {
     const playerBounds = this._player.getBounds();
     const bellBounds = this._bellGraphics.getBounds();
 
+    // The bell is the goal, so touching it anywhere counts.
     if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, bellBounds)) {
       this._bellHit = true;
-      this._bellGraphics.setFillStyle(0xffffff);
+      if (this._bellGraphics.setFillStyle) this._bellGraphics.setFillStyle(0xffffff);
+      else this._bellGraphics.setTint(0xffffff);
       console.log('[GameScene] bell_hit!');
 
       // Send to server only once (flag prevents repeat)
       const sm = SocketManager.getInstance();
       if (sm.socket) {
         sm.emit(EVENTS.BELL_HIT, { playerId: this._myPlayerId });
+      } else {
+        // Solo / offline: nobody else is going to advance the level.
+        this.showResultOverlay('УРОВЕНЬ ПРОЙДЕН', 'Колокольчик твой',
+          { nextLevel: nextLevelId(this._levelId) });
       }
     }
   }
@@ -255,7 +347,7 @@ export default class GameScene extends Phaser.Scene {
       this._player.x,
       this._player.y,
       this._player.state,
-      this._player.flipX ? 'left' : 'right',
+      this._player.facingLeft ? 'left' : 'right',
     );
   }
 
@@ -264,7 +356,29 @@ export default class GameScene extends Phaser.Scene {
    * @param {string} title
    * @param {string} subtitle
    */
-  showResultOverlay(title, subtitle) {
+  /**
+   * Restarts this scene on another level, keeping the room's players.
+   * @param {string} levelId
+   */
+  _startLevel(levelId) {
+    this.scene.restart({
+      roomCode: this._roomCode,
+      players: this._players,
+      mode: this._mode,
+      levelId,
+      myPlayerId: this._myPlayerId,
+      hostId: this._hostId,
+    });
+  }
+
+  /**
+   * @param {string} title
+   * @param {string} subtitle
+   * @param {{ nextLevel?: string }} [options] when a level id is given the
+   *   overlay counts down to it instead of back to the menu. Online the
+   *   server's `game_started` gets there first; this is the offline path.
+   */
+  showResultOverlay(title, subtitle, options = {}) {
     const { width, height } = this.cameras.main;
     const cx = width / 2;
     const cy = height / 2;
@@ -291,8 +405,12 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
     // Countdown text
+    const { nextLevel } = options;
+    const label = (n) => (nextLevel
+      ? `Следующий уровень через ${n}...`
+      : `Возврат в меню через ${n}...`);
     let countdown = 3;
-    const countdownText = this.add.text(cx, cy + 60, `Возврат в меню через ${countdown}...`, {
+    const countdownText = this.add.text(cx, cy + 60, label(countdown), {
       fontSize: '18px',
       color: '#aaaaaa',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
@@ -303,7 +421,9 @@ export default class GameScene extends Phaser.Scene {
       callback: () => {
         countdown -= 1;
         if (countdown > 0) {
-          countdownText.setText(`Возврат в меню через ${countdown}...`);
+          countdownText.setText(label(countdown));
+        } else if (nextLevel) {
+          this._startLevel(nextLevel);
         } else {
           timer.remove();
           this.scene.start('MenuScene');
@@ -319,6 +439,14 @@ export default class GameScene extends Phaser.Scene {
   _initSocketHandlers() {
     const sm = SocketManager.getInstance();
     if (!sm.socket) return; // offline / solo play — no-op
+
+    // This scene restarts on every new level, so its handlers have to go
+    // with it — otherwise each level would add another copy.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      [EVENTS.PLAYER_UPDATE, EVENTS.PLAYER_JOINED, EVENTS.PLAYER_LEFT,
+        EVENTS.OBJECT_DESTROYED, EVENTS.GAME_STARTED, EVENTS.LEVEL_COMPLETE,
+        EVENTS.LEVEL_FAILED, EVENTS.TIMER_TICK].forEach((e) => sm.off(e));
+    });
 
     // Another player moved
     sm.on(EVENTS.PLAYER_UPDATE, (data) => {
@@ -355,6 +483,11 @@ export default class GameScene extends Phaser.Scene {
         const rp = new RemotePlayer(this, spawn.x, spawn.y, color, p.id, p.name || p.id);
         this.remotePlayers.set(p.id, rp);
       });
+    });
+
+    // The room moved on to another level
+    sm.on(EVENTS.GAME_STARTED, (data = {}) => {
+      if (data.levelId) this._startLevel(data.levelId);
     });
 
     // Level outcome overlays

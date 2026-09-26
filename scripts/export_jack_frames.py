@@ -1,0 +1,142 @@
+"""
+Export the web client's Jack frames straight from the original JACKS.SPR.
+
+Replaces the four frames that used to be cropped out of archive.org
+screenshots: these come from the game's own sprite sheet, so they are
+pixel-exact, have clean alpha, and carry the sheet's per-frame origin.
+
+The frame->pose mapping below was read off a numbered contact sheet of
+all 329 frames (scripts/formats/spr.py decodes them). The sheet is
+organised in contiguous animation runs; Jack always faces right, so the
+client mirrors him for the other direction, exactly as the game does.
+
+    python3 scripts/export_jack_frames.py
+
+Writes PNGs to client/public/sprites/jack/ and the manifest to
+client/src/entities/jackFrames.json.
+"""
+import colorsys
+import json
+import os
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(REPO, "scripts", "formats"))
+
+import pal
+import spr
+import _png
+
+SHEET = os.path.join(REPO, "Trash-it-original", "SPR", "JACKS.SPR")
+PALETTE = os.path.join(REPO, "Trash-it-original", "SPR", "JACKS.PAL")
+OUT_PNG = os.path.join(REPO, "client", "public", "sprites", "jack")
+OUT_JSON = os.path.join(REPO, "client", "src", "entities", "jackFrames.json")
+PUBLIC_PREFIX = "sprites/jack"
+
+# pose -> frame indices in JACKS.SPR, in play order
+ANIMS = {
+    "idle": [39, 30],            # standing, two-frame breathing
+    "walk": [20, 22, 24, 26, 28, 30, 32, 34, 36, 38],
+    "run": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18],
+    "jump": [8],                 # airborne mid-leap
+    "fall": [310],               # arms up, dropping
+    "land": [50],                # absorbing the impact, knees bent
+    "crouch": [209],
+    "hammerUp": [196],           # both arms overhead
+    "hammerMid": [207],
+    "hammerDown": [213],         # bent forward, follow-through
+    "tumble": [164, 166, 168, 170],   # knocked over, head over heels
+    "cower": [100],              # hiding under the hard hat
+}
+
+# The pose whose height defines Jack's on-screen size; every other frame
+# is drawn at the same scale so he doesn't grow and shrink between poses.
+STAND_POSE = "idle"
+
+# Jack's dungarees occupy these palette entries (verified by painting them
+# magenta and looking: they cover the overalls and nothing else). Players
+# are told apart by overalls colour, exactly as in the original, so each
+# player colour gets its own recoloured copy of every frame — hue replaced,
+# the original shading kept.
+OVERALLS_INDICES = list(range(194, 197)) + list(range(225, 232))
+
+# shared/constants.js PLAYER_COLORS, in order. Blue is Jack's own colour,
+# so that variant ships as the untouched original.
+VARIANTS = {
+    "red": "#ff4444",
+    "blue": "#4444ff",
+    "green": "#44bb44",
+    "orange": "#ffaa00",
+}
+ORIGINAL_VARIANT = "blue"
+
+
+def recolour(palette, target_hex):
+    """Replace the overalls hue, keeping each entry's saturation/value."""
+    if target_hex is None:
+        return palette
+    t = target_hex.lstrip("#")
+    tr, tg, tb = (int(t[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    th, ts, _tv = colorsys.rgb_to_hsv(tr, tg, tb)
+    out = list(palette)
+    for i in OVERALLS_INDICES:
+        r, g, b = palette[i]
+        _h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+        nr, ng, nb = colorsys.hsv_to_rgb(th, min(1.0, s * (ts + 0.4)), v)
+        out[i] = (round(nr * 255), round(ng * 255), round(nb * 255))
+    return out
+
+
+def main():
+    palette = pal.decode(PALETTE)
+    frames = spr.load(SHEET)
+    palettes = {v: palette if v == ORIGINAL_VARIANT else recolour(palette, c)
+                for v, c in VARIANTS.items()}
+    for variant in VARIANTS:
+        os.makedirs(os.path.join(OUT_PNG, variant), exist_ok=True)
+
+    manifest = {
+        "source": "JACKS.SPR",
+        "variants": dict(VARIANTS),
+        "original": ORIGINAL_VARIANT,
+        "frames": {},
+        "anims": {},
+    }
+    for pose, indices in ANIMS.items():
+        names = []
+        for i, idx in enumerate(indices):
+            f = frames[idx]
+            w, h, img = spr.frame_bitmap(f, transparent=None)
+            name = pose if len(indices) == 1 else "%s_%02d" % (pose, i)
+            files = {}
+            for variant, vpal in palettes.items():
+                rgba = [(0, 0, 0, 0) if v is None else vpal[v] + (255,)
+                        for row in img for v in row]
+                _png.write_rgba(
+                    os.path.join(OUT_PNG, variant, name + ".png"), w, h, rgba)
+                files[variant] = "%s/%s/%s.png" % (PUBLIC_PREFIX, variant, name)
+            manifest["frames"][name] = {
+                "files": files,
+                "w": w, "h": h,
+                # anchor inside the frame: the game draws the sprite at the
+                # entity position plus this (negative) origin, so -ox/-oy is
+                # where Jack's feet-centre sits within the image
+                "ax": -f["ox"], "ay": -f["oy"],
+                "src": idx,
+            }
+            names.append(name)
+        manifest["anims"][pose] = names
+
+    manifest["standHeight"] = manifest["frames"][
+        manifest["anims"][STAND_POSE][0]]["h"]
+    with open(OUT_JSON, "w") as fh:
+        json.dump(manifest, fh, indent=2)
+        fh.write("\n")
+
+    print("exported %d frames x %d colour variants for %d poses -> %s"
+          % (len(manifest["frames"]), len(VARIANTS), len(ANIMS), OUT_PNG))
+    print("manifest -> %s (standHeight=%d)" % (OUT_JSON, manifest["standHeight"]))
+
+
+if __name__ == "__main__":
+    main()

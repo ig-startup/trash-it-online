@@ -1,0 +1,515 @@
+{
+  "source": "JACKS.SPR",
+  "variants": {
+    "red": "#ff4444",
+    "blue": "#4444ff",
+    "green": "#44bb44",
+    "orange": "#ffaa00"
+  },
+  "original": "blue",
+  "frames": {
+    "idle_00": {
+      "files": {
+        "red": "sprites/jack/red/idle_00.png",
+        "blue": "sprites/jack/blue/idle_00.png",
+        "green": "sprites/jack/green/idle_00.png",
+        "orange": "sprites/jack/orange/idle_00.png"
+      },
+      "w": 31,
+      "h": 41,
+      "ax": 17,
+      "ay": 40,
+      "src": 39
+    },
+    "idle_01": {
+      "files": {
+        "red": "sprites/jack/red/idle_01.png",
+        "blue": "sprites/jack/blue/idle_01.png",
+        "green": "sprites/jack/green/idle_01.png",
+        "orange": "sprites/jack/orange/idle_01.png"
+      },
+      "w": 36,
+      "h": 40,
+      "ax": 16,
+      "ay": 39,
+      "src": 30
+    },
+    "walk_00": {
+      "files": {
+        "red": "sprites/jack/red/walk_00.png",
+        "blue": "sprites/jack/blue/walk_00.png",
+        "green": "sprites/jack/green/walk_00.png",
+        "orange": "sprites/jack/orange/walk_00.png"
+      },
+      "w": 42,
+      "h": 39,
+      "ax": 20,
+      "ay": 38,
+      "src": 20
+    },
+    "walk_01": {
+      "files": {
+        "red": "sprites/jack/red/walk_01.png",
+        "blue": "sprites/jack/blue/walk_01.png",
+        "green": "sprites/jack/green/walk_01.png",
+        "orange": "sprites/jack/orange/walk_01.png"
+      },
+      "w": 37,
+      "h": 41,
+      "ax": 18,
+      "ay": 39,
+      "src": 22
+    },
+    "walk_02": {
+      "files": {
+        "red": "sprites/jack/red/walk_02.png",
+        "blue": "sprites/jack/blue/walk_02.png",
+        "green": "sprites/jack/green/walk_02.png",
+        "orange": "sprites/jack/orange/walk_02.png"
+      },
+      "w": 32,
+      "h": 41,
+      "ax": 14,
+      "ay": 40,
+      "src": 24
+    },
+    "walk_03": {
+      "files": {
+        "red": "sprites/jack/red/walk_03.png",
+        "blue": "sprites/jack/blue/walk_03.png",
+        "green": "sprites/jack/green/walk_03.png",
+        "orange": "sprites/jack/orange/walk_03.png"
+      },
+      "w": 27,
+      "h": 41,
+      "ax": 11,
+      "ay": 40,
+      "src": 26
+    },
+    "walk_04": {
+      "files": {
+        "red": "sprites/jack/red/walk_04.png",
+        "blue": "sprites/jack/blue/walk_04.png",
+        "green": "sprites/jack/green/walk_04.png",
+        "orange": "sprites/jack/orange/walk_04.png"
+      },
+      "w": 26,
+      "h": 41,
+      "ax": 12,
+      "ay": 39,
+      "src": 28
+    },
+    "walk_05": {
+      "files": {
+        "red": "sprites/jack/red/walk_05.png",
+        "blue": "sprites/jack/blue/walk_05.png",
+        "green": "sprites/jack/green/walk_05.png",
+        "orange": "sprites/jack/orange/walk_05.png"
+      },
+      "w": 36,
+      "h": 40,
+      "ax": 16,
+      "ay": 39,
+      "src": 30
+    },
+    "walk_06": {
+      "files": {
+        "red": "sprites/jack/red/walk_06.png",
+        "blue": "sprites/jack/blue/walk_06.png",
+        "green": "sprites/jack/green/walk_06.png",
+        "orange": "sprites/jack/orange/walk_06.png"
+      },
+      "w": 27,
+      "h": 41,
+      "ax": 12,
+      "ay": 40,
+      "src": 32
+    },
+    "walk_07": {
+      "files": {
+        "red": "sprites/jack/red/walk_07.png",
+        "blue": "sprites/jack/blue/walk_07.png",
+        "green": "sprites/jack/green/walk_07.png",
+        "orange": "sprites/jack/orange/walk_07.png"
+      },
+      "w": 27,
+      "h": 42,
+      "ax": 11,
+      "ay": 40,
+      "src": 34
+    },
+    "walk_08": {
+      "files": {
+        "red": "sprites/jack/red/walk_08.png",
+        "blue": "sprites/jack/blue/walk_08.png",
+        "green": "sprites/jack/green/walk_08.png",
+        "orange": "sprites/jack/orange/walk_08.png"
+      },
+      "w": 32,
+      "h": 40,
+      "ax": 14,
+      "ay": 39,
+      "src": 36
+    },
+    "walk_09": {
+      "files": {
+        "red": "sprites/jack/red/walk_09.png",
+        "blue": "sprites/jack/blue/walk_09.png",
+        "green": "sprites/jack/green/walk_09.png",
+        "orange": "sprites/jack/orange/walk_09.png"
+      },
+      "w": 29,
+      "h": 41,
+      "ax": 14,
+      "ay": 40,
+      "src": 38
+    },
+    "run_00": {
+      "files": {
+        "red": "sprites/jack/red/run_00.png",
+        "blue": "sprites/jack/blue/run_00.png",
+        "green": "sprites/jack/green/run_00.png",
+        "orange": "sprites/jack/orange/run_00.png"
+      },
+      "w": 22,
+      "h": 42,
+      "ax": 11,
+      "ay": 41,
+      "src": 0
+    },
+    "run_01": {
+      "files": {
+        "red": "sprites/jack/red/run_01.png",
+        "blue": "sprites/jack/blue/run_01.png",
+        "green": "sprites/jack/green/run_01.png",
+        "orange": "sprites/jack/orange/run_01.png"
+      },
+      "w": 43,
+      "h": 42,
+      "ax": 22,
+      "ay": 43,
+      "src": 2
+    },
+    "run_02": {
+      "files": {
+        "red": "sprites/jack/red/run_02.png",
+        "blue": "sprites/jack/blue/run_02.png",
+        "green": "sprites/jack/green/run_02.png",
+        "orange": "sprites/jack/orange/run_02.png"
+      },
+      "w": 36,
+      "h": 40,
+      "ax": 17,
+      "ay": 39,
+      "src": 4
+    },
+    "run_03": {
+      "files": {
+        "red": "sprites/jack/red/run_03.png",
+        "blue": "sprites/jack/blue/run_03.png",
+        "green": "sprites/jack/green/run_03.png",
+        "orange": "sprites/jack/orange/run_03.png"
+      },
+      "w": 31,
+      "h": 42,
+      "ax": 15,
+      "ay": 40,
+      "src": 6
+    },
+    "run_04": {
+      "files": {
+        "red": "sprites/jack/red/run_04.png",
+        "blue": "sprites/jack/blue/run_04.png",
+        "green": "sprites/jack/green/run_04.png",
+        "orange": "sprites/jack/orange/run_04.png"
+      },
+      "w": 44,
+      "h": 40,
+      "ax": 25,
+      "ay": 44,
+      "src": 8
+    },
+    "run_05": {
+      "files": {
+        "red": "sprites/jack/red/run_05.png",
+        "blue": "sprites/jack/blue/run_05.png",
+        "green": "sprites/jack/green/run_05.png",
+        "orange": "sprites/jack/orange/run_05.png"
+      },
+      "w": 45,
+      "h": 43,
+      "ax": 25,
+      "ay": 44,
+      "src": 10
+    },
+    "run_06": {
+      "files": {
+        "red": "sprites/jack/red/run_06.png",
+        "blue": "sprites/jack/blue/run_06.png",
+        "green": "sprites/jack/green/run_06.png",
+        "orange": "sprites/jack/orange/run_06.png"
+      },
+      "w": 32,
+      "h": 40,
+      "ax": 16,
+      "ay": 39,
+      "src": 12
+    },
+    "run_07": {
+      "files": {
+        "red": "sprites/jack/red/run_07.png",
+        "blue": "sprites/jack/blue/run_07.png",
+        "green": "sprites/jack/green/run_07.png",
+        "orange": "sprites/jack/orange/run_07.png"
+      },
+      "w": 34,
+      "h": 42,
+      "ax": 15,
+      "ay": 40,
+      "src": 14
+    },
+    "run_08": {
+      "files": {
+        "red": "sprites/jack/red/run_08.png",
+        "blue": "sprites/jack/blue/run_08.png",
+        "green": "sprites/jack/green/run_08.png",
+        "orange": "sprites/jack/orange/run_08.png"
+      },
+      "w": 43,
+      "h": 40,
+      "ax": 22,
+      "ay": 43,
+      "src": 16
+    },
+    "run_09": {
+      "files": {
+        "red": "sprites/jack/red/run_09.png",
+        "blue": "sprites/jack/blue/run_09.png",
+        "green": "sprites/jack/green/run_09.png",
+        "orange": "sprites/jack/orange/run_09.png"
+      },
+      "w": 48,
+      "h": 42,
+      "ax": 26,
+      "ay": 42,
+      "src": 18
+    },
+    "jump": {
+      "files": {
+        "red": "sprites/jack/red/jump.png",
+        "blue": "sprites/jack/blue/jump.png",
+        "green": "sprites/jack/green/jump.png",
+        "orange": "sprites/jack/orange/jump.png"
+      },
+      "w": 44,
+      "h": 40,
+      "ax": 25,
+      "ay": 44,
+      "src": 8
+    },
+    "fall": {
+      "files": {
+        "red": "sprites/jack/red/fall.png",
+        "blue": "sprites/jack/blue/fall.png",
+        "green": "sprites/jack/green/fall.png",
+        "orange": "sprites/jack/orange/fall.png"
+      },
+      "w": 61,
+      "h": 43,
+      "ax": 13,
+      "ay": 57,
+      "src": 310
+    },
+    "land": {
+      "files": {
+        "red": "sprites/jack/red/land.png",
+        "blue": "sprites/jack/blue/land.png",
+        "green": "sprites/jack/green/land.png",
+        "orange": "sprites/jack/orange/land.png"
+      },
+      "w": 39,
+      "h": 39,
+      "ax": 16,
+      "ay": 37,
+      "src": 50
+    },
+    "crouch": {
+      "files": {
+        "red": "sprites/jack/red/crouch.png",
+        "blue": "sprites/jack/blue/crouch.png",
+        "green": "sprites/jack/green/crouch.png",
+        "orange": "sprites/jack/orange/crouch.png"
+      },
+      "w": 41,
+      "h": 39,
+      "ax": 21,
+      "ay": 39,
+      "src": 209
+    },
+    "hammerUp": {
+      "files": {
+        "red": "sprites/jack/red/hammerUp.png",
+        "blue": "sprites/jack/blue/hammerUp.png",
+        "green": "sprites/jack/green/hammerUp.png",
+        "orange": "sprites/jack/orange/hammerUp.png"
+      },
+      "w": 22,
+      "h": 42,
+      "ax": 11,
+      "ay": 41,
+      "src": 196
+    },
+    "hammerMid": {
+      "files": {
+        "red": "sprites/jack/red/hammerMid.png",
+        "blue": "sprites/jack/blue/hammerMid.png",
+        "green": "sprites/jack/green/hammerMid.png",
+        "orange": "sprites/jack/orange/hammerMid.png"
+      },
+      "w": 39,
+      "h": 39,
+      "ax": 19,
+      "ay": 39,
+      "src": 207
+    },
+    "hammerDown": {
+      "files": {
+        "red": "sprites/jack/red/hammerDown.png",
+        "blue": "sprites/jack/blue/hammerDown.png",
+        "green": "sprites/jack/green/hammerDown.png",
+        "orange": "sprites/jack/orange/hammerDown.png"
+      },
+      "w": 36,
+      "h": 38,
+      "ax": 16,
+      "ay": 37,
+      "src": 213
+    },
+    "tumble_00": {
+      "files": {
+        "red": "sprites/jack/red/tumble_00.png",
+        "blue": "sprites/jack/blue/tumble_00.png",
+        "green": "sprites/jack/green/tumble_00.png",
+        "orange": "sprites/jack/orange/tumble_00.png"
+      },
+      "w": 41,
+      "h": 27,
+      "ax": 22,
+      "ay": 26,
+      "src": 164
+    },
+    "tumble_01": {
+      "files": {
+        "red": "sprites/jack/red/tumble_01.png",
+        "blue": "sprites/jack/blue/tumble_01.png",
+        "green": "sprites/jack/green/tumble_01.png",
+        "orange": "sprites/jack/orange/tumble_01.png"
+      },
+      "w": 37,
+      "h": 30,
+      "ax": 29,
+      "ay": 30,
+      "src": 166
+    },
+    "tumble_02": {
+      "files": {
+        "red": "sprites/jack/red/tumble_02.png",
+        "blue": "sprites/jack/blue/tumble_02.png",
+        "green": "sprites/jack/green/tumble_02.png",
+        "orange": "sprites/jack/orange/tumble_02.png"
+      },
+      "w": 30,
+      "h": 27,
+      "ax": 30,
+      "ay": 24,
+      "src": 168
+    },
+    "tumble_03": {
+      "files": {
+        "red": "sprites/jack/red/tumble_03.png",
+        "blue": "sprites/jack/blue/tumble_03.png",
+        "green": "sprites/jack/green/tumble_03.png",
+        "orange": "sprites/jack/orange/tumble_03.png"
+      },
+      "w": 42,
+      "h": 33,
+      "ax": 24,
+      "ay": 38,
+      "src": 170
+    },
+    "cower": {
+      "files": {
+        "red": "sprites/jack/red/cower.png",
+        "blue": "sprites/jack/blue/cower.png",
+        "green": "sprites/jack/green/cower.png",
+        "orange": "sprites/jack/orange/cower.png"
+      },
+      "w": 29,
+      "h": 23,
+      "ax": 15,
+      "ay": 22,
+      "src": 100
+    }
+  },
+  "anims": {
+    "idle": [
+      "idle_00",
+      "idle_01"
+    ],
+    "walk": [
+      "walk_00",
+      "walk_01",
+      "walk_02",
+      "walk_03",
+      "walk_04",
+      "walk_05",
+      "walk_06",
+      "walk_07",
+      "walk_08",
+      "walk_09"
+    ],
+    "run": [
+      "run_00",
+      "run_01",
+      "run_02",
+      "run_03",
+      "run_04",
+      "run_05",
+      "run_06",
+      "run_07",
+      "run_08",
+      "run_09"
+    ],
+    "jump": [
+      "jump"
+    ],
+    "fall": [
+      "fall"
+    ],
+    "land": [
+      "land"
+    ],
+    "crouch": [
+      "crouch"
+    ],
+    "hammerUp": [
+      "hammerUp"
+    ],
+    "hammerMid": [
+      "hammerMid"
+    ],
+    "hammerDown": [
+      "hammerDown"
+    ],
+    "tumble": [
+      "tumble_00",
+      "tumble_01",
+      "tumble_02",
+      "tumble_03"
+    ],
+    "cower": [
+      "cower"
+    ]
+  },
+  "standHeight": 41
+}

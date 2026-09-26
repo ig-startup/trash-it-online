@@ -56,7 +56,9 @@ class GameRoom {
    * @param {object} levelData — level descriptor from tech-spec (or level id string for compat)
    */
   startGame(levelData) {
-    if (this.state !== 'lobby') return;
+    // 'ended' is allowed too: that is how the room moves on to the next level.
+    if (this.state !== 'lobby' && this.state !== 'ended') return;
+    this._clearTimer();
 
     // Support passing either a full levelData object or just an id
     if (typeof levelData === 'string') {
@@ -72,6 +74,7 @@ class GameRoom {
       this.objects.set(id, { hp: obj.hp });
     }
 
+    this.levelId = levelData.id || null;
     this.timeLeft = levelData.timeLimit || 180;
     this.state = 'playing';
 
