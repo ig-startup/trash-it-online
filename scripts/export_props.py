@@ -39,6 +39,10 @@ PROPS = {
     # about 2000 records across three quarters of the levels. TIMMY.SPR
     # holds 35 frames; these six read as a walk cycle.
     "timmy": ("TIMMY.SPR", [0, 1, 2, 3, 4, 5]),
+    # Dynamite: 202 placements across 42 levels, the third most common
+    # thing in the game. Its own sheet carries the stick and the blast.
+    "dyna": ("DYNA.SPR", [0]),          # the stick; the sheet has only four
+    "blast": ("BLAM.SPR", [0, 2, 4, 6, 8, 10, 12, 14]),  # it expands
 }
 
 

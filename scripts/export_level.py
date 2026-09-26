@@ -49,6 +49,8 @@ HEADROOM = 64
 GROUND_OVERHANG = 240  # how far the floor runs past each side edge
 #: Every class whose template spawns a TIMMY.SPR.
 TIMMY_CLASSES = (14, 17, 32)
+#: Class 15 places a stick of dynamite.
+DYNAMITE_CLASS = 15
 TIME_LIMIT = 240
 PAD = 1  # transparent gutter between packed shapes
 
@@ -199,6 +201,15 @@ def export(name):
                for x, y in [struct.unpack_from("<hh", payload, 0)]
                if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
 
+    # Dynamite. Class 15, drawn at the record's position plus the offset
+    # its constructor applies (VA 0x1d2d5), with the word at +14 choosing
+    # between a single stick and a linked pair.
+    dynamite = [{"x": x + 10, "y": y + 20 + HEADROOM,
+                 "pair": struct.unpack_from("<h", payload, 14)[0] == 2}
+                for cid, _off, payload in placed if cid == DYNAMITE_CLASS
+                for x, y in [struct.unpack_from("<hh", payload, 0)]
+                if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
+
     rung = ob.bells(placed)
     if rung:
         bx, by, _subtype = rung[0]
@@ -221,6 +232,7 @@ def export(name):
         "shapes": sizes,
         "spawnPoints": spawn_pts,
         "timmies": timmies,
+        "dynamite": dynamite,
         # The bottom edge of a level is solid ground in the original. It is
         # not made of objects — in 0B all 179 are destructible and nothing
         # sits under the start at all — but every level's authored start is

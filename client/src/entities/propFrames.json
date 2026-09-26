@@ -79,6 +79,78 @@
       "ax": 9,
       "ay": 20,
       "src": "TIMMY.SPR:5"
+    },
+    "dyna": {
+      "file": "sprites/props/dyna.png",
+      "w": 28,
+      "h": 15,
+      "ax": 12,
+      "ay": 14,
+      "src": "DYNA.SPR:0"
+    },
+    "blast_00": {
+      "file": "sprites/props/blast_00.png",
+      "w": 21,
+      "h": 16,
+      "ax": 6,
+      "ay": 9,
+      "src": "BLAM.SPR:0"
+    },
+    "blast_01": {
+      "file": "sprites/props/blast_01.png",
+      "w": 37,
+      "h": 34,
+      "ax": 6,
+      "ay": 24,
+      "src": "BLAM.SPR:2"
+    },
+    "blast_02": {
+      "file": "sprites/props/blast_02.png",
+      "w": 57,
+      "h": 51,
+      "ax": 6,
+      "ay": 33,
+      "src": "BLAM.SPR:4"
+    },
+    "blast_03": {
+      "file": "sprites/props/blast_03.png",
+      "w": 53,
+      "h": 52,
+      "ax": 6,
+      "ay": 31,
+      "src": "BLAM.SPR:6"
+    },
+    "blast_04": {
+      "file": "sprites/props/blast_04.png",
+      "w": 25,
+      "h": 22,
+      "ax": 2,
+      "ay": 16,
+      "src": "BLAM.SPR:8"
+    },
+    "blast_05": {
+      "file": "sprites/props/blast_05.png",
+      "w": 5,
+      "h": 5,
+      "ax": 2,
+      "ay": 2,
+      "src": "BLAM.SPR:10"
+    },
+    "blast_06": {
+      "file": "sprites/props/blast_06.png",
+      "w": 7,
+      "h": 7,
+      "ax": 3,
+      "ay": 3,
+      "src": "BLAM.SPR:12"
+    },
+    "blast_07": {
+      "file": "sprites/props/blast_07.png",
+      "w": 7,
+      "h": 7,
+      "ax": 3,
+      "ay": 3,
+      "src": "BLAM.SPR:14"
     }
   },
   "anims": {
@@ -97,6 +169,19 @@
       "timmy_03",
       "timmy_04",
       "timmy_05"
+    ],
+    "dyna": [
+      "dyna"
+    ],
+    "blast": [
+      "blast_00",
+      "blast_01",
+      "blast_02",
+      "blast_03",
+      "blast_04",
+      "blast_05",
+      "blast_06",
+      "blast_07"
     ]
   }
 }

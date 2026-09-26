@@ -22,6 +22,9 @@ const HOOVER_HEIGHT = 20;    // px above his feet the nozzle sits
 const HOOVER_REACH = 110;    // px the suction reaches — ours, not the game's
 const HOOVER_SWALLOW = 16;   // px at which a timmy is taken
 const HOOVER_PULL = 3.2;     // px per tick a caught timmy is drawn in
+const FUSE_MS = 900;         // how long the fuse burns — ours
+const BLAST_RADIUS = 96;     // px the blast reaches — ours
+const BLAST_FRAME_MS = 45;
 
 
 /**
@@ -173,6 +176,20 @@ export default class GameScene extends Phaser.Scene {
       this._timmies.push(sprite);
     });
 
+    // ── Dynamite ──────────────────────────────────────────────────────────
+    // 202 placements across 42 levels. The chain in the game is: a blow
+    // arms it (VA 0x1d405, which also plays a sound), a fuse burns
+    // (0x1d4ec), and the fuse spawns a blast that expands through its
+    // own animation (0x1d584). The stages are the game's; the fuse
+    // length and the blast's reach are ours.
+    this._dynamite = [];
+    (level.dynamite || []).forEach((d) => {
+      if (!hasProps(this)) return;
+      const stick = this.add.image(d.x, d.y, PROP_ANIMS.dyna[0]).setDepth(2);
+      applyPropFrame(stick, PROP_ANIMS.dyna[0]);
+      this._dynamite.push({ sprite: stick, lit: 0, pair: !!d.pair });
+    });
+
     // ── Local player ─────────────────────────────────────────────────────────
     const myPlayerData = this._players.find((p) => p.id === this._myPlayerId)
       || this._players[0]
@@ -311,6 +328,8 @@ export default class GameScene extends Phaser.Scene {
       this._player.bellHit = false; // reset so bell can be hit again after leaving
     }
 
+    this._tickDynamite(time);
+
     // Timmies mill about on the spot; each keeps its own phase so they
     // do not step in unison.
     if (this._timmies.length) {
@@ -372,6 +391,60 @@ export default class GameScene extends Phaser.Scene {
       }
     });
     struck.forEach((entry) => this._applyForce(entry, HAMMER_FORCE, 0));
+
+    // A blow arms any dynamite it reaches.
+    this._dynamite.forEach((d) => {
+      if (d.lit || !d.sprite.active) return;
+      if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {
+        d.lit = this.time.now + FUSE_MS;
+      }
+    });
+  }
+
+  /** Burns the lit fuses and sets off the ones that run out. */
+  _tickDynamite(time) {
+    for (let i = this._dynamite.length - 1; i >= 0; i -= 1) {
+      const d = this._dynamite[i];
+      if (!d.lit || !d.sprite.active) continue;
+      // While it burns the stick blinks, which is the fuse animation's job
+      // in the game.
+      d.sprite.setAlpha(Math.floor(time / 80) % 2 ? 1 : 0.45);
+      if (time < d.lit) continue;
+      this._blast(d.sprite.x, d.sprite.y, d.pair ? BLAST_RADIUS * 1.5 : BLAST_RADIUS);
+      d.sprite.destroy();
+      this._dynamite.splice(i, 1);
+    }
+  }
+
+  /**
+   * The blast: the expanding animation the game plays, and the force it
+   * puts into everything around it. The radius is ours — the game's
+   * blast grows through its own frames and what it touches has not been
+   * traced — but the force is the same model a hammer blow uses.
+   */
+  _blast(x, y, radius) {
+    if (hasProps(this)) {
+      const boom = this.add.image(x, y, PROP_ANIMS.blast[0]).setDepth(6);
+      applyPropFrame(boom, PROP_ANIMS.blast[0]);
+      let frame = 0;
+      this.time.addEvent({
+        delay: BLAST_FRAME_MS,
+        repeat: PROP_ANIMS.blast.length - 1,
+        callback: () => {
+          frame += 1;
+          if (frame >= PROP_ANIMS.blast.length) { boom.destroy(); return; }
+          applyPropFrame(boom, PROP_ANIMS.blast[frame]);
+        },
+      });
+    }
+    const caught = [];
+    this._destructibleMap.forEach((entry) => {
+      if (!entry.rect.active || entry.solid) return;
+      if (Phaser.Math.Distance.Between(x, y, entry.rect.x, entry.rect.y) <= radius) {
+        caught.push(entry);
+      }
+    });
+    caught.forEach((entry) => this._applyForce(entry, HAMMER_FORCE, 0));
   }
 
   /**
