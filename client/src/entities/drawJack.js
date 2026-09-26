@@ -189,8 +189,16 @@ function drawnJackTextures(scene, playerId, colorHex) {
  *   right after construction, where the texture is set but not yet sized
  */
 export function applyJackFrame(obj, key, force = false) {
-  if (!key || (!force && obj.texture?.key === key)) return;
-  obj.setTexture(key);
+  if (!key) return;
+  // Real frames come from a packed atlas and are named `<atlas>|<frame>`;
+  // the hand-drawn fallback keys are plain texture names.
+  const bar = key.indexOf('|');
+  const texture = bar > 0 ? key.slice(0, bar) : key;
+  const frame = bar > 0 ? key.slice(bar + 1) : undefined;
+  if (!force && obj.texture?.key === texture
+      && (frame === undefined || obj.frame?.name === frame)) return;
+  if (frame === undefined) obj.setTexture(texture);
+  else obj.setTexture(texture, frame);
 
   const info = JACK_FRAME_INFO[key];
   if (info) {

@@ -7,1423 +7,1223 @@
     "orange": "#ffaa00"
   },
   "original": "blue",
+  "atlases": {
+    "red": {
+      "image": "sprites/jack/red.png",
+      "data": "sprites/jack/red.json"
+    },
+    "blue": {
+      "image": "sprites/jack/blue.png",
+      "data": "sprites/jack/blue.json"
+    },
+    "green": {
+      "image": "sprites/jack/green.png",
+      "data": "sprites/jack/green.json"
+    },
+    "orange": {
+      "image": "sprites/jack/orange.png",
+      "data": "sprites/jack/orange.json"
+    }
+  },
   "frames": {
     "idle": {
-      "files": {
-        "red": "sprites/jack/red/idle.png",
-        "blue": "sprites/jack/blue/idle.png",
-        "green": "sprites/jack/green/idle.png",
-        "orange": "sprites/jack/orange/idle.png"
-      },
       "w": 22,
       "h": 42,
       "ax": 11,
       "ay": 41,
-      "src": 0
+      "src": 0,
+      "atlas": {
+        "x": 555,
+        "y": 0
+      }
     },
     "run_00": {
-      "files": {
-        "red": "sprites/jack/red/run_00.png",
-        "blue": "sprites/jack/blue/run_00.png",
-        "green": "sprites/jack/green/run_00.png",
-        "orange": "sprites/jack/orange/run_00.png"
-      },
       "w": 45,
       "h": 39,
       "ax": 23,
       "ay": 44,
-      "src": 1
+      "src": 1,
+      "atlas": {
+        "x": 236,
+        "y": 89
+      }
     },
     "run_01": {
-      "files": {
-        "red": "sprites/jack/red/run_01.png",
-        "blue": "sprites/jack/blue/run_01.png",
-        "green": "sprites/jack/green/run_01.png",
-        "orange": "sprites/jack/orange/run_01.png"
-      },
       "w": 43,
       "h": 42,
       "ax": 22,
       "ay": 43,
-      "src": 2
+      "src": 2,
+      "atlas": {
+        "x": 577,
+        "y": 0
+      }
     },
     "run_02": {
-      "files": {
-        "red": "sprites/jack/red/run_02.png",
-        "blue": "sprites/jack/blue/run_02.png",
-        "green": "sprites/jack/green/run_02.png",
-        "orange": "sprites/jack/orange/run_02.png"
-      },
       "w": 41,
       "h": 42,
       "ax": 19,
       "ay": 41,
-      "src": 3
+      "src": 3,
+      "atlas": {
+        "x": 620,
+        "y": 0
+      }
     },
     "run_03": {
-      "files": {
-        "red": "sprites/jack/red/run_03.png",
-        "blue": "sprites/jack/blue/run_03.png",
-        "green": "sprites/jack/green/run_03.png",
-        "orange": "sprites/jack/orange/run_03.png"
-      },
       "w": 36,
       "h": 40,
       "ax": 17,
       "ay": 39,
-      "src": 4
+      "src": 4,
+      "atlas": {
+        "x": 763,
+        "y": 47
+      }
     },
     "run_04": {
-      "files": {
-        "red": "sprites/jack/red/run_04.png",
-        "blue": "sprites/jack/blue/run_04.png",
-        "green": "sprites/jack/green/run_04.png",
-        "orange": "sprites/jack/orange/run_04.png"
-      },
       "w": 26,
       "h": 40,
       "ax": 13,
       "ay": 39,
-      "src": 5
+      "src": 5,
+      "atlas": {
+        "x": 799,
+        "y": 47
+      }
     },
     "run_05": {
-      "files": {
-        "red": "sprites/jack/red/run_05.png",
-        "blue": "sprites/jack/blue/run_05.png",
-        "green": "sprites/jack/green/run_05.png",
-        "orange": "sprites/jack/orange/run_05.png"
-      },
       "w": 31,
       "h": 42,
       "ax": 15,
       "ay": 40,
-      "src": 6
+      "src": 6,
+      "atlas": {
+        "x": 661,
+        "y": 0
+      }
     },
     "run_06": {
-      "files": {
-        "red": "sprites/jack/red/run_06.png",
-        "blue": "sprites/jack/blue/run_06.png",
-        "green": "sprites/jack/green/run_06.png",
-        "orange": "sprites/jack/orange/run_06.png"
-      },
       "w": 39,
       "h": 42,
       "ax": 20,
       "ay": 42,
-      "src": 7
+      "src": 7,
+      "atlas": {
+        "x": 692,
+        "y": 0
+      }
     },
     "run_07": {
-      "files": {
-        "red": "sprites/jack/red/run_07.png",
-        "blue": "sprites/jack/blue/run_07.png",
-        "green": "sprites/jack/green/run_07.png",
-        "orange": "sprites/jack/orange/run_07.png"
-      },
       "w": 44,
       "h": 40,
       "ax": 25,
       "ay": 44,
-      "src": 8
+      "src": 8,
+      "atlas": {
+        "x": 825,
+        "y": 47
+      }
     },
     "run_08": {
-      "files": {
-        "red": "sprites/jack/red/run_08.png",
-        "blue": "sprites/jack/blue/run_08.png",
-        "green": "sprites/jack/green/run_08.png",
-        "orange": "sprites/jack/orange/run_08.png"
-      },
       "w": 48,
       "h": 40,
       "ax": 26,
       "ay": 45,
-      "src": 9
+      "src": 9,
+      "atlas": {
+        "x": 869,
+        "y": 47
+      }
     },
     "run_09": {
-      "files": {
-        "red": "sprites/jack/red/run_09.png",
-        "blue": "sprites/jack/blue/run_09.png",
-        "green": "sprites/jack/green/run_09.png",
-        "orange": "sprites/jack/orange/run_09.png"
-      },
       "w": 45,
       "h": 43,
       "ax": 25,
       "ay": 44,
-      "src": 10
+      "src": 10,
+      "atlas": {
+        "x": 279,
+        "y": 0
+      }
     },
     "run_10": {
-      "files": {
-        "red": "sprites/jack/red/run_10.png",
-        "blue": "sprites/jack/blue/run_10.png",
-        "green": "sprites/jack/green/run_10.png",
-        "orange": "sprites/jack/orange/run_10.png"
-      },
       "w": 39,
       "h": 44,
       "ax": 20,
       "ay": 42,
-      "src": 11
+      "src": 11,
+      "atlas": {
+        "x": 212,
+        "y": 0
+      }
     },
     "run_11": {
-      "files": {
-        "red": "sprites/jack/red/run_11.png",
-        "blue": "sprites/jack/blue/run_11.png",
-        "green": "sprites/jack/green/run_11.png",
-        "orange": "sprites/jack/orange/run_11.png"
-      },
       "w": 32,
       "h": 40,
       "ax": 16,
       "ay": 39,
-      "src": 12
+      "src": 12,
+      "atlas": {
+        "x": 917,
+        "y": 47
+      }
     },
     "run_12": {
-      "files": {
-        "red": "sprites/jack/red/run_12.png",
-        "blue": "sprites/jack/blue/run_12.png",
-        "green": "sprites/jack/green/run_12.png",
-        "orange": "sprites/jack/orange/run_12.png"
-      },
       "w": 25,
       "h": 40,
       "ax": 12,
       "ay": 39,
-      "src": 13
+      "src": 13,
+      "atlas": {
+        "x": 949,
+        "y": 47
+      }
     },
     "run_13": {
-      "files": {
-        "red": "sprites/jack/red/run_13.png",
-        "blue": "sprites/jack/blue/run_13.png",
-        "green": "sprites/jack/green/run_13.png",
-        "orange": "sprites/jack/orange/run_13.png"
-      },
       "w": 34,
       "h": 42,
       "ax": 15,
       "ay": 40,
-      "src": 14
+      "src": 14,
+      "atlas": {
+        "x": 731,
+        "y": 0
+      }
     },
     "run_14": {
-      "files": {
-        "red": "sprites/jack/red/run_14.png",
-        "blue": "sprites/jack/blue/run_14.png",
-        "green": "sprites/jack/green/run_14.png",
-        "orange": "sprites/jack/orange/run_14.png"
-      },
       "w": 40,
       "h": 43,
       "ax": 18,
       "ay": 42,
-      "src": 15
+      "src": 15,
+      "atlas": {
+        "x": 324,
+        "y": 0
+      }
     },
     "run_15": {
-      "files": {
-        "red": "sprites/jack/red/run_15.png",
-        "blue": "sprites/jack/blue/run_15.png",
-        "green": "sprites/jack/green/run_15.png",
-        "orange": "sprites/jack/orange/run_15.png"
-      },
       "w": 43,
       "h": 40,
       "ax": 22,
       "ay": 43,
-      "src": 16
+      "src": 16,
+      "atlas": {
+        "x": 974,
+        "y": 47
+      }
     },
     "skid_00": {
-      "files": {
-        "red": "sprites/jack/red/skid_00.png",
-        "blue": "sprites/jack/blue/skid_00.png",
-        "green": "sprites/jack/green/skid_00.png",
-        "orange": "sprites/jack/orange/skid_00.png"
-      },
       "w": 49,
       "h": 40,
       "ax": 27,
       "ay": 44,
-      "src": 17
+      "src": 17,
+      "atlas": {
+        "x": 0,
+        "y": 89
+      }
     },
     "skid_01": {
-      "files": {
-        "red": "sprites/jack/red/skid_01.png",
-        "blue": "sprites/jack/blue/skid_01.png",
-        "green": "sprites/jack/green/skid_01.png",
-        "orange": "sprites/jack/orange/skid_01.png"
-      },
       "w": 48,
       "h": 42,
       "ax": 26,
       "ay": 42,
-      "src": 18
+      "src": 18,
+      "atlas": {
+        "x": 765,
+        "y": 0
+      }
     },
     "skid_02": {
-      "files": {
-        "red": "sprites/jack/red/skid_02.png",
-        "blue": "sprites/jack/blue/skid_02.png",
-        "green": "sprites/jack/green/skid_02.png",
-        "orange": "sprites/jack/orange/skid_02.png"
-      },
       "w": 44,
       "h": 42,
       "ax": 21,
       "ay": 40,
-      "src": 19
+      "src": 19,
+      "atlas": {
+        "x": 813,
+        "y": 0
+      }
     },
     "skid_03": {
-      "files": {
-        "red": "sprites/jack/red/skid_03.png",
-        "blue": "sprites/jack/blue/skid_03.png",
-        "green": "sprites/jack/green/skid_03.png",
-        "orange": "sprites/jack/orange/skid_03.png"
-      },
       "w": 42,
       "h": 39,
       "ax": 20,
       "ay": 38,
-      "src": 20
+      "src": 20,
+      "atlas": {
+        "x": 281,
+        "y": 89
+      }
     },
     "hammerSide_00": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_00.png",
-        "blue": "sprites/jack/blue/hammerSide_00.png",
-        "green": "sprites/jack/green/hammerSide_00.png",
-        "orange": "sprites/jack/orange/hammerSide_00.png"
-      },
       "w": 22,
       "h": 41,
       "ax": 11,
       "ay": 40,
-      "src": 37
+      "src": 37,
+      "atlas": {
+        "x": 113,
+        "y": 47
+      }
     },
     "hammerSide_01": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_01.png",
-        "blue": "sprites/jack/blue/hammerSide_01.png",
-        "green": "sprites/jack/green/hammerSide_01.png",
-        "orange": "sprites/jack/orange/hammerSide_01.png"
-      },
       "w": 29,
       "h": 41,
       "ax": 14,
       "ay": 40,
-      "src": 38
+      "src": 38,
+      "atlas": {
+        "x": 135,
+        "y": 47
+      }
     },
     "hammerSide_02": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_02.png",
-        "blue": "sprites/jack/blue/hammerSide_02.png",
-        "green": "sprites/jack/green/hammerSide_02.png",
-        "orange": "sprites/jack/orange/hammerSide_02.png"
-      },
       "w": 31,
       "h": 41,
       "ax": 17,
       "ay": 40,
-      "src": 39
+      "src": 39,
+      "atlas": {
+        "x": 164,
+        "y": 47
+      }
     },
     "hammerSide_03": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_03.png",
-        "blue": "sprites/jack/blue/hammerSide_03.png",
-        "green": "sprites/jack/green/hammerSide_03.png",
-        "orange": "sprites/jack/orange/hammerSide_03.png"
-      },
       "w": 31,
       "h": 42,
       "ax": 18,
       "ay": 41,
-      "src": 40
+      "src": 40,
+      "atlas": {
+        "x": 857,
+        "y": 0
+      }
     },
     "hammerSide_04": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_04.png",
-        "blue": "sprites/jack/blue/hammerSide_04.png",
-        "green": "sprites/jack/green/hammerSide_04.png",
-        "orange": "sprites/jack/orange/hammerSide_04.png"
-      },
       "w": 31,
       "h": 42,
       "ax": 18,
       "ay": 41,
-      "src": 41
+      "src": 41,
+      "atlas": {
+        "x": 888,
+        "y": 0
+      }
     },
     "hammerSide_05": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_05.png",
-        "blue": "sprites/jack/blue/hammerSide_05.png",
-        "green": "sprites/jack/green/hammerSide_05.png",
-        "orange": "sprites/jack/orange/hammerSide_05.png"
-      },
       "w": 32,
       "h": 42,
       "ax": 19,
       "ay": 41,
-      "src": 42
+      "src": 42,
+      "atlas": {
+        "x": 919,
+        "y": 0
+      }
     },
     "hammerSide_06": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_06.png",
-        "blue": "sprites/jack/blue/hammerSide_06.png",
-        "green": "sprites/jack/green/hammerSide_06.png",
-        "orange": "sprites/jack/orange/hammerSide_06.png"
-      },
       "w": 34,
       "h": 41,
       "ax": 20,
       "ay": 40,
-      "src": 43
+      "src": 43,
+      "atlas": {
+        "x": 195,
+        "y": 47
+      }
     },
     "hammerSide_07": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_07.png",
-        "blue": "sprites/jack/blue/hammerSide_07.png",
-        "green": "sprites/jack/green/hammerSide_07.png",
-        "orange": "sprites/jack/orange/hammerSide_07.png"
-      },
       "w": 34,
       "h": 41,
       "ax": 20,
       "ay": 40,
-      "src": 44
+      "src": 44,
+      "atlas": {
+        "x": 229,
+        "y": 47
+      }
     },
     "hammerSide_08": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_08.png",
-        "blue": "sprites/jack/blue/hammerSide_08.png",
-        "green": "sprites/jack/green/hammerSide_08.png",
-        "orange": "sprites/jack/orange/hammerSide_08.png"
-      },
       "w": 32,
       "h": 41,
       "ax": 19,
       "ay": 40,
-      "src": 45
+      "src": 45,
+      "atlas": {
+        "x": 263,
+        "y": 47
+      }
     },
     "hammerSide_09": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_09.png",
-        "blue": "sprites/jack/blue/hammerSide_09.png",
-        "green": "sprites/jack/green/hammerSide_09.png",
-        "orange": "sprites/jack/orange/hammerSide_09.png"
-      },
       "w": 31,
       "h": 41,
       "ax": 18,
       "ay": 39,
-      "src": 46
+      "src": 46,
+      "atlas": {
+        "x": 295,
+        "y": 47
+      }
     },
     "hammerSide_10": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_10.png",
-        "blue": "sprites/jack/blue/hammerSide_10.png",
-        "green": "sprites/jack/green/hammerSide_10.png",
-        "orange": "sprites/jack/orange/hammerSide_10.png"
-      },
       "w": 31,
       "h": 41,
       "ax": 18,
       "ay": 39,
-      "src": 47
+      "src": 47,
+      "atlas": {
+        "x": 326,
+        "y": 47
+      }
     },
     "hammerSide_11": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_11.png",
-        "blue": "sprites/jack/blue/hammerSide_11.png",
-        "green": "sprites/jack/green/hammerSide_11.png",
-        "orange": "sprites/jack/orange/hammerSide_11.png"
-      },
       "w": 34,
       "h": 41,
       "ax": 18,
       "ay": 38,
-      "src": 48
+      "src": 48,
+      "atlas": {
+        "x": 357,
+        "y": 47
+      }
     },
     "hammerSide_12": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_12.png",
-        "blue": "sprites/jack/blue/hammerSide_12.png",
-        "green": "sprites/jack/green/hammerSide_12.png",
-        "orange": "sprites/jack/orange/hammerSide_12.png"
-      },
       "w": 36,
       "h": 41,
       "ax": 17,
       "ay": 38,
-      "src": 49
+      "src": 49,
+      "atlas": {
+        "x": 391,
+        "y": 47
+      }
     },
     "hammerSide_13": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_13.png",
-        "blue": "sprites/jack/blue/hammerSide_13.png",
-        "green": "sprites/jack/green/hammerSide_13.png",
-        "orange": "sprites/jack/orange/hammerSide_13.png"
-      },
       "w": 39,
       "h": 39,
       "ax": 16,
       "ay": 37,
-      "src": 50
+      "src": 50,
+      "atlas": {
+        "x": 323,
+        "y": 89
+      }
     },
     "hammerSide_14": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_14.png",
-        "blue": "sprites/jack/blue/hammerSide_14.png",
-        "green": "sprites/jack/green/hammerSide_14.png",
-        "orange": "sprites/jack/orange/hammerSide_14.png"
-      },
       "w": 39,
       "h": 39,
       "ax": 14,
       "ay": 37,
-      "src": 51
+      "src": 51,
+      "atlas": {
+        "x": 362,
+        "y": 89
+      }
     },
     "hammerSide_15": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_15.png",
-        "blue": "sprites/jack/blue/hammerSide_15.png",
-        "green": "sprites/jack/green/hammerSide_15.png",
-        "orange": "sprites/jack/orange/hammerSide_15.png"
-      },
       "w": 39,
       "h": 39,
       "ax": 13,
       "ay": 37,
-      "src": 52
+      "src": 52,
+      "atlas": {
+        "x": 401,
+        "y": 89
+      }
     },
     "hammerSide_16": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_16.png",
-        "blue": "sprites/jack/blue/hammerSide_16.png",
-        "green": "sprites/jack/green/hammerSide_16.png",
-        "orange": "sprites/jack/orange/hammerSide_16.png"
-      },
       "w": 39,
       "h": 37,
       "ax": 11,
       "ay": 36,
-      "src": 53
+      "src": 53,
+      "atlas": {
+        "x": 750,
+        "y": 89
+      }
     },
     "hammerSide_17": {
-      "files": {
-        "red": "sprites/jack/red/hammerSide_17.png",
-        "blue": "sprites/jack/blue/hammerSide_17.png",
-        "green": "sprites/jack/green/hammerSide_17.png",
-        "orange": "sprites/jack/orange/hammerSide_17.png"
-      },
       "w": 38,
       "h": 37,
       "ax": 9,
       "ay": 36,
-      "src": 54
+      "src": 54,
+      "atlas": {
+        "x": 789,
+        "y": 89
+      }
     },
     "hammerOver_00": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_00.png",
-        "blue": "sprites/jack/blue/hammerOver_00.png",
-        "green": "sprites/jack/green/hammerOver_00.png",
-        "orange": "sprites/jack/orange/hammerOver_00.png"
-      },
       "w": 27,
       "h": 41,
       "ax": 10,
       "ay": 40,
-      "src": 55
+      "src": 55,
+      "atlas": {
+        "x": 427,
+        "y": 47
+      }
     },
     "hammerOver_01": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_01.png",
-        "blue": "sprites/jack/blue/hammerOver_01.png",
-        "green": "sprites/jack/green/hammerOver_01.png",
-        "orange": "sprites/jack/orange/hammerOver_01.png"
-      },
       "w": 34,
       "h": 41,
       "ax": 14,
       "ay": 40,
-      "src": 56
+      "src": 56,
+      "atlas": {
+        "x": 454,
+        "y": 47
+      }
     },
     "hammerOver_02": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_02.png",
-        "blue": "sprites/jack/blue/hammerOver_02.png",
-        "green": "sprites/jack/green/hammerOver_02.png",
-        "orange": "sprites/jack/orange/hammerOver_02.png"
-      },
       "w": 40,
       "h": 40,
       "ax": 18,
       "ay": 39,
-      "src": 57
+      "src": 57,
+      "atlas": {
+        "x": 49,
+        "y": 89
+      }
     },
     "hammerOver_03": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_03.png",
-        "blue": "sprites/jack/blue/hammerOver_03.png",
-        "green": "sprites/jack/green/hammerOver_03.png",
-        "orange": "sprites/jack/orange/hammerOver_03.png"
-      },
       "w": 42,
       "h": 40,
       "ax": 19,
       "ay": 39,
-      "src": 58
+      "src": 58,
+      "atlas": {
+        "x": 89,
+        "y": 89
+      }
     },
     "hammerOver_04": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_04.png",
-        "blue": "sprites/jack/blue/hammerOver_04.png",
-        "green": "sprites/jack/green/hammerOver_04.png",
-        "orange": "sprites/jack/orange/hammerOver_04.png"
-      },
       "w": 32,
       "h": 45,
       "ax": 11,
       "ay": 43,
-      "src": 59
+      "src": 59,
+      "atlas": {
+        "x": 154,
+        "y": 0
+      }
     },
     "hammerOver_05": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_05.png",
-        "blue": "sprites/jack/blue/hammerOver_05.png",
-        "green": "sprites/jack/green/hammerOver_05.png",
-        "orange": "sprites/jack/orange/hammerOver_05.png"
-      },
       "w": 44,
       "h": 41,
       "ax": 17,
       "ay": 40,
-      "src": 60
+      "src": 60,
+      "atlas": {
+        "x": 488,
+        "y": 47
+      }
     },
     "hammerOver_06": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_06.png",
-        "blue": "sprites/jack/blue/hammerOver_06.png",
-        "green": "sprites/jack/green/hammerOver_06.png",
-        "orange": "sprites/jack/orange/hammerOver_06.png"
-      },
       "w": 48,
       "h": 32,
       "ax": 22,
       "ay": 33,
-      "src": 61
+      "src": 61,
+      "atlas": {
+        "x": 121,
+        "y": 129
+      }
     },
     "hammerOver_07": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_07.png",
-        "blue": "sprites/jack/blue/hammerOver_07.png",
-        "green": "sprites/jack/green/hammerOver_07.png",
-        "orange": "sprites/jack/orange/hammerOver_07.png"
-      },
       "w": 51,
       "h": 27,
       "ax": 25,
       "ay": 31,
-      "src": 62
+      "src": 62,
+      "atlas": {
+        "x": 449,
+        "y": 129
+      }
     },
     "hammerOver_08": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_08.png",
-        "blue": "sprites/jack/blue/hammerOver_08.png",
-        "green": "sprites/jack/green/hammerOver_08.png",
-        "orange": "sprites/jack/orange/hammerOver_08.png"
-      },
       "w": 44,
       "h": 34,
       "ax": 21,
       "ay": 35,
-      "src": 63
+      "src": 63,
+      "atlas": {
+        "x": 920,
+        "y": 89
+      }
     },
     "hammerOver_09": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_09.png",
-        "blue": "sprites/jack/blue/hammerOver_09.png",
-        "green": "sprites/jack/green/hammerOver_09.png",
-        "orange": "sprites/jack/orange/hammerOver_09.png"
-      },
       "w": 39,
       "h": 37,
       "ax": 17,
       "ay": 40,
-      "src": 64
+      "src": 64,
+      "atlas": {
+        "x": 827,
+        "y": 89
+      }
     },
     "hammerOver_10": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_10.png",
-        "blue": "sprites/jack/blue/hammerOver_10.png",
-        "green": "sprites/jack/green/hammerOver_10.png",
-        "orange": "sprites/jack/orange/hammerOver_10.png"
-      },
       "w": 37,
       "h": 41,
       "ax": 15,
       "ay": 41,
-      "src": 65
+      "src": 65,
+      "atlas": {
+        "x": 532,
+        "y": 47
+      }
     },
     "hammerOver_11": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_11.png",
-        "blue": "sprites/jack/blue/hammerOver_11.png",
-        "green": "sprites/jack/green/hammerOver_11.png",
-        "orange": "sprites/jack/orange/hammerOver_11.png"
-      },
       "w": 31,
       "h": 43,
       "ax": 11,
       "ay": 41,
-      "src": 66
+      "src": 66,
+      "atlas": {
+        "x": 364,
+        "y": 0
+      }
     },
     "hammerOver_12": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_12.png",
-        "blue": "sprites/jack/blue/hammerOver_12.png",
-        "green": "sprites/jack/green/hammerOver_12.png",
-        "orange": "sprites/jack/orange/hammerOver_12.png"
-      },
       "w": 29,
       "h": 42,
       "ax": 11,
       "ay": 40,
-      "src": 67
+      "src": 67,
+      "atlas": {
+        "x": 951,
+        "y": 0
+      }
     },
     "hammerOver_13": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_13.png",
-        "blue": "sprites/jack/blue/hammerOver_13.png",
-        "green": "sprites/jack/green/hammerOver_13.png",
-        "orange": "sprites/jack/orange/hammerOver_13.png"
-      },
       "w": 25,
       "h": 41,
       "ax": 11,
       "ay": 39,
-      "src": 68
+      "src": 68,
+      "atlas": {
+        "x": 569,
+        "y": 47
+      }
     },
     "hammerOver_14": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_14.png",
-        "blue": "sprites/jack/blue/hammerOver_14.png",
-        "green": "sprites/jack/green/hammerOver_14.png",
-        "orange": "sprites/jack/orange/hammerOver_14.png"
-      },
       "w": 26,
       "h": 40,
       "ax": 11,
       "ay": 38,
-      "src": 69
+      "src": 69,
+      "atlas": {
+        "x": 131,
+        "y": 89
+      }
     },
     "hammerOver_15": {
-      "files": {
-        "red": "sprites/jack/red/hammerOver_15.png",
-        "blue": "sprites/jack/blue/hammerOver_15.png",
-        "green": "sprites/jack/green/hammerOver_15.png",
-        "orange": "sprites/jack/orange/hammerOver_15.png"
-      },
       "w": 25,
       "h": 41,
       "ax": 11,
       "ay": 39,
-      "src": 70
+      "src": 70,
+      "atlas": {
+        "x": 594,
+        "y": 47
+      }
     },
     "fall": {
-      "files": {
-        "red": "sprites/jack/red/fall.png",
-        "blue": "sprites/jack/blue/fall.png",
-        "green": "sprites/jack/green/fall.png",
-        "orange": "sprites/jack/orange/fall.png"
-      },
       "w": 35,
       "h": 41,
       "ax": 17,
       "ay": 39,
-      "src": 140
+      "src": 140,
+      "atlas": {
+        "x": 619,
+        "y": 47
+      }
     },
     "land_00": {
-      "files": {
-        "red": "sprites/jack/red/land_00.png",
-        "blue": "sprites/jack/blue/land_00.png",
-        "green": "sprites/jack/green/land_00.png",
-        "orange": "sprites/jack/orange/land_00.png"
-      },
       "w": 29,
       "h": 41,
       "ax": 11,
       "ay": 39,
-      "src": 141
+      "src": 141,
+      "atlas": {
+        "x": 654,
+        "y": 47
+      }
     },
     "land_01": {
-      "files": {
-        "red": "sprites/jack/red/land_01.png",
-        "blue": "sprites/jack/blue/land_01.png",
-        "green": "sprites/jack/green/land_01.png",
-        "orange": "sprites/jack/orange/land_01.png"
-      },
       "w": 37,
       "h": 41,
       "ax": 14,
       "ay": 39,
-      "src": 142
+      "src": 142,
+      "atlas": {
+        "x": 683,
+        "y": 47
+      }
     },
     "land_02": {
-      "files": {
-        "red": "sprites/jack/red/land_02.png",
-        "blue": "sprites/jack/blue/land_02.png",
-        "green": "sprites/jack/green/land_02.png",
-        "orange": "sprites/jack/orange/land_02.png"
-      },
       "w": 50,
       "h": 39,
       "ax": 26,
       "ay": 38,
-      "src": 143
+      "src": 143,
+      "atlas": {
+        "x": 440,
+        "y": 89
+      }
     },
     "land_03": {
-      "files": {
-        "red": "sprites/jack/red/land_03.png",
-        "blue": "sprites/jack/blue/land_03.png",
-        "green": "sprites/jack/green/land_03.png",
-        "orange": "sprites/jack/orange/land_03.png"
-      },
       "w": 56,
       "h": 40,
       "ax": 32,
       "ay": 40,
-      "src": 144
+      "src": 144,
+      "atlas": {
+        "x": 157,
+        "y": 89
+      }
     },
     "getUp_00": {
-      "files": {
-        "red": "sprites/jack/red/getUp_00.png",
-        "blue": "sprites/jack/blue/getUp_00.png",
-        "green": "sprites/jack/green/getUp_00.png",
-        "orange": "sprites/jack/orange/getUp_00.png"
-      },
       "w": 49,
       "h": 33,
       "ax": 23,
       "ay": 31,
-      "src": 161
+      "src": 161,
+      "atlas": {
+        "x": 30,
+        "y": 129
+      }
     },
     "getUp_01": {
-      "files": {
-        "red": "sprites/jack/red/getUp_01.png",
-        "blue": "sprites/jack/blue/getUp_01.png",
-        "green": "sprites/jack/green/getUp_01.png",
-        "orange": "sprites/jack/orange/getUp_01.png"
-      },
       "w": 44,
       "h": 34,
       "ax": 17,
       "ay": 30,
-      "src": 162
+      "src": 162,
+      "atlas": {
+        "x": 964,
+        "y": 89
+      }
     },
     "getUp_02": {
-      "files": {
-        "red": "sprites/jack/red/getUp_02.png",
-        "blue": "sprites/jack/blue/getUp_02.png",
-        "green": "sprites/jack/green/getUp_02.png",
-        "orange": "sprites/jack/orange/getUp_02.png"
-      },
       "w": 43,
       "h": 30,
       "ax": 19,
       "ay": 28,
-      "src": 163
+      "src": 163,
+      "atlas": {
+        "x": 203,
+        "y": 129
+      }
     },
     "getUp_03": {
-      "files": {
-        "red": "sprites/jack/red/getUp_03.png",
-        "blue": "sprites/jack/blue/getUp_03.png",
-        "green": "sprites/jack/green/getUp_03.png",
-        "orange": "sprites/jack/orange/getUp_03.png"
-      },
       "w": 41,
       "h": 27,
       "ax": 22,
       "ay": 26,
-      "src": 164
+      "src": 164,
+      "atlas": {
+        "x": 500,
+        "y": 129
+      }
     },
     "getUp_04": {
-      "files": {
-        "red": "sprites/jack/red/getUp_04.png",
-        "blue": "sprites/jack/blue/getUp_04.png",
-        "green": "sprites/jack/green/getUp_04.png",
-        "orange": "sprites/jack/orange/getUp_04.png"
-      },
       "w": 41,
       "h": 29,
       "ax": 26,
       "ay": 29,
-      "src": 165
+      "src": 165,
+      "atlas": {
+        "x": 330,
+        "y": 129
+      }
     },
     "getUp_05": {
-      "files": {
-        "red": "sprites/jack/red/getUp_05.png",
-        "blue": "sprites/jack/blue/getUp_05.png",
-        "green": "sprites/jack/green/getUp_05.png",
-        "orange": "sprites/jack/orange/getUp_05.png"
-      },
       "w": 37,
       "h": 30,
       "ax": 29,
       "ay": 30,
-      "src": 166
+      "src": 166,
+      "atlas": {
+        "x": 246,
+        "y": 129
+      }
     },
     "getUp_06": {
-      "files": {
-        "red": "sprites/jack/red/getUp_06.png",
-        "blue": "sprites/jack/blue/getUp_06.png",
-        "green": "sprites/jack/green/getUp_06.png",
-        "orange": "sprites/jack/orange/getUp_06.png"
-      },
       "w": 34,
       "h": 31,
       "ax": 31,
       "ay": 30,
-      "src": 167
+      "src": 167,
+      "atlas": {
+        "x": 169,
+        "y": 129
+      }
     },
     "getUp_07": {
-      "files": {
-        "red": "sprites/jack/red/getUp_07.png",
-        "blue": "sprites/jack/blue/getUp_07.png",
-        "green": "sprites/jack/green/getUp_07.png",
-        "orange": "sprites/jack/orange/getUp_07.png"
-      },
       "w": 30,
       "h": 27,
       "ax": 30,
       "ay": 24,
-      "src": 168
+      "src": 168,
+      "atlas": {
+        "x": 541,
+        "y": 129
+      }
     },
     "getUp_08": {
-      "files": {
-        "red": "sprites/jack/red/getUp_08.png",
-        "blue": "sprites/jack/blue/getUp_08.png",
-        "green": "sprites/jack/green/getUp_08.png",
-        "orange": "sprites/jack/orange/getUp_08.png"
-      },
       "w": 31,
       "h": 42,
       "ax": 24,
       "ay": 43,
-      "src": 169
+      "src": 169,
+      "atlas": {
+        "x": 980,
+        "y": 0
+      }
     },
     "getUp_09": {
-      "files": {
-        "red": "sprites/jack/red/getUp_09.png",
-        "blue": "sprites/jack/blue/getUp_09.png",
-        "green": "sprites/jack/green/getUp_09.png",
-        "orange": "sprites/jack/orange/getUp_09.png"
-      },
       "w": 42,
       "h": 33,
       "ax": 24,
       "ay": 38,
-      "src": 170
+      "src": 170,
+      "atlas": {
+        "x": 79,
+        "y": 129
+      }
     },
     "getUp_10": {
-      "files": {
-        "red": "sprites/jack/red/getUp_10.png",
-        "blue": "sprites/jack/blue/getUp_10.png",
-        "green": "sprites/jack/green/getUp_10.png",
-        "orange": "sprites/jack/orange/getUp_10.png"
-      },
       "w": 49,
       "h": 29,
       "ax": 27,
       "ay": 40,
-      "src": 171
+      "src": 171,
+      "atlas": {
+        "x": 371,
+        "y": 129
+      }
     },
     "getUp_11": {
-      "files": {
-        "red": "sprites/jack/red/getUp_11.png",
-        "blue": "sprites/jack/blue/getUp_11.png",
-        "green": "sprites/jack/green/getUp_11.png",
-        "orange": "sprites/jack/orange/getUp_11.png"
-      },
       "w": 47,
       "h": 30,
       "ax": 27,
       "ay": 33,
-      "src": 172
+      "src": 172,
+      "atlas": {
+        "x": 283,
+        "y": 129
+      }
     },
     "getUp_12": {
-      "files": {
-        "red": "sprites/jack/red/getUp_12.png",
-        "blue": "sprites/jack/blue/getUp_12.png",
-        "green": "sprites/jack/green/getUp_12.png",
-        "orange": "sprites/jack/orange/getUp_12.png"
-      },
       "w": 25,
       "h": 39,
       "ax": 12,
       "ay": 38,
-      "src": 173
+      "src": 173,
+      "atlas": {
+        "x": 490,
+        "y": 89
+      }
     },
     "getUp_13": {
-      "files": {
-        "red": "sprites/jack/red/getUp_13.png",
-        "blue": "sprites/jack/blue/getUp_13.png",
-        "green": "sprites/jack/green/getUp_13.png",
-        "orange": "sprites/jack/orange/getUp_13.png"
-      },
       "w": 23,
       "h": 40,
       "ax": 9,
       "ay": 39,
-      "src": 174
+      "src": 174,
+      "atlas": {
+        "x": 213,
+        "y": 89
+      }
     },
     "helmetIn_00": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_00.png",
-        "blue": "sprites/jack/blue/helmetIn_00.png",
-        "green": "sprites/jack/green/helmetIn_00.png",
-        "orange": "sprites/jack/orange/helmetIn_00.png"
-      },
       "w": 21,
       "h": 42,
       "ax": 10,
       "ay": 41,
-      "src": 91
+      "src": 91,
+      "atlas": {
+        "x": 0,
+        "y": 47
+      }
     },
     "helmetIn_01": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_01.png",
-        "blue": "sprites/jack/blue/helmetIn_01.png",
-        "green": "sprites/jack/green/helmetIn_01.png",
-        "orange": "sprites/jack/orange/helmetIn_01.png"
-      },
       "w": 31,
       "h": 42,
       "ax": 11,
       "ay": 41,
-      "src": 92
+      "src": 92,
+      "atlas": {
+        "x": 21,
+        "y": 47
+      }
     },
     "helmetIn_02": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_02.png",
-        "blue": "sprites/jack/blue/helmetIn_02.png",
-        "green": "sprites/jack/green/helmetIn_02.png",
-        "orange": "sprites/jack/orange/helmetIn_02.png"
-      },
       "w": 29,
       "h": 42,
       "ax": 13,
       "ay": 41,
-      "src": 93
+      "src": 93,
+      "atlas": {
+        "x": 52,
+        "y": 47
+      }
     },
     "helmetIn_03": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_03.png",
-        "blue": "sprites/jack/blue/helmetIn_03.png",
-        "green": "sprites/jack/green/helmetIn_03.png",
-        "orange": "sprites/jack/orange/helmetIn_03.png"
-      },
       "w": 26,
       "h": 45,
       "ax": 14,
       "ay": 44,
-      "src": 94
+      "src": 94,
+      "atlas": {
+        "x": 186,
+        "y": 0
+      }
     },
     "helmetIn_04": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_04.png",
-        "blue": "sprites/jack/blue/helmetIn_04.png",
-        "green": "sprites/jack/green/helmetIn_04.png",
-        "orange": "sprites/jack/orange/helmetIn_04.png"
-      },
       "w": 28,
       "h": 44,
       "ax": 14,
       "ay": 43,
-      "src": 95
+      "src": 95,
+      "atlas": {
+        "x": 251,
+        "y": 0
+      }
     },
     "helmetIn_05": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_05.png",
-        "blue": "sprites/jack/blue/helmetIn_05.png",
-        "green": "sprites/jack/green/helmetIn_05.png",
-        "orange": "sprites/jack/orange/helmetIn_05.png"
-      },
       "w": 32,
       "h": 42,
       "ax": 15,
       "ay": 41,
-      "src": 96
+      "src": 96,
+      "atlas": {
+        "x": 81,
+        "y": 47
+      }
     },
     "helmetIn_06": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_06.png",
-        "blue": "sprites/jack/blue/helmetIn_06.png",
-        "green": "sprites/jack/green/helmetIn_06.png",
-        "orange": "sprites/jack/orange/helmetIn_06.png"
-      },
       "w": 31,
       "h": 39,
       "ax": 16,
       "ay": 38,
-      "src": 97
+      "src": 97,
+      "atlas": {
+        "x": 515,
+        "y": 89
+      }
     },
     "helmetIn_07": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_07.png",
-        "blue": "sprites/jack/blue/helmetIn_07.png",
-        "green": "sprites/jack/green/helmetIn_07.png",
-        "orange": "sprites/jack/orange/helmetIn_07.png"
-      },
       "w": 30,
       "h": 34,
       "ax": 16,
       "ay": 33,
-      "src": 98
+      "src": 98,
+      "atlas": {
+        "x": 0,
+        "y": 129
+      }
     },
     "helmetIn_08": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_08.png",
-        "blue": "sprites/jack/blue/helmetIn_08.png",
-        "green": "sprites/jack/green/helmetIn_08.png",
-        "orange": "sprites/jack/orange/helmetIn_08.png"
-      },
       "w": 29,
       "h": 29,
       "ax": 15,
       "ay": 28,
-      "src": 99
+      "src": 99,
+      "atlas": {
+        "x": 420,
+        "y": 129
+      }
     },
     "helmetIn_09": {
-      "files": {
-        "red": "sprites/jack/red/helmetIn_09.png",
-        "blue": "sprites/jack/blue/helmetIn_09.png",
-        "green": "sprites/jack/green/helmetIn_09.png",
-        "orange": "sprites/jack/orange/helmetIn_09.png"
-      },
       "w": 29,
       "h": 23,
       "ax": 15,
       "ay": 22,
-      "src": 100
+      "src": 100,
+      "atlas": {
+        "x": 571,
+        "y": 129
+      }
     },
     "helmetMove_00": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_00.png",
-        "blue": "sprites/jack/blue/helmetMove_00.png",
-        "green": "sprites/jack/green/helmetMove_00.png",
-        "orange": "sprites/jack/orange/helmetMove_00.png"
-      },
       "w": 28,
       "h": 22,
       "ax": 14,
       "ay": 21,
-      "src": 101
+      "src": 101,
+      "atlas": {
+        "x": 600,
+        "y": 129
+      }
     },
     "helmetMove_01": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_01.png",
-        "blue": "sprites/jack/blue/helmetMove_01.png",
-        "green": "sprites/jack/green/helmetMove_01.png",
-        "orange": "sprites/jack/orange/helmetMove_01.png"
-      },
       "w": 29,
       "h": 22,
       "ax": 14,
       "ay": 21,
-      "src": 102
+      "src": 102,
+      "atlas": {
+        "x": 628,
+        "y": 129
+      }
     },
     "helmetMove_02": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_02.png",
-        "blue": "sprites/jack/blue/helmetMove_02.png",
-        "green": "sprites/jack/green/helmetMove_02.png",
-        "orange": "sprites/jack/orange/helmetMove_02.png"
-      },
       "w": 28,
       "h": 22,
       "ax": 13,
       "ay": 21,
-      "src": 103
+      "src": 103,
+      "atlas": {
+        "x": 657,
+        "y": 129
+      }
     },
     "helmetMove_03": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_03.png",
-        "blue": "sprites/jack/blue/helmetMove_03.png",
-        "green": "sprites/jack/green/helmetMove_03.png",
-        "orange": "sprites/jack/orange/helmetMove_03.png"
-      },
       "w": 29,
       "h": 22,
       "ax": 13,
       "ay": 21,
-      "src": 104
+      "src": 104,
+      "atlas": {
+        "x": 685,
+        "y": 129
+      }
     },
     "helmetMove_04": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_04.png",
-        "blue": "sprites/jack/blue/helmetMove_04.png",
-        "green": "sprites/jack/green/helmetMove_04.png",
-        "orange": "sprites/jack/orange/helmetMove_04.png"
-      },
       "w": 28,
       "h": 22,
       "ax": 13,
       "ay": 21,
-      "src": 105
+      "src": 105,
+      "atlas": {
+        "x": 714,
+        "y": 129
+      }
     },
     "helmetMove_05": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_05.png",
-        "blue": "sprites/jack/blue/helmetMove_05.png",
-        "green": "sprites/jack/green/helmetMove_05.png",
-        "orange": "sprites/jack/orange/helmetMove_05.png"
-      },
       "w": 29,
       "h": 22,
       "ax": 14,
       "ay": 21,
-      "src": 106
+      "src": 106,
+      "atlas": {
+        "x": 742,
+        "y": 129
+      }
     },
     "helmetMove_06": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_06.png",
-        "blue": "sprites/jack/blue/helmetMove_06.png",
-        "green": "sprites/jack/green/helmetMove_06.png",
-        "orange": "sprites/jack/orange/helmetMove_06.png"
-      },
       "w": 28,
       "h": 22,
       "ax": 14,
       "ay": 21,
-      "src": 107
+      "src": 107,
+      "atlas": {
+        "x": 771,
+        "y": 129
+      }
     },
     "helmetMove_07": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_07.png",
-        "blue": "sprites/jack/blue/helmetMove_07.png",
-        "green": "sprites/jack/green/helmetMove_07.png",
-        "orange": "sprites/jack/orange/helmetMove_07.png"
-      },
       "w": 29,
       "h": 22,
       "ax": 15,
       "ay": 21,
-      "src": 108
+      "src": 108,
+      "atlas": {
+        "x": 799,
+        "y": 129
+      }
     },
     "helmetMove_08": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_08.png",
-        "blue": "sprites/jack/blue/helmetMove_08.png",
-        "green": "sprites/jack/green/helmetMove_08.png",
-        "orange": "sprites/jack/orange/helmetMove_08.png"
-      },
       "w": 28,
       "h": 22,
       "ax": 15,
       "ay": 21,
-      "src": 109
+      "src": 109,
+      "atlas": {
+        "x": 828,
+        "y": 129
+      }
     },
     "helmetMove_09": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_09.png",
-        "blue": "sprites/jack/blue/helmetMove_09.png",
-        "green": "sprites/jack/green/helmetMove_09.png",
-        "orange": "sprites/jack/orange/helmetMove_09.png"
-      },
       "w": 28,
       "h": 22,
       "ax": 15,
       "ay": 21,
-      "src": 110
+      "src": 110,
+      "atlas": {
+        "x": 856,
+        "y": 129
+      }
     },
     "helmetMove_10": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_10.png",
-        "blue": "sprites/jack/blue/helmetMove_10.png",
-        "green": "sprites/jack/green/helmetMove_10.png",
-        "orange": "sprites/jack/orange/helmetMove_10.png"
-      },
       "w": 28,
       "h": 22,
       "ax": 15,
       "ay": 21,
-      "src": 111
+      "src": 111,
+      "atlas": {
+        "x": 884,
+        "y": 129
+      }
     },
     "helmetMove_11": {
-      "files": {
-        "red": "sprites/jack/red/helmetMove_11.png",
-        "blue": "sprites/jack/blue/helmetMove_11.png",
-        "green": "sprites/jack/green/helmetMove_11.png",
-        "orange": "sprites/jack/orange/helmetMove_11.png"
-      },
       "w": 29,
       "h": 22,
       "ax": 15,
       "ay": 21,
-      "src": 112
+      "src": 112,
+      "atlas": {
+        "x": 912,
+        "y": 129
+      }
     },
     "airRoll_00": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_00.png",
-        "blue": "sprites/jack/blue/airRoll_00.png",
-        "green": "sprites/jack/green/airRoll_00.png",
-        "orange": "sprites/jack/orange/airRoll_00.png"
-      },
       "w": 41,
       "h": 39,
       "ax": 20,
       "ay": 44,
-      "src": 252
+      "src": 252,
+      "atlas": {
+        "x": 546,
+        "y": 89
+      }
     },
     "airRoll_01": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_01.png",
-        "blue": "sprites/jack/blue/airRoll_01.png",
-        "green": "sprites/jack/green/airRoll_01.png",
-        "orange": "sprites/jack/orange/airRoll_01.png"
-      },
       "w": 43,
       "h": 41,
       "ax": 25,
       "ay": 42,
-      "src": 253
+      "src": 253,
+      "atlas": {
+        "x": 720,
+        "y": 47
+      }
     },
     "airRoll_02": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_02.png",
-        "blue": "sprites/jack/blue/airRoll_02.png",
-        "green": "sprites/jack/green/airRoll_02.png",
-        "orange": "sprites/jack/orange/airRoll_02.png"
-      },
       "w": 47,
       "h": 43,
       "ax": 29,
       "ay": 43,
-      "src": 254
+      "src": 254,
+      "atlas": {
+        "x": 395,
+        "y": 0
+      }
     },
     "airRoll_03": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_03.png",
-        "blue": "sprites/jack/blue/airRoll_03.png",
-        "green": "sprites/jack/green/airRoll_03.png",
-        "orange": "sprites/jack/orange/airRoll_03.png"
-      },
       "w": 55,
       "h": 43,
       "ax": 32,
       "ay": 42,
-      "src": 255
+      "src": 255,
+      "atlas": {
+        "x": 442,
+        "y": 0
+      }
     },
     "airRoll_04": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_04.png",
-        "blue": "sprites/jack/blue/airRoll_04.png",
-        "green": "sprites/jack/green/airRoll_04.png",
-        "orange": "sprites/jack/orange/airRoll_04.png"
-      },
       "w": 55,
       "h": 38,
       "ax": 34,
       "ay": 36,
-      "src": 256
+      "src": 256,
+      "atlas": {
+        "x": 587,
+        "y": 89
+      }
     },
     "airRoll_05": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_05.png",
-        "blue": "sprites/jack/blue/airRoll_05.png",
-        "green": "sprites/jack/green/airRoll_05.png",
-        "orange": "sprites/jack/orange/airRoll_05.png"
-      },
       "w": 54,
       "h": 36,
       "ax": 31,
       "ay": 35,
-      "src": 257
+      "src": 257,
+      "atlas": {
+        "x": 866,
+        "y": 89
+      }
     },
     "airRoll_06": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_06.png",
-        "blue": "sprites/jack/blue/airRoll_06.png",
-        "green": "sprites/jack/green/airRoll_06.png",
-        "orange": "sprites/jack/orange/airRoll_06.png"
-      },
       "w": 58,
       "h": 43,
       "ax": 33,
       "ay": 42,
-      "src": 258
+      "src": 258,
+      "atlas": {
+        "x": 497,
+        "y": 0
+      }
     },
     "airRoll_07": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_07.png",
-        "blue": "sprites/jack/blue/airRoll_07.png",
-        "green": "sprites/jack/green/airRoll_07.png",
-        "orange": "sprites/jack/orange/airRoll_07.png"
-      },
       "w": 57,
       "h": 47,
       "ax": 33,
       "ay": 46,
-      "src": 259
+      "src": 259,
+      "atlas": {
+        "x": 0,
+        "y": 0
+      }
     },
     "airRoll_08": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_08.png",
-        "blue": "sprites/jack/blue/airRoll_08.png",
-        "green": "sprites/jack/green/airRoll_08.png",
-        "orange": "sprites/jack/orange/airRoll_08.png"
-      },
       "w": 39,
       "h": 46,
       "ax": 21,
       "ay": 45,
-      "src": 260
+      "src": 260,
+      "atlas": {
+        "x": 115,
+        "y": 0
+      }
     },
     "airRoll_09": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_09.png",
-        "blue": "sprites/jack/blue/airRoll_09.png",
-        "green": "sprites/jack/green/airRoll_09.png",
-        "orange": "sprites/jack/orange/airRoll_09.png"
-      },
       "w": 58,
       "h": 47,
       "ax": 34,
       "ay": 46,
-      "src": 261
+      "src": 261,
+      "atlas": {
+        "x": 57,
+        "y": 0
+      }
     },
     "airRoll_10": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_10.png",
-        "blue": "sprites/jack/blue/airRoll_10.png",
-        "green": "sprites/jack/green/airRoll_10.png",
-        "orange": "sprites/jack/orange/airRoll_10.png"
-      },
       "w": 51,
       "h": 38,
       "ax": 32,
       "ay": 44,
-      "src": 262
+      "src": 262,
+      "atlas": {
+        "x": 642,
+        "y": 89
+      }
     },
     "airRoll_11": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_11.png",
-        "blue": "sprites/jack/blue/airRoll_11.png",
-        "green": "sprites/jack/green/airRoll_11.png",
-        "orange": "sprites/jack/orange/airRoll_11.png"
-      },
       "w": 33,
       "h": 38,
       "ax": 20,
       "ay": 42,
-      "src": 263
+      "src": 263,
+      "atlas": {
+        "x": 693,
+        "y": 89
+      }
     },
     "airRoll_12": {
-      "files": {
-        "red": "sprites/jack/red/airRoll_12.png",
-        "blue": "sprites/jack/blue/airRoll_12.png",
-        "green": "sprites/jack/green/airRoll_12.png",
-        "orange": "sprites/jack/orange/airRoll_12.png"
-      },
       "w": 24,
       "h": 38,
       "ax": 13,
       "ay": 38,
-      "src": 264
+      "src": 264,
+      "atlas": {
+        "x": 726,
+        "y": 89
+      }
     }
   },
   "anims": {

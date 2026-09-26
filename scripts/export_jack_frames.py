@@ -103,36 +103,48 @@ def recolour(palette, target_hex):
     return out
 
 
+def pack(boxes, max_width=1024):
+    """Shelf-pack (name, w, h) into an atlas. -> (positions, width, height)."""
+    pos, x, y, shelf_h, width = {}, 0, 0, 0, 0
+    for name, w, h in sorted(boxes, key=lambda b: -b[2]):
+        if x + w > max_width:
+            x, y, shelf_h = 0, y + shelf_h, 0
+        pos[name] = (x, y)
+        x += w
+        shelf_h = max(shelf_h, h)
+        width = max(width, x)
+    return pos, width, y + shelf_h
+
+
 def main():
     palette = pal.decode(PALETTE)
     frames = spr.load(SHEET)
     palettes = {v: palette if v == ORIGINAL_VARIANT else recolour(palette, c)
                 for v, c in VARIANTS.items()}
-    for variant in VARIANTS:
-        os.makedirs(os.path.join(OUT_PNG, variant), exist_ok=True)
+    os.makedirs(OUT_PNG, exist_ok=True)
 
     manifest = {
         "source": "JACKS.SPR",
         "variants": dict(VARIANTS),
         "original": ORIGINAL_VARIANT,
+        "atlases": {},
         "frames": {},
         "anims": {},
     }
+
+    # Collect every frame once, then pack. One atlas per colour beats one
+    # PNG per frame by a wide margin: 109 poses x 4 colours is 436 files,
+    # and loading them separately meant 436 requests and 436 GPU textures
+    # at the start of a level, which is enough to lock the tab up.
+    bitmaps = {}
     for pose, indices in ANIMS.items():
         names = []
         for i, idx in enumerate(indices):
             f = frames[idx]
             w, h, img = spr.frame_bitmap(f, transparent=None)
             name = pose if len(indices) == 1 else "%s_%02d" % (pose, i)
-            files = {}
-            for variant, vpal in palettes.items():
-                rgba = [(0, 0, 0, 0) if v is None else vpal[v] + (255,)
-                        for row in img for v in row]
-                _png.write_rgba(
-                    os.path.join(OUT_PNG, variant, name + ".png"), w, h, rgba)
-                files[variant] = "%s/%s/%s.png" % (PUBLIC_PREFIX, variant, name)
+            bitmaps[name] = img
             manifest["frames"][name] = {
-                "files": files,
                 "w": w, "h": h,
                 # anchor inside the frame: the game draws the sprite at the
                 # entity position plus this (negative) origin, so -ox/-oy is
@@ -143,6 +155,35 @@ def main():
             names.append(name)
         manifest["anims"][pose] = names
 
+    placed, aw, ah = pack([(n, manifest["frames"][n]["w"],
+                            manifest["frames"][n]["h"]) for n in bitmaps])
+    for name, (px, py) in placed.items():
+        manifest["frames"][name]["atlas"] = {"x": px, "y": py}
+
+    for variant, vpal in palettes.items():
+        canvas = [(0, 0, 0, 0)] * (aw * ah)
+        for name, img in bitmaps.items():
+            px, py = placed[name]
+            for row_i, row in enumerate(img):
+                base = (py + row_i) * aw + px
+                for col_i, v in enumerate(row):
+                    if v is not None:
+                        canvas[base + col_i] = vpal[v] + (255,)
+        _png.write_rgba(os.path.join(OUT_PNG, variant + ".png"), aw, ah, canvas)
+        # Phaser's hash-format texture atlas
+        atlas = {"frames": {n: {"frame": {"x": placed[n][0], "y": placed[n][1],
+                                          "w": manifest["frames"][n]["w"],
+                                          "h": manifest["frames"][n]["h"]}}
+                            for n in bitmaps},
+                 "meta": {"image": variant + ".png", "size": {"w": aw, "h": ah},
+                          "scale": "1"}}
+        with open(os.path.join(OUT_PNG, variant + ".json"), "w") as fh:
+            json.dump(atlas, fh, separators=(",", ":"))
+        manifest["atlases"][variant] = {
+            "image": "%s/%s.png" % (PUBLIC_PREFIX, variant),
+            "data": "%s/%s.json" % (PUBLIC_PREFIX, variant),
+        }
+
     manifest["standHeight"] = manifest["frames"][
         manifest["anims"][STAND_POSE][0]]["h"]
     manifest["hammerHeldFrom"] = HAMMER_HELD_FROM
@@ -150,8 +191,8 @@ def main():
         json.dump(manifest, fh, indent=2)
         fh.write("\n")
 
-    print("exported %d frames x %d colour variants for %d poses -> %s"
-          % (len(manifest["frames"]), len(VARIANTS), len(ANIMS), OUT_PNG))
+    print("packed %d frames x %d colours into %dx%d atlases -> %s"
+          % (len(manifest["frames"]), len(VARIANTS), aw, ah, OUT_PNG))
     print("manifest -> %s (standHeight=%d)" % (OUT_JSON, manifest["standHeight"]))
 
 

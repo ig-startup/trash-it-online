@@ -22,7 +22,14 @@ export const JACK_SCALE = FULL_HEIGHT / manifest.standHeight;
 /** All pose names the sheet provides, e.g. 'run', 'jump', 'hammerUp'. */
 export const JACK_POSES = Object.keys(manifest.anims);
 
-const textureKey = (variant, frameName) => `jack_${variant}_${frameName}`;
+/**
+ * Frames live in one packed atlas per colour, so a "key" here names both:
+ * `<atlas>|<frame>`. applyJackFrame splits it. Loading the 109 poses as
+ * separate images in four colours meant 436 requests and 436 GPU textures
+ * when a level started, which was enough to lock the tab up.
+ */
+const atlasKey = (variant) => `jack_${variant}`;
+const textureKey = (variant, frameName) => `${atlasKey(variant)}|${frameName}`;
 
 /**
  * Picks the colour variant whose overalls match a player's colour, falling
@@ -63,21 +70,17 @@ Object.keys(manifest.variants).forEach((variant) => {
 
 /** True once the frames are loaded and usable. */
 export function hasRealJackFrames(scene) {
-  return scene.textures.exists(
-    textureKey(manifest.original, manifest.anims.idle[0]),
-  );
+  return scene.textures.exists(atlasKey(manifest.original));
 }
 
 /**
- * Queues every real Jack frame, in every colour, for loading.
+ * Queues one packed atlas per colour for loading.
  * Call from a Scene's preload().
  * @param {Phaser.Scene} scene
  */
 export function preloadRealJackFrames(scene) {
-  Object.entries(manifest.frames).forEach(([name, info]) => {
-    Object.entries(info.files).forEach(([variant, file]) => {
-      const key = textureKey(variant, name);
-      if (!scene.textures.exists(key)) scene.load.image(key, file);
-    });
+  Object.entries(manifest.atlases).forEach(([variant, files]) => {
+    const key = atlasKey(variant);
+    if (!scene.textures.exists(key)) scene.load.atlas(key, files.image, files.data);
   });
 }

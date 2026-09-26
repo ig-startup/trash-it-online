@@ -11,6 +11,11 @@ import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 
+// How far the backdrop drifts relative to the camera, and how much bigger
+// than the viewport it is drawn so that drift never exposes an edge.
+const BACKDROP_PARALLAX = 0.15;
+const BACKDROP_OVERSIZE = 1.4;
+
 /**
  * GameScene — main gameplay scene.
  * Loads level from level01.json, renders platforms/destructibles/bell,
@@ -68,16 +73,21 @@ export default class GameScene extends Phaser.Scene {
 
     // ── Background ────────────────────────────────────────────────────────────
     if (level.background && this.textures.exists(this._bgKey(level))) {
-      // The original's own wall texture, repeated behind the level. Laid out
-      // as plain images rather than a TileSprite: the source is 320x200, and
-      // WebGL TileSprites rescale non-power-of-two textures, which would
-      // stretch the brickwork.
-      const bg = this.textures.get(this._bgKey(level)).getSourceImage();
-      for (let y = 0; y < levelHeight; y += bg.height) {
-        for (let x = 0; x < levelWidth; x += bg.width) {
-          this.add.image(x, y, this._bgKey(level)).setOrigin(0, 0).setDepth(-10);
-        }
-      }
+      // The original's `.SCN` is one 320x200 screen, not a seamless tile:
+      // it is brickwork with a floor strip along the bottom. Repeating it
+      // across the level laid that strip down every 200 pixels, which is
+      // what it looked like — a banded mess. It is a backdrop, so it is
+      // drawn once, scaled to cover the viewport, and given a small scroll
+      // factor so it drifts behind the action instead of being painted on
+      // the world.
+      const src = this.textures.get(this._bgKey(level)).getSourceImage();
+      const cover = Math.max(this.scale.width / src.width,
+        this.scale.height / src.height) * BACKDROP_OVERSIZE;
+      this.add.image(this.scale.width / 2, this.scale.height / 2,
+        this._bgKey(level))
+        .setScrollFactor(BACKDROP_PARALLAX)
+        .setDisplaySize(src.width * cover, src.height * cover)
+        .setDepth(-10);
     } else {
       buildBackground(this, levelWidth, levelHeight);
     }
