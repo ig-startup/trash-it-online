@@ -305,17 +305,17 @@ export default class GameScene extends Phaser.Scene {
 
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, rectBounds)) {
         entry.hp -= 1;
-        console.log(`[GameScene] hit destructible ${entry.id}, hp left: ${entry.hp}`);
 
         if (entry.hp <= 0) {
           entry.rect.destroy();
           this._destructibles.remove(entry.rect, true, true);
           this._destructibleMap.delete(entry.id);
-          this.emit('object_hit', { objectId: entry.id });
-          // Tell the room, so everyone else sees the same rubble.
+          // `this.emit` used to be called here. A Phaser Scene is not an
+          // EventEmitter — it has `events` — so every block destroyed threw
+          // "this.emit is not a function" out of the update loop. Nothing
+          // listened for it either; telling the room is the line below.
           const sm = SocketManager.getInstance();
           if (sm.socket) sm.emit(EVENTS.OBJECT_HIT, { objectId: entry.id });
-          console.log(`[GameScene] object_destroyed: ${entry.id}`);
         } else if (entry.rect.setFillStyle) {
           entry.rect.setFillStyle(WORLD_COLORS.rubbleDark); // plain rectangle
         } else {
