@@ -321,25 +321,40 @@ The top two bits of a frame entry (`0x4000`, `0x8000`) are event markers,
 not part of the frame number. They fall on the frames where a swing
 connects.
 
-Identified so far (`scripts/formats/anims.py` prints the table, and
-renders any slot as a strip to check by eye):
+The table is named in `scripts/formats/anims.py`. Naming it needed
+someone who played the original — guessing from rendered strips got two
+wrong (frames 71-90 look like a swing but are Jack reaching into his hard
+hat; 140-174 look like riding something but are a fall and the jump back
+up), so none of it is named from the pixels alone.
 
-| slots | frames | what |
-|---|---|---|
-| 2, 5 | 1-16, 21-36 | the two walk/run cycles |
-| 26-29, 68 | 59-70 | **crouched hammer swing**, five paddings of the same frames — this is how hammers get different swing speeds; the event flag marks the connect |
-| 12, 13 | 71-90 and reversed | **standing hammer swing**, forward and back |
-| 10, 11, 72, 73 | 71-90 + 113-122 | the standing swing joined to a second arm run |
-| 14 | 91-100 | **duck down into the hard hat** |
-| 15 | 100-91 | come back up out of it |
-| 16, 24 | 101-112 | **hard-hat mode**, moving and still |
-| 33, 34, 36, 37, 38 | 140-174 | sit onto the grey drum, ride it, crash off |
-| 57, 58, 59 | 252-288 | **tumble through the air**, in three parts |
-| 60 | 301-316 | hard landing and get up |
-| 65, 67 | 323-325 | **a hammer lying on the ground** |
+| frames | what |
+|---|---|
+| 1-16, 21-36 | the two walk/run cycles |
+| 17-20 | skid to a halt after running |
+| **37-54** | **hammer strike, sideways** |
+| 47-54 | the same strike with the windup cut off — the held-button version |
+| **55-70** | **hammer strike, overhead** |
+| 59-70 | the overhead swing alone, in five paddings — one per hammer speed, with an event flag on the connect |
+| 71-90 | reach into the hard hat |
+| 113-122 | …and pull the hoover out (the two are always chained) |
+| 123-138 | walking with the hoover |
+| 91-100 / 100-91 | duck down into the hard hat, and come back up |
+| 101-112 | hard-hat mode, moving |
+| 317-322 | peering out from under the hat where the gap is too low to stand |
+| 175-190 | climbing a ladder |
+| 289-300 | topping out off the ladder onto the platform |
+| 140-174 | a fall, and the jump back up onto your feet |
+| 252-288 | air roll — carries you further sideways |
+| 301-316 | hard landing and get up |
+| 191-206 | carrying something above your head |
+| 207-222 | pushing something along |
+| 223-230 / 232-235 / 236-239 | pick an object up, throw it, put it down |
+| 323-325 | a hammer lying on the ground |
+| 326-328 | loading-screen animation, not used in play |
 
-Two of these settle open questions about the clone: there really is a
-hard-hat mode Jack ducks into, and the hammer exists as a pickup.
+Worth reading that list for what the clone has no mechanic for at all:
+ladders, the hoover, carrying, pushing, throwing, hard-hat mode, and two
+distinct hammer strikes where the clone has one.
 
 Not every slot is a frame list — slot 6 points at 0xa10d0, whose values
 are too small and too repetitive to be frames.
