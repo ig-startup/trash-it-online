@@ -12,6 +12,8 @@ import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
 const SUPPORT_GAP = 2;       // px of slack when deciding what rests on what
+/** Player states during which a swing connects (see STATES in Player.js). */
+const STRIKE_STATES = new Set(['strikeSide', 'strikeOver']);
 
 
 /**
@@ -260,7 +262,10 @@ export default class GameScene extends Phaser.Scene {
     this._player.update(this._cursors, swing, delta);
 
     // ── Hammer interactions ───────────────────────────────────────────────────
-    if (this._player.state === 'hammer') {
+    // Both strikes count. This used to test for a state called 'hammer',
+    // which stopped existing when the player was rebuilt on the game's own
+    // state names — and with it, so did every hit.
+    if (STRIKE_STATES.has(this._player.state)) {
       this._checkHammerDestructibles();
       this._checkHammerBell();
     } else {

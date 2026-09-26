@@ -1,76 +1,76 @@
 """
-Trash It (1997 DOS) — .SCN background screen decoder.
+Trash It (1997 DOS) — `.SCN` background textures.
 
-CONFIDENCE: confirmed (visual render). The layer images are unmistakably
-recognizable (a brick wall texture, a row of buildings with lit windows,
-a foreground line-art rubble layer) once decoded this way — see
-demo_render.py output.
+CONFIDENCE: confirmed, from the renderer and by rendering.
+
+**These notes used to say a `.SCN` was a 3072-byte lead-in followed by
+320x200 screens.** Every file's size fits that arithmetic, which is why
+it stood for so long, and the images it produces are recognisable — but
+sheared. Slicing a 256-wide texture into 320-wide rows walks each row 64
+pixels along, and a wall drawn that way is a diagonal smear, which is
+exactly what it looked like in the clone.
+
+The renderer settles it. `FUN_00018acc` (VA 0x18acc) is an affine
+scanline texture mapper: 80 iterations writing four pixels each, 320 to
+a row, sampling `base + (v << 8) + u` with **both indices masked to 8
+bits**. The source is 256 wide and addressed 256 to a row; the caller
+(VA 0x18e64) computes `base + (v << 8)` and takes its shift amounts from
+the `.SDE` header, so the level's own settings drive the scale.
 
 Layout
 ------
-All SCN files observed (147 files, 2 distinct sizes: 131072 and 195072
-bytes) decompose as:
 
-    [ 3072-byte unknown header/lead-in block ]
-    [ layer 0 : 320 x 200 raw indexed-color bytes = 64000 bytes ]
-    [ layer 1 : 320 x 200 raw indexed-color bytes = 64000 bytes ]
-    [ layer 2 : 320 x 200 raw indexed-color bytes = 64000 bytes ]   (only in the larger files)
+A `.SCN` is simply **256 pixels wide, `filesize / 256` rows tall**, one
+byte per pixel, indexed into the merged palette (the level's `.PAL` for
+the low range, `SPR/JACKS.PAL` above it — see `pal.merge`). No header,
+no compression.
 
-i.e. total size = 3072 + n_layers * 64000, with n_layers = 2 (131072
-bytes) or 3 (195072 bytes). This was verified across the whole archive:
-every .SCN file's size matches 3072 + 64000*n for n in {2,3}, no
-exceptions.
+Across the archive there are two sizes, and both divide by 256 exactly:
 
-Each layer is a raw VGA mode-13h-style chunky bitmap: 320x200 pixels,
-1 byte per pixel = index into the level's .PAL (row-major, no padding,
-no compression). Rendered directly against LEVELS/<code>.PAL these
-layers show:
-  - layer 0: the main background (wall/building texture)
-  - layer 1 (when present as layer 1 of 2, or as a distinct plane):
-    an alternate/parallax background (e.g. lit windows at night) —
-    likely composited for a lighting or day/night variant, or a
-    mid-ground parallax layer
-  - the last layer (in 3-layer files): a mostly-black foreground
-    overlay with sparse line-art detail (rubble/debris silhouettes) —
-    almost certainly meant to be drawn using color index 0 (or another
-    reserved index) as transparent, layered on top of the game view.
+| size | rows | what it holds |
+|---|---|---|
+| 131072 | 512 | two 256x256 textures |
+| 195072 | 762 | two 256x256 textures and one 256x250 |
 
-UNKNOWN: the leading 3072-byte block. It reuses the same narrow set of
-palette indices as layer 0 (mostly the same 2-3 dominant colors as the
-brick texture), which suggests it's derived from/related to layer 0
-(maybe a downscaled thumbnail, a compressed prefix, or leftover editor
-data) rather than being unrelated header metadata — but no concrete
-struct fields, dimensions, or purpose were confirmed for it. Treat it
-as an opaque blob to preserve on round-trip; it is not needed to
-recover the visible background images.
+What the textures are varies by level. In 0C the first is a brick wall
+and the second is a scene — cloudy sky, a chimney, a pylon, a fence
+above a brick base. In 0D both are stone walls at different light
+levels. A 256x256 texture tiles seamlessly in both directions, which the
+old reading's "layers" never did: the grey band that used to repeat down
+the clone's levels every 200 pixels was the shear, not a floor strip.
 """
 
-LAYER_W = 320
-LAYER_H = 200
-LAYER_BYTES = LAYER_W * LAYER_H  # 64000
-HEADER_BYTES = 3072
+WIDTH = 256
 
 
 def decode(path):
-    """Return (header_bytes, [layer0_indices, layer1_indices, ...]).
-
-    Each layer is a flat list/bytes of length 320*200 palette indices,
-    row-major.
     """
-    with open(path, "rb") as f:
-        data = f.read()
+    Read a `.SCN`.
 
-    remaining = len(data) - HEADER_BYTES
-    if remaining < 0 or remaining % LAYER_BYTES != 0:
+    -> (width, rows, pixels) where `pixels` is a flat bytes of palette
+    indices, row-major, `width` wide.
+    """
+    with open(path, "rb") as fh:
+        data = fh.read()
+    if len(data) % WIDTH:
         raise ValueError(
-            f"{path}: size {len(data)} doesn't match header(3072) + n*64000"
-        )
-    n_layers = remaining // LAYER_BYTES
+            f"{path}: {len(data)} bytes is not a whole number of "
+            f"{WIDTH}-pixel rows")
+    return WIDTH, len(data) // WIDTH, data
 
-    header = data[:HEADER_BYTES]
-    layers = []
-    off = HEADER_BYTES
-    for _ in range(n_layers):
-        layers.append(data[off:off + LAYER_BYTES])
-        off += LAYER_BYTES
-    return header, layers
+
+def textures(path, height=WIDTH):
+    """
+    Split a `.SCN` into its textures, `height` rows each.
+
+    The last one is short in the larger files (250 rows rather than 256);
+    it is returned as it is rather than padded.
+
+    -> list of (width, height, pixels)
+    """
+    width, rows, data = decode(path)
+    out = []
+    for top in range(0, rows, height):
+        take = min(height, rows - top)
+        out.append((width, take, data[top * width:(top + take) * width]))
+    return out
