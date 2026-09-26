@@ -33,21 +33,37 @@ OUT_PNG = os.path.join(REPO, "client", "public", "sprites", "jack")
 OUT_JSON = os.path.join(REPO, "client", "src", "entities", "jackFrames.json")
 PUBLIC_PREFIX = "sprites/jack"
 
-# pose -> frame indices in JACKS.SPR, in play order
+# pose -> frame indices in JACKS.SPR, in play order.
+#
+# These are no longer guessed. They come from the game's own animation
+# table, which `scripts/formats/anims.py` reads out of G.EXE: an array of
+# pointers at VA 0xa11ca, one per animation, each to a list of frame
+# numbers. The slot each pose comes from is noted below.
+#
+# The previous mapping was read off a contact sheet by eye and several
+# poses were wrong in ways only play-testing caught — "fall" was a frame
+# from the middle of a get-up sequence and read as climbing down a
+# ladder, and "cower" was a frame from the middle of the transition into
+# hard-hat mode.
 ANIMS = {
-    "idle": [39, 30],            # standing, two-frame breathing
-    "walk": [20, 22, 24, 26, 28, 30, 32, 34, 36, 38],
-    "run": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18],
-    "jump": [8],                 # airborne mid-leap
-    "fall": [310],               # arms up, dropping
-    "land": [50],                # absorbing the impact, knees bent
-    "crouch": [209],
-    "hammerUp": [196],           # both arms overhead
-    "hammerMid": [207],
-    "hammerDown": [213],         # bent forward, follow-through
-    "tumble": [164, 166, 168, 170],   # knocked over, head over heels
-    "cower": [100],              # hiding under the hard hat
+    "idle": [0],                         # slots 3/61/64/77
+    "run": list(range(1, 17)),           # slot 2
+    "skid": list(range(17, 21)),         # slot 4 — stopping after a run
+    "hammerSide": list(range(37, 55)),   # slot 8 — the sideways strike.
+                                         # Held-button version is the same
+                                         # run from index 10 (frame 47),
+                                         # i.e. the windup cut off (slot 17).
+    "hammerOver": list(range(55, 71)),   # slot 9 — the overhead strike
+    "fall": [140],                       # slot 33
+    "land": list(range(141, 145)),       # slot 34 — hitting the ground
+    "getUp": list(range(161, 175)),      # slot 38 — jump back onto your feet
+    "helmetIn": list(range(91, 101)),    # slot 14 — duck into the hard hat
+    "helmetMove": list(range(101, 113)), # slot 16 — travelling as the hat
+    "airRoll": list(range(252, 265)),    # slot 57 — roll for extra distance
 }
+
+#: Where the held-button strike starts inside `hammerSide` (frame 47).
+HAMMER_HELD_FROM = 10
 
 # The pose whose height defines Jack's on-screen size; every other frame
 # is drawn at the same scale so he doesn't grow and shrink between poses.
@@ -129,6 +145,7 @@ def main():
 
     manifest["standHeight"] = manifest["frames"][
         manifest["anims"][STAND_POSE][0]]["h"]
+    manifest["hammerHeldFrom"] = HAMMER_HELD_FROM
     with open(OUT_JSON, "w") as fh:
         json.dump(manifest, fh, indent=2)
         fh.write("\n")

@@ -156,19 +156,22 @@ function drawnJackTextures(scene, playerId, colorHex) {
     gfx.destroy();
   });
 
+  // Pose names match the real sheet's (see scripts/export_jack_frames.py),
+  // so the game reads the same either way; these stand-ins just have far
+  // fewer frames.
   return {
     idle: [keys.idle, keys.idle2],
-    walk: [keys.run0, keys.run1, keys.run2],
     run: [keys.run0, keys.run1, keys.run2],
+    skid: [keys.crouch],
     jump: [keys.jump],
     fall: [keys.jump],
     land: [keys.crouch],
-    crouch: [keys.crouch],
-    hammerUp: [keys.hammerUp],
-    hammerMid: [keys.hammerMid],
-    hammerDown: [keys.hammerDown],
-    tumble: [keys.crouch],
-    cower: [keys.crouch],
+    getUp: [keys.crouch, keys.idle],
+    hammerSide: [keys.hammerUp, keys.hammerMid, keys.hammerDown],
+    hammerOver: [keys.hammerUp, keys.hammerMid, keys.hammerDown],
+    helmetIn: [keys.crouch],
+    helmetMove: [keys.crouch],
+    airRoll: [keys.jump],
   };
 }
 

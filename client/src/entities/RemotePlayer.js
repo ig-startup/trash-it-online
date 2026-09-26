@@ -71,11 +71,19 @@ export default class RemotePlayer extends Phaser.GameObjects.Image {
 
     const now = this.scene.time.now;
     if (this._remoteState === 'hammer') {
-      this._show('hammerMid');
+      // Mid-swing: the strike's own frames are not synced, so pick the
+      // middle of the sideways one rather than send 18 frames over the wire.
+      this._show('hammerSide', Math.floor(this._frameCount('hammerSide') / 2));
     } else if (this._remoteState === 'jump') {
       this._show('jump');
-    } else if (this._remoteState === 'crouch') {
-      this._show('crouch');
+    } else if (this._remoteState === 'helmet') {
+      if (now - this._animTimer >= RUN_FRAME_MS) {
+        this._animTimer = now;
+        this._animFrame += 1;
+      }
+      this._show('helmetMove', this._animFrame);
+    } else if (this._remoteState === 'skid') {
+      this._show('skid');
     } else if (this._remoteState === 'run') {
       if (now - this._animTimer >= RUN_FRAME_MS) {
         this._animTimer = now;
@@ -96,6 +104,11 @@ export default class RemotePlayer extends Phaser.GameObjects.Image {
    * @param {string} pose
    * @param {number} [frame=0]
    */
+  _frameCount(pose) {
+    const keys = this._frames[pose];
+    return keys && keys.length ? keys.length : 1;
+  }
+
   _show(pose, frame = 0) {
     const keys = this._frames[pose];
     if (keys && keys.length) applyJackFrame(this, keys[frame % keys.length]);

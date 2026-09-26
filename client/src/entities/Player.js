@@ -3,22 +3,25 @@ import {
   ensureJackTextures, applyJackFrame, PLAYER_WIDTH, FULL_HEIGHT, CROUCH_HEIGHT,
 } from './drawJack';
 import { PROP_ANIMS, applyPropFrame, hasProps } from './props';
+import manifest from './jackFrames.json';
 
 const SPEED = 200;
 const JUMP = -450;
-const HAMMER_DURATION = 300;
 const RUN_FRAME_MS = 70; // run-cycle frame swap interval
 const IDLE_FRAME_MS = 500;
 const FALL_VELOCITY = 80; // downward speed at which the jump pose becomes a fall
+const SWING_FRAME_MS = 22;  // a strike runs its whole frame list at this rate
+const SKID_FRAME_MS = 45;
+const HELMET_FRAME_MS = 45;
+const HELMET_SPEED = 120;   // the hat travels slower than Jack on his feet
 
 /**
- * Where Jack's grip is during each phase of the swing, relative to his feet
- * (x is mirrored when he faces left). The original draws the tool as its own
- * entity spinning through a 61-frame arc; this is a three-pose stand-in that
- * hangs the same sprite off his hands.
+ * Where Jack's grip is through a swing, relative to his feet (x is mirrored
+ * when he faces left). The original hangs the tool off its own entity; this
+ * samples three points along our frame list so the sprite follows the hands.
  */
 const HAMMER_GRIP = [
-  { x: 2, y: -34 },   // raised overhead
+  { x: 2, y: -34 },   // raised
   { x: 10, y: -30 },  // coming down
   { x: 14, y: -14 },  // struck
 ];
@@ -65,10 +68,19 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.playerColor = color;
     this.isLocal = isLocal;
 
-    /** @type {'idle'|'run'|'jump'|'crouch'|'hammer'} */
+    /** @type {'idle'|'run'|'skid'|'jump'|'helmet'|'hammer'} */
     this.state = 'idle';
 
-    this._hammerTimer = 0;
+    /** Which strike is playing: the sideways one or the overhead one. */
+    this._swingPose = 'hammerSide';
+    this._swingFrame = 0;
+    this._swingFrom = 0;
+    this._swingTimer = 0;
+    /** helmet: 'in' folding up, 'move' travelling, 'out' standing back up. */
+    this._helmetPhase = null;
+    this._helmetFrame = 0;
+    this._helmetTimer = 0;
+    this._skidUntil = 0;
     this._isCrouching = false;
     this._bellHit = false; // prevent repeated bell events
     this._animTimer = 0;
@@ -133,48 +145,33 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const onGround = body.blocked.down;
     const now = this.scene.time.now;
 
-    // ── Hammer cooldown ──────────────────────────────────────────────────────
-    if (this.state === 'hammer') {
-      const progress = 1 - Math.max(0, this._hammerTimer - now) / HAMMER_DURATION;
-      this._hammerPhase = progress < 0.5 ? 0 : (progress < 0.85 ? 1 : 2);
-      this._show(['hammerUp', 'hammerMid', 'hammerDown'][this._hammerPhase]);
-      if (this.hammer) applyPropFrame(this.hammer, PROP_ANIMS.hammer[this._hammerPhase]);
+    if (this.state === 'hammer' && this._advanceSwing(now, body)) return;
+    if (this._helmetPhase && this._updateHelmet(cursors, now, body)) return;
 
-      if (now >= this._hammerTimer) {
-        this.state = onGround ? 'idle' : 'jump';
+    // ── Starting a strike ────────────────────────────────────────────────────
+    // The original has two: sideways, and an overhead one reached through a
+    // key combination. Holding the button replays the sideways strike from
+    // part-way in, skipping the windup, which is its own entry in the game's
+    // animation table (slot 17 is slot 8 from frame 47).
+    if (onGround && hammerKey.isDown) {
+      const fresh = Phaser.Input.Keyboard.JustDown(hammerKey);
+      if (fresh || now >= this._swingTimer) {
+        const overhead = cursors.up.isDown;
+        this._startSwing(overhead ? 'hammerOver' : 'hammerSide',
+          fresh ? 0 : this._heldSwingStart(), now);
+        body.setVelocityX(0);
+        return;
       }
-      // During hammer swing block all other input
-      body.setVelocityX(0);
-      return;
     }
 
-    // ── Hammer trigger ───────────────────────────────────────────────────────
-    if (Phaser.Input.Keyboard.JustDown(hammerKey) && onGround) {
-      this.state = 'hammer';
-      this._hammerTimer = now + HAMMER_DURATION;
-      this.emit('hammer_swing');
-      body.setVelocityX(0);
+    // ── Down: fold up into the hard hat ──────────────────────────────────────
+    if (cursors.down.isDown && onGround && !this._helmetPhase) {
+      this._enterHelmet(now, body);
       return;
-    }
-
-    // ── Crouch ───────────────────────────────────────────────────────────────
-    if (cursors.down.isDown && onGround) {
-      if (!this._isCrouching) {
-        this._isCrouching = true;
-        body.setSize(PLAYER_WIDTH, CROUCH_HEIGHT);
-        body.setOffset(0, FULL_HEIGHT - CROUCH_HEIGHT);
-      }
-      this.state = 'crouch';
-      this._show('crouch');
-      body.setVelocityX(0);
-      return;
-    } else if (this._isCrouching) {
-      this._isCrouching = false;
-      body.setSize(PLAYER_WIDTH, FULL_HEIGHT);
-      body.setOffset(0, 0);
     }
 
     // ── Horizontal movement ───────────────────────────────────────────────────
+    const wasMoving = Math.abs(body.velocity.x) > 1;
     if (cursors.left.isDown) {
       body.setVelocityX(-SPEED);
       this._facingLeft = true;
@@ -184,8 +181,13 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this._facingLeft = false;
       this.state = onGround ? 'run' : 'jump';
     } else {
+      // Let go at speed and Jack skids to a halt instead of stopping dead.
+      if (wasMoving && onGround && this.state === 'run') {
+        this._skidUntil = now + this._frameCount('skid') * SKID_FRAME_MS;
+      }
       body.setVelocityX(0);
-      this.state = onGround ? 'idle' : 'jump';
+      if (now < this._skidUntil && onGround) this.state = 'skid';
+      else this.state = onGround ? 'idle' : 'jump';
     }
 
     // ── Jump ─────────────────────────────────────────────────────────────────
@@ -195,6 +197,124 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     this._applyAnimFrame(now);
+  }
+
+  /** How many frames a pose has, 1 if it is missing. */
+  _frameCount(pose) {
+    const keys = this._frames[pose];
+    return keys && keys.length ? keys.length : 1;
+  }
+
+  /**
+   * Where a held button restarts the sideways strike — the manifest carries
+   * the index the game's own no-windup variant begins at.
+   */
+  _heldSwingStart() {
+    const from = manifest.hammerHeldFrom;
+    return Number.isInteger(from) ? Math.min(from, this._frameCount('hammerSide') - 1) : 0;
+  }
+
+  _startSwing(pose, from, now) {
+    this.state = 'hammer';
+    this._swingPose = pose;
+    this._swingFrom = from;
+    this._swingFrame = from;
+    this._swingTimer = now + SWING_FRAME_MS;
+    this.emit('hammer_swing');
+  }
+
+  /**
+   * Steps a strike along one frame per tick. Returns true while it owns the
+   * player, so the caller leaves input alone until the swing has played out.
+   */
+  _advanceSwing(now, body) {
+    const total = this._frameCount(this._swingPose);
+    if (now >= this._swingTimer) {
+      this._swingFrame += 1;
+      this._swingTimer = now + SWING_FRAME_MS;
+    }
+    if (this._swingFrame >= total) {
+      this.state = body.blocked.down ? 'idle' : 'jump';
+      this._swingTimer = now; // a held button may start the next one at once
+      return false;
+    }
+    const done = (this._swingFrame - this._swingFrom) / Math.max(1, total - this._swingFrom);
+    this._hammerPhase = done < 0.5 ? 0 : (done < 0.85 ? 1 : 2);
+    this._show(this._swingPose, this._swingFrame);
+    if (this.hammer) applyPropFrame(this.hammer, PROP_ANIMS.hammer[this._hammerPhase]);
+    body.setVelocityX(0);
+    return true;
+  }
+
+  _enterHelmet(now, body) {
+    this._helmetPhase = 'in';
+    this._helmetFrame = 0;
+    this._helmetTimer = now + HELMET_FRAME_MS;
+    this.state = 'helmet';
+    this._isCrouching = true;
+    body.setSize(PLAYER_WIDTH, CROUCH_HEIGHT);
+    body.setOffset(0, FULL_HEIGHT - CROUCH_HEIGHT);
+    body.setVelocityX(0);
+    this._show('helmetIn', 0);
+  }
+
+  /**
+   * Hard-hat mode: Jack folds up into his hat, travels as the hat while Down
+   * is held, and unfolds when it is let go. Returns true while it owns the
+   * player.
+   */
+  _updateHelmet(cursors, now, body) {
+    const step = now >= this._helmetTimer;
+    if (step) {
+      this._helmetFrame += 1;
+      this._helmetTimer = now + HELMET_FRAME_MS;
+    }
+
+    if (this._helmetPhase === 'in') {
+      const n = this._frameCount('helmetIn');
+      if (this._helmetFrame >= n) {
+        this._helmetPhase = 'move';
+        this._helmetFrame = 0;
+      } else {
+        this._show('helmetIn', this._helmetFrame);
+        body.setVelocityX(0);
+        return true;
+      }
+    }
+
+    if (this._helmetPhase === 'move') {
+      if (!cursors.down.isDown) {
+        this._helmetPhase = 'out';
+        this._helmetFrame = 0;
+      } else {
+        if (cursors.left.isDown) {
+          body.setVelocityX(-HELMET_SPEED);
+          this._facingLeft = true;
+        } else if (cursors.right.isDown) {
+          body.setVelocityX(HELMET_SPEED);
+          this._facingLeft = false;
+        } else {
+          body.setVelocityX(0);
+        }
+        this._show('helmetMove', this._helmetFrame);
+        return true;
+      }
+    }
+
+    // Coming back up plays the fold reversed — the game keeps that as its
+    // own animation (slot 15 is slot 14 backwards).
+    const n = this._frameCount('helmetIn');
+    if (this._helmetFrame >= n) {
+      this._helmetPhase = null;
+      this._isCrouching = false;
+      body.setSize(PLAYER_WIDTH, FULL_HEIGHT);
+      body.setOffset(0, 0);
+      this.state = 'idle';
+      return false;
+    }
+    this._show('helmetIn', n - 1 - this._helmetFrame);
+    body.setVelocityX(0);
+    return true;
   }
 
   /**
@@ -213,7 +333,18 @@ export default class Player extends Phaser.Physics.Arcade.Image {
    */
   _applyAnimFrame(now) {
     if (this.state === 'jump') {
+      // 'fall' is the game's own falling frame. The pose that used to be
+      // here came out of the middle of a get-up sequence and read as
+      // climbing down a ladder.
       this._show(this.body.velocity.y > FALL_VELOCITY ? 'fall' : 'jump');
+      return;
+    }
+    if (this.state === 'skid') {
+      if (now - this._animTimer >= SKID_FRAME_MS) {
+        this._animTimer = now;
+        this._animFrame += 1;
+      }
+      this._show('skid', this._animFrame);
       return;
     }
     if (this.state === 'run') {
