@@ -21,12 +21,17 @@ Record: 8 bytes, 4 x u16 little-endian.
 
 Record 0 is all zeros in every sample (the unused "no type" slot).
 
-About `.OB`: replaced by nothing here on purpose. G.EXE never opens a
-.OB or .COL file — the only level files it reads are .WAM, .I, .G2,
-.G2R, .OBT, .PAL, .SCN and .SDE. .OB/.COL are therefore level *editor*
-data (F.EXE), which is why earlier attempts to find one fixed record
-size for .OB across the archive kept failing; they are not needed to
-reconstruct a level.
+Field 6 is the one the level loader copies into each object entity at
++0x14 (VA 0x12664 in the decompilation), forcing it to 1 when the table
+stores 0. That is consistent with it being the block's strength, but
+nothing has yet been found that reads it back, so it is still only
+consistent, not confirmed.
+
+About `.OB`: the claim that used to be here — that `G.EXE` never opens a
+`.OB` — was wrong, and `scripts/formats/ob.py` now decodes them. The
+game builds the name with the extension `".ob"` (VA 0x108fb) and
+interprets the file as its startup spawn stream: the player starts and
+the bell come from there.
 """
 import struct
 

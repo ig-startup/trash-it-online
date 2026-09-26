@@ -18,7 +18,7 @@ so far, which the level registry imports.
 
 Faithful parts: every object's position, size and artwork, and the wall
 behind them. Invented parts, because the game stores them somewhere we
-haven't decoded: the spawn points, the bell position, and hit points (the
+haven't decoded: hit points (the
 .OBT field that co-varies with an object's "value" is carried through as
 `param` so it can be used once its meaning is settled).
 """
@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.join(REPO, "scripts", "formats"))
 
 import level as level_fmt
 import pal
+import ob
 import scn
 import _png
 
@@ -136,15 +137,44 @@ def export(name):
         "param": o["param"],
     } for i, o in enumerate(lv["objects"])]
 
-    # Stand the players on the lowest wide walkway, and hang the bell over
-    # the tallest structure's roof.
-    ground = min(o["y"] for o in lv["objects"]
-                 if o["y"] > lv["height"] * 0.7) + HEADROOM
-    top = min(o["y"] for o in lv["objects"]) + HEADROOM
-    tower = [o for o in lv["objects"] if o["y"] + HEADROOM == top]
-    bell_x = (min(o["x"] for o in tower) + max(o["x"] + o["w"] for o in tower)) // 2
-    left = min(o["x"] for o in lv["objects"])
-    spawn_xs = [left + 40 + i * 60 for i in range(4)]
+    # Start positions and the bell come from the level's own `.OB` — the
+    # spawn stream the game interprets at startup (scripts/formats/ob.py).
+    # They used to be invented here, which put the bell on whichever roof
+    # happened to be highest and stood the players in a neat row.
+    placed = ob.parse(open(os.path.join(LEVELS, name + ".OB"), "rb").read())
+
+    # Some authored coordinates sit off the left edge — 75 of 255 starts
+    # and 17 of 135 bells across the archive, always in x, never in y.
+    # Why is not understood (see scripts/formats/README.md), so clamp
+    # rather than pretend: a start off the map has no floor under it.
+    def clamp_x(x, width=8):
+        return max(0, min(x, lv["width"] - width))
+
+    found = ob.spawns(placed)
+    if found:
+        spawn_pts = [{"x": clamp_x(x), "y": y + HEADROOM}
+                     for _i, (x, y) in sorted(found.items())]
+        # Most levels name only player 1's start. The original leaves the
+        # others wherever they were; here they would land on top of each
+        # other, so fan them out along the ground instead.
+        while len(spawn_pts) < 4:
+            last = spawn_pts[-1]
+            spawn_pts.append({"x": clamp_x(last["x"] + 24), "y": last["y"]})
+    else:
+        ground = min(o["y"] for o in lv["objects"]
+                     if o["y"] > lv["height"] * 0.7) + HEADROOM
+        left = min(o["x"] for o in lv["objects"])
+        spawn_pts = [{"x": left + 40 + i * 60, "y": ground} for i in range(4)]
+
+    rung = ob.bells(placed)
+    if rung:
+        bx, by, _subtype = rung[0]
+        bell = {"x": clamp_x(bx), "y": by + HEADROOM}
+    else:
+        top = min(o["y"] for o in lv["objects"]) + HEADROOM
+        tower = [o for o in lv["objects"] if o["y"] + HEADROOM == top]
+        bell = {"x": (min(o["x"] for o in tower)
+                      + max(o["x"] + o["w"] for o in tower)) // 2, "y": top}
 
     data = {
         "id": "level_%s" % name,
@@ -156,10 +186,10 @@ def export(name):
         "shapeAtlas": {"image": "%s/shapes.png" % prefix,
                        "data": "%s/shapes.json" % prefix},
         "shapes": sizes,
-        "spawnPoints": [{"x": x, "y": ground} for x in spawn_xs],
+        "spawnPoints": spawn_pts,
         "platforms": [],
         "destructibles": destructibles,
-        "bell": {"x": bell_x, "y": top},
+        "bell": bell,
     }
     with open(os.path.join(OUT_LEVELS, "level_%s.json" % name), "w") as fh:
         json.dump(data, fh, separators=(",", ":"))
