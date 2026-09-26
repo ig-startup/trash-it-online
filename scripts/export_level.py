@@ -50,8 +50,17 @@ TIME_LIMIT = 240
 PAD = 1  # transparent gutter between packed shapes
 
 # A spread of the game's levels: small and sprawling, low and tall.
-DEFAULT_BATCH = ["0A", "0B", "0C", "0D", "0H", "0J", "0K", "0S", "1A", "2H",
-                 "3I", "4A"]
+# Which levels to export, and in what order they are played. The
+# original's own order is not known — the front end (F.EXE) picks levels
+# by section and password, and that has not been decoded — so this is
+# ours, arranged by how well a level opens rather than alphabetically.
+#
+# 0C leads because its authored start is on solid ground mid-level and
+# its bell sits on a real block a decent walk away; 0A used to lead and
+# is one of the worst, starting the players clamped against the left
+# edge with the bell a thousand pixels off.
+DEFAULT_BATCH = ["0C", "0D", "2H", "0B", "0A", "0H", "0J", "0K", "0S",
+                 "1A", "3I", "4A"]
 
 
 def pack(sizes, max_width=1024):
@@ -265,7 +274,12 @@ def main(argv):
             lid = f[:-5]
             if lid not in ids and lid != "level01":
                 ids.append(lid)
-    write_index(sorted(set(ids)))
+    # Keep the batch order: it is the play order, not an alphabet.
+    seen = []
+    for lid in ids:
+        if lid not in seen:
+            seen.append(lid)
+    write_index(seen)
     print("index -> %s" % os.path.join(OUT_LEVELS, "generated.js"))
 
 
