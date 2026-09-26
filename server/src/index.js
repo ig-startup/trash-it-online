@@ -22,7 +22,6 @@ const NEXT_LEVEL_DELAY = 4000; // matches the client's result overlay
  */
 function loadLevel(id) {
   try {
-    // eslint-disable-next-line global-require, import/no-dynamic-require
     return require(`../../client/src/levels/${id}.json`);
   } catch (err) {
     console.warn(`[level] no data for ${id}: ${err.message}`);
@@ -42,9 +41,16 @@ function nextLevelId(id) {
 const app = express();
 const server = http.createServer(app);
 
+// The client is served from this same server, so in production the browser
+// talks same-origin and CORS never kicks in. CLIENT_URL only matters if the
+// client is ever hosted elsewhere; without it, fall back to reflecting the
+// request origin rather than to `undefined`, which silently blocks nothing
+// but is easy to misread as a working allowlist.
 const io = new Server(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL : '*',
+    origin: process.env.NODE_ENV === 'production'
+      ? (process.env.CLIENT_URL || true)
+      : '*',
     methods: ['GET', 'POST'],
   },
 });

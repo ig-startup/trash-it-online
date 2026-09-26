@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 export default [
+  { ignores: ['dist/**', 'public/**'] },
   js.configs.recommended,
   {
     languageOptions: {
@@ -16,6 +17,7 @@ export default [
         fetch: 'readonly',
         localStorage: 'readonly',
         sessionStorage: 'readonly',
+        URLSearchParams: 'readonly',
       }
     },
     rules: { 'no-unused-vars': 'warn', 'no-console': 'off' }

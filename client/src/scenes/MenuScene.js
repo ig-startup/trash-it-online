@@ -33,7 +33,7 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   create() {
-    const { width, height } = this.scale;
+    const { width } = this.scale;
     const cx = width / 2;
 
     const sm = SocketManager.getInstance();

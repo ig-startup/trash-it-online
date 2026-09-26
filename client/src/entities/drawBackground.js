@@ -20,7 +20,6 @@ export function buildBackground(scene, levelWidth, levelHeight) {
   const topColor = Phaser.Display.Color.ValueToColor(WORLD_COLORS.skyTop);
   const bottomColor = Phaser.Display.Color.ValueToColor(WORLD_COLORS.sky);
   for (let i = 0; i < bands; i += 1) {
-    const t = i / (bands - 1);
     const c = Phaser.Display.Color.Interpolate.ColorWithColor(topColor, bottomColor, bands - 1, i);
     const color = Phaser.Display.Color.GetColor(c.r, c.g, c.b);
     gfx.fillStyle(color, 1);

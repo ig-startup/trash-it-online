@@ -384,7 +384,7 @@ export default class GameScene extends Phaser.Scene {
     const cy = height / 2;
 
     // Semi-transparent black background
-    const bg = this.add.rectangle(cx, cy, width, height, 0x000000, 0.75)
+    this.add.rectangle(cx, cy, width, height, 0x000000, 0.75)
       .setScrollFactor(0)
       .setDepth(100);
 
@@ -475,7 +475,7 @@ export default class GameScene extends Phaser.Scene {
     // Game started — create RemotePlayer for each other player
     sm.on(EVENTS.GAME_STARTED, (data = {}) => {
       const players = data.players || [];
-      const level = levelData;
+      const level = this._level || getLevel(this._levelId);
       players.forEach((p, idx) => {
         if (p.id === this._myPlayerId) return;
         const spawn = level.spawnPoints[Math.max(0, idx)] || level.spawnPoints[0];
