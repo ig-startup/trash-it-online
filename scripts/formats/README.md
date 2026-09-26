@@ -221,50 +221,64 @@ shows it is *written* by the game as a debug dump, and it is read back
 into a 64 KB buffer (VA 0x10be9). Rendering it as a bitmap gives a
 structured grid, not a picture. Not needed to reconstruct a level.
 
-## `.OB` — the level's startup code — **Partially decoded**
+## `.OB` — the level's startup code — **Confirmed**
 
 The earlier conclusion here was that `.OB` is editor data the game never
 reads. The premise was right — no call to the file loader at VA 0x2df37
-opens a `.OB` — but the conclusion was wrong. `G.EXE` interprets a
-**spawn bytecode stream** (VA 0x1e60c), and `.OB` is that stream:
+opens a literal `.OB` — but the conclusion was wrong. `G.EXE` interprets a
+**spawn bytecode stream** (`FUN_0001e5c8`, VA 0x1e5c8), and `.OB` is that
+stream:
 
-    id = *(u16*)stream; stream += 2
-    find id in the class registry at VA 0x992c4
-    call its constructor, which reads its own parameters off `stream`
+    count = *(u16*)file          # the first word is a record count
+    stream = file + 2
+    repeat count times:
+        id = *(u16*)stream; stream += 2
+        find id in the class registry at VA 0x992c4
+        call its constructor, which reads its parameters off `stream`
 
 The registry holds **47 classes** (8-byte records: `u16 id`, pad,
-`u32 constructor`; terminated by id -1). An id with no entry logs
+`u32 constructor`; terminated by id -1). An unknown id logs
 `could not find object id %d in startup code.`
 
 Each class's payload length is its constructor's net advance of the
 stream pointer (global 0x28b924). `scripts/formats/ob.py` carries the
-table; `disasm.py` recovers it by tracking that pointer symbolically,
-summing every `lea`/`add` from the load to the store — reading only the
-last step gives wrong lengths.
+table; it came out of Ghidra's decompilation, because the pointer is
+walked in several steps and reading only the last one gives wrong
+lengths.
+
+**All 147 files parse to exactly their length**, consuming exactly the
+number of records their header declares.
+
+That leading count is what defeated two earlier attempts: parsing from
+offset 0 reads it as a class id and everything after is off by one
+record. With lengths alone and no count, 51 of 147 files happened to
+resync and looked like partial success — which is the trap. The fix came
+from reading the interpreter in decompiled form, where the count is one
+line.
 
 **Identified classes:**
 
 | id | what |
 |---|---|
-| 9, 10, 11, 12 | start position for player 1..4 |
-| 13 | sprite entity; a subtype word selects the behaviour, subtype 16 is the bell |
+| 9, 10, 11, 12 | start position for player 1..4 — `i16 x, i16 y`, and the game spawns at **y + 20** (VA 0x1f54f) |
+| 13 | sprite entity; the word at payload +14 selects the behaviour (1, 2, 4, 8, 16 — 16 is the bell) |
+| 14 | **timmy**, the collectible; locks to the block at its position exactly as the bell does |
 
-Each player constructor (VA 0x1f513/0x1f517/0x1f51e/0x1f525 — identical
-but for the player index) reads `u16 x, u16 y` and stores the spawn as
-**y + 20** (VA 0x1f54f), then seeds the player entity's fixed-point
-position `+0x24 = x<<16`, `+0x28 = y<<16`.
+Class 9 appears in all 147 levels; 32 levels carry all four starts. Class
+14 is the most common record in the archive at 1142 — about eight timmies
+a level.
 
-**Status: 51 of 147 files parse to exactly their length.** The other 96
-desynchronise, so at least one class has a content-dependent payload
-(id 13 is the suspect — its constructor branches on the subtype), and
-four classes (17, 25, 29, 30) tail-call shared code and never store the
-pointer themselves, so their length is still unknown. Where a file does
-parse, the result corroborates itself: the four player spawns come out
-clustered within a few pixels, as a four-Jack start line should be.
+### Two things this does not answer
 
-Open: several parsed spawns have a small negative x (e.g. -55, -130),
-which either means levels carry an off-screen margin or x is relative to
-something not yet found.
+**The bell is not in `.OB`.** It is class 13 subtype 16, and across all
+147 levels subtype 16 never occurs — only 1 (90×), 8 (39×) and 2 (6×). So
+something else places it. `FUN_00033e79` has exactly one caller, class
+13's constructor, so the code path is not in doubt; the data is.
+
+**Some coordinates fall outside the level.** Of 255 start positions, 75
+are outside the `.WAM` bounds, several with a small negative x (-19, -29,
+-130). Either levels carry an off-screen margin players walk in from, or
+the coordinates are relative to something not yet found.
 
 `.COL` is still untouched and still looks like editor data.
 

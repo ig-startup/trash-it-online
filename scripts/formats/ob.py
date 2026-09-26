@@ -1,60 +1,64 @@
 """
-`.OB` — the level's startup code (object spawn stream). **Partial.**
+`.OB` — the level's startup code (object spawn stream). **Decoded.**
 
-An earlier pass concluded `.OB` was editor-only data the game never reads,
-because no call to the file loader opens it. That was wrong about what it
-*is*: `G.EXE` walks a byte stream of spawn records and calls a constructor
-per record, and `.OB`'s bytes are exactly that stream. This is where the
-players' start positions, the bell and the timmies come from — none of
-which are in `.WAM`.
+An earlier pass wrote `.OB` off as editor data the game never reads. The
+premise was right — no call to the file loader opens a literal `.OB` — but
+the conclusion was wrong: `G.EXE` interprets a spawn bytecode stream, and
+`.OB` is exactly that stream. This is where the players' start positions
+and the timmies come from; none of it is in `.WAM`.
 
-The interpreter is at VA 0x1e60c:
+The interpreter is `FUN_0001e5c8` at VA 0x1e5c8:
 
-    ecx = stream; stream = ecx + 2; id = *(u16*)ecx
-    look id up in the class registry at VA 0x992c4
-        (8-byte records: u16 id, pad, u32 constructor; terminated by id -1)
-    call the constructor, which reads its own parameters off `stream`
-        and leaves `stream` past them
+    count = *(u16*)file            # the first word is a record count
+    stream = file + 2
+    repeat count times:
+        id = *(u16*)stream; stream += 2
+        find id in the class registry at VA 0x992c4
+            (8-byte records: u16 id, pad, u32 constructor; ends at id -1)
+        call the constructor, which reads its own parameters off `stream`
+            and leaves it past them
 
-So a record is `u16 class_id` followed by a payload whose length only the
-constructor knows. `SIZES` below is each constructor's advance, recovered
-by symbolically tracking the stream pointer from its load of 0x28b924 to
-the store back (see `scripts/formats/disasm.py`); summing every `lea`/`add`
-along the way, because the pointer is walked in several steps.
+That leading count is what defeated the first attempt: parsing from offset
+0 reads it as a class id, and everything after is off by one record.
 
-**Status: 51 of 147 `.OB` files parse to exactly their length with this
-table.** The rest run off the rails, so at least one class has a
-content-dependent payload — most likely id 13, whose constructor dispatches
-on a subtype (1/2/4/8/16) and may consume a different amount per branch.
-Four classes (17, 25, 29, 30) tail-call into shared code and never store
-the pointer themselves, so their advance is unknown. Until those are
-settled this decoder is a research tool, not something to build level data
-from.
+A record is `u16 class_id` plus a payload only the constructor knows the
+length of. `SIZES` is each constructor's net advance of the stream pointer
+(global 0x28b924), read out of Ghidra's decompilation — the pointer is
+walked in several steps, so the last `add` alone gives the wrong answer.
 
-    from ob import parse, CLASSES
+**All 147 `.OB` files parse to exactly their length**, consuming exactly
+the number of records their header declares.
+
+    from ob import parse, spawns
     recs = parse(open('LEVELS/0A.OB','rb').read())
 """
 import struct
 
 #: class id -> payload length in bytes, excluding the 2-byte id.
-#: None = not yet recovered.
 SIZES = {
     0: 20, 1: 12, 2: 12, 3: 12, 4: 12, 5: 12, 6: 20, 7: 16, 8: 36,
     9: 12, 10: 12, 11: 12, 12: 12, 13: 22, 14: 22, 15: 16, 16: 72,
-    17: None, 18: 12, 19: 12, 20: 12, 21: 12, 22: 12, 23: 12, 24: 20,
-    25: None, 26: 46, 27: 20, 28: 20, 29: None, 30: None, 31: 46,
+    17: 22, 18: 12, 19: 12, 20: 12, 21: 12, 22: 12, 23: 12, 24: 20,
+    25: 16, 26: 46, 27: 20, 28: 20, 29: 20, 30: 20, 31: 46,
     32: 20, 33: 22, 34: 16, 35: 12, 36: 12, 37: 12, 38: 12, 39: 12,
     40: 12, 41: 12, 42: 12, 43: 12, 44: 16, 45: 16, 46: 16,
 }
 
-#: What a class is, where the constructor says so plainly.
+#: What a class is, where the constructor says so plainly. The rest are
+#: spawned and named by their constructors but not yet identified.
 CLASSES = {
-    9: 'player 1 spawn',
-    10: 'player 2 spawn',
-    11: 'player 3 spawn',
-    12: 'player 4 spawn',
-    13: 'sprite entity (subtype in payload; subtype 16 = the bell)',
+    9: 'player 1 start',
+    10: 'player 2 start',
+    11: 'player 3 start',
+    12: 'player 4 start',
+    13: 'sprite entity — payload +14 selects the behaviour',
+    14: 'timmy (the collectible), locked to the block at its position',
 }
+
+#: Class 13 dispatches on the word at payload +14 (VA 0x33e79). Only 1, 2
+#: and 8 occur in the shipped levels; 16 is the bell, and no level file
+#: uses it — so the bell is placed by something other than `.OB`.
+SUBTYPE_BELL = 16
 
 #: Constructors for the four players differ only in the player index they
 #: write, and each reads `u16 x, u16 y` as its first two parameters. The
@@ -71,28 +75,29 @@ def parse(data, strict=True):
     """
     Walk a `.OB` stream into `[(class_id, offset, payload), ...]`.
 
-    With `strict`, a stream that does not end exactly on a record boundary
-    raises — which is the point: a clean finish is the evidence the size
-    table is right, so silently tolerating a ragged tail would hide the
-    very thing worth knowing.
+    With `strict`, a file whose records do not land exactly on its end
+    raises. That is the point: finishing clean, on the record count the
+    header declares, is the evidence the size table is right, so
+    tolerating a ragged tail would hide the one thing worth knowing.
     """
+    if len(data) < 2:
+        raise Undecoded('file is too short to hold a record count')
+    count = struct.unpack_from('<H', data, 0)[0]
     out = []
-    p = 0
-    while p < len(data):
+    p = 2
+    for _ in range(count):
         if p + 2 > len(data):
-            raise Undecoded(f'trailing byte at {p}')
+            raise Undecoded(f'stream ran out at {p} with records still to read')
         cid = struct.unpack_from('<H', data, p)[0]
         if cid not in SIZES:
             raise Undecoded(f'unknown class id {cid} at offset {p}')
         n = SIZES[cid]
-        if n is None:
-            raise Undecoded(f'class {cid} has no known payload size (offset {p})')
         if p + 2 + n > len(data):
             raise Undecoded(f'class {cid} payload overruns the file at {p}')
         out.append((cid, p, data[p + 2:p + 2 + n]))
         p += 2 + n
     if strict and p != len(data):
-        raise Undecoded(f'stream ended at {p}, file is {len(data)}')
+        raise Undecoded(f'{count} records ended at {p}, file is {len(data)}')
     return out
 
 
