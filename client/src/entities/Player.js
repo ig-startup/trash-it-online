@@ -4,7 +4,31 @@ import {
 } from './drawJack';
 import { PROP_ANIMS, applyPropFrame, hasProps } from './props';
 
-const SPEED = 200;          // top speed, px/s
+/**
+ * The original's physics, in its own units: pixels per frame, and pixels
+ * per frame squared, at its own tick rate. Our levels are its pixels 1:1,
+ * so the only conversion needed is that rate.
+ *
+ * `ORIGINAL_HZ` is the one number here that is not read out of the game.
+ * 70Hz is mode 13h's refresh and what an action game of this vintage
+ * syncs to, but it has not been confirmed in the binary — everything
+ * else derives from it, so it is the single dial if the feel is off.
+ */
+const ORIGINAL_HZ = 70;
+const GRAVITY = 0.28125 * ORIGINAL_HZ * ORIGINAL_HZ;  // VA 0x22d31: vy += 0x4800
+const TERMINAL = 24 * ORIGINAL_HZ;                    // clamped at 0x180000
+const JUMP = -4.5 * ORIGINAL_HZ;                      // VA 0x22bc5, out of the walk
+/**
+ * The hop nearly every state in the game can do: -2.0 px/frame, which
+ * lifts him seven pixels. Not a jump — a stumble over a kerb. Kept here
+ * because it turns up in almost every one of the 46 states and is the
+ * only other upward impulse in the game, so it is worth not
+ * rediscovering. Nothing uses it yet.
+ */
+// eslint-disable-next-line no-unused-vars
+const STEP_UP = -2.0 * ORIGINAL_HZ;
+
+const SPEED = 200;          // top speed, px/s — the original's is not known
 // Reaching top speed takes about a third of a second, and letting go
 // coasts down a little faster than that. The original's numbers are in
 // pixels per frame at a tick rate we have not identified, so the shape
@@ -14,7 +38,6 @@ const DECEL = SPEED / 0.25;
 const EASE_INTO_TOP = 1 / 32;   // the original's `>> 5` as it nears the cap
 const STOP_THRESHOLD = 12;      // px/s below which Jack just stops
 const MAX_STEP_MS = 50;         // ignore hitches longer than this
-const JUMP = -450;
 const FALL_VELOCITY = 80;       // downward speed at which rising becomes falling
 const HAT_SPEED = 120;          // the hat travels slower than Jack on his feet
 const ANIM_CATCHUP_LIMIT = 8;   // frames one tick may make up after a hitch
@@ -128,6 +151,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     scene.physics.add.existing(this);
 
     this.body.setSize(PLAYER_WIDTH, FULL_HEIGHT);
+    // The game clamps falling at 24 px/frame (0x180000 in 16.16).
+    this.body.setMaxVelocityY(TERMINAL);
+    if (scene.physics.world.gravity.y !== GRAVITY) {
+      scene.physics.world.gravity.y = GRAVITY;
+    }
     this.body.setOffset(0, 0);
     this.setOrigin(0.5, 1); // feet at y
     this.setVisible(false); // the body is a hit box; `art` is what you see

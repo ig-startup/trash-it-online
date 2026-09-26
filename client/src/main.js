@@ -29,7 +29,9 @@ const config = {
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { y: 800 },
+      // The original's, converted from 0.28125 px/frame^2 — see
+      // GRAVITY in entities/Player.js.
+      gravity: { y: 1378 },
       debug: false,
     },
   },
