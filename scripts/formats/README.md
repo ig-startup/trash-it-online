@@ -572,6 +572,7 @@ same blitter, positioned by the frame's own origin.
 | `disasm.py` | disassembly workbench over the LE image: functions, xrefs, strings, constant search, stream-advance tracing |
 | `ob.py` | `.OB` startup-code decoder (partial — see above) |
 | `anims.py` | Jack's animation table from `G.EXE` |
+| `hammers.py` | the 37-hammer catalogue (partial — see its docstring) |
 | `rle.py` | the shared scanline codec |
 | `pal.py` `scn.py` `g2.py` `spr.py` `obt.py` | per-format decoders |
 | `level.py` | assembles a whole level from `.WAM` + `.I` + `.OBT` + `.G2` |
