@@ -175,14 +175,36 @@ same *type* (same size/strength) wear different graphics.
 | 4 | u16 height | in tiles — **verified** |
 | 6 | u16 | forced to 1 when stored as 0; co-varies with field 0 in round pairs (60000/40000, 3000/200) — reads like mass/score or health/points, meaning not pinned down |
 
-## `.SCN` — background screens — **Confirmed**
+## `.SCN` — background — **Partly wrong in these notes**
+
+The layout below is right as far as it goes, and the layers do decode to
+recognisable images. What is wrong is the assumption that a layer *is*
+the backdrop.
 
 | offset | size | field |
 |---|---|---|
-| 0 | 3072 | lead-in block (still unidentified; not needed to recover the image) |
-| 3072 | 64000 | layer 0: 320x200, 1 byte/pixel, indexed into the **merged** palette (see `.PAL` above) |
+| 0 | 3072 | lead-in |
+| 3072 | 64000 | layer 0 |
 | 67072 | 64000 | layer 1 |
 | 131072 | 64000 | layer 2 (only in 195072-byte files) |
+
+The renderer (VA 0x18e64 and around) does not blit a layer. It walks the
+buffer as **256-byte units**, addressing them `0x257634 + (index << 8)`
+where the index is derived from a coordinate by a shift, and the shift
+amounts come out of the `.SDE` header — `0x984c4`, which is `.SDE` +4.
+The loop runs ~200 times, once per screen row. So the background is
+composed per scanline, at a scale the level's own settings control, and
+not from a layer taken whole.
+
+Two things support that. Drawing layer 0 as a picture and tiling it
+across a level gives a smear rather than a backdrop — which is what it
+looks like in the clone today. And level 0C's layer 2 is a developer's
+hand-drawn scribble (the words "I'm a" and some doodled shapes), which
+no level would ever display.
+
+Reconstructing the background properly means reading that renderer
+through. Until then anything the clone draws from a `.SCN` is a
+placeholder.
 
 ## `.SDE` — background settings + scene sprites — **Confirmed**
 
