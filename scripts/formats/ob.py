@@ -44,28 +44,47 @@ SIZES = {
     40: 12, 41: 12, 42: 12, 43: 12, 44: 16, 45: 16, 46: 16,
 }
 
-#: What a class is, where the constructor says so plainly. The rest are
-#: spawned and named by their constructors but not yet identified.
+#: What each class spawns. Read off the object templates rather than
+#: guessed: a constructor passes the spawner a 28-byte template whose
+#: first u16 is an index into the sprite table at VA 0x9984c, and that
+#: table holds the `.SPR` filename inline. So the class's identity is
+#: simply the name of the sprite it creates.
 CLASSES = {
+    0: 'BCSAW.SPR',
+    1: 'LEAD.SPR',
+    6: 'CFIR/CWHL/CFIX.SPR',
     9: 'player 1 start',
     10: 'player 2 start',
     11: 'player 3 start',
     12: 'player 4 start',
-    13: 'sprite entity — payload +14 selects the behaviour',
-    14: 'timmy (the collectible), locked to the block at its position',
+    13: 'the bell (BELL.SPR)',
+    14: 'timmy, and the king timmy (TIMMY/KTIMMY.SPR)',
+    15: 'DYNA.SPR — dynamite',
+    17: 'TIMMY.SPR',
+    22: 'SUCKER.SPR',
+    23: 'FORK.SPR',
+    32: 'TIMMY.SPR',
+    44: 'CRAWL.SPR',
+    46: 'PANEL.SPR',
 }
 
-#: Class 13 dispatches on the word at payload +14 (VA 0x33e79). Only 1, 2
-#: and 8 occur in the shipped levels; 16 is the bell, and no level file
-#: uses it — so the bell is placed by something other than `.OB`.
-SUBTYPE_BELL = 16
+#: Class 13 draws the bell wherever its record puts it, offset by this.
+#: The constructor adds them before storing the entity position
+#: (VA 0x33d47 and 0x33d5f).
+BELL_X_BIAS = 11
+BELL_Y_BIAS = 16
 
-#: Constructors for the four players differ only in the player index they
-#: write, and each reads `u16 x, u16 y` as its first two parameters. The
-#: spawn y the game actually uses is this y plus 20 (VA 0x1f54f).
+#: The word at class 13 payload +14 picks which behaviour the bell gets
+#: (VA 0x33e79 dispatches on 1, 2, 4, 8, 16). Only 1, 8 and 2 occur in
+#: the shipped levels. 16 is the variant that locks itself to the block
+#: underneath and waits for it to be destroyed — and no level uses it,
+#: which cost an afternoon of assuming the bell *was* subtype 16.
+BELL_SUBTYPE_LOCKED = 16
+
+#: The four player-start classes, and the index each one writes. Every
+#: constructor reads `i16 x, i16 y` and spawns at **y + 20** (VA 0x1f54f).
 SPAWN_IDS = {9: 0, 10: 1, 11: 2, 12: 3}
 SPAWN_Y_BIAS = 20
-
 
 class Undecoded(Exception):
     """The stream ran into a class whose payload length is not known."""
@@ -101,6 +120,17 @@ def parse(data, strict=True):
     return out
 
 
+def bells(records):
+    """Bell positions from parsed records, as [(x, y, subtype), ...]."""
+    out = []
+    for cid, _off, payload in records:
+        if cid == 13:
+            x, y = struct.unpack_from('<hh', payload, 0)
+            subtype = struct.unpack_from('<H', payload, 14)[0]
+            out.append((x + BELL_X_BIAS, y + BELL_Y_BIAS, subtype))
+    return out
+
+
 def spawns(records):
     """Player start positions from parsed records, as {player: (x, y)}."""
     found = {}
@@ -128,5 +158,5 @@ if __name__ == '__main__':
             continue
         ok += 1
         print(f'{os.path.basename(path):<10} {len(recs):3d} records  '
-              f'spawns={spawns(recs)}')
+              f'bells={bells(recs)}  spawns={spawns(recs)}')
     print(f'\n{ok} parsed, {bad} failed')

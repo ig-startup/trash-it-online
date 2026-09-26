@@ -268,84 +268,56 @@ Class 9 appears in all 147 levels; 32 levels carry all four starts. Class
 14 is the most common record in the archive at 1142 — about eight timmies
 a level.
 
-### Two things this does not answer
+### Object templates name the classes — **Confirmed**
 
-**Where the bell comes from.** The code path is certain: the bell's
-per-frame routine address is written in exactly one place in the whole
-binary (VA 0x33f58, set at 0x33ef2), reached only from the class 13
-dispatcher `FUN_00033e79`, which has exactly one caller — class 13's
-constructor. It fires on subtype 16. And across all 147 levels the
-subtype word (payload +14) is never 16: only 1 (90×), 8 (39×), 2 (6×).
+A constructor does not describe its object inline. It passes the spawner
+(VA 0x2ed96 / 0x2edbc) a 28-byte **template**, and the template's first
+u16 is an index into the sprite table at VA 0x9984c, which carries the
+`.SPR` filename inline. So a class's identity is just the name of the
+sprite its template points at, and 64 templates cover the whole cast:
 
-Ruled out, so nobody repeats them:
+| class | spawns |
+|---|---|
+| 0 | `BCSAW.SPR` |
+| 1 | `LEAD.SPR` |
+| 6 | `CFIR` / `CWHL` / `CFIX.SPR` |
+| **13** | **`BELL.SPR`** |
+| 14 | `TIMMY.SPR` and `KTIMMY.SPR` — the king timmy |
+| 15 | `DYNA.SPR` — dynamite |
+| 17, 32 | `TIMMY.SPR` |
+| 22 | `SUCKER.SPR` |
+| 23 | `FORK.SPR` |
+| 44 | `CRAWL.SPR` |
+| 46 | `PANEL.SPR` |
 
-- *class 2* — exactly one record per level, which looks promising, but
-  its constructor positions an entry in the array `initialise_a_player`
-  fills (`DAT_0028b948`), so it belongs to a player, not the bell.
-- *class 14* — one per eight records; it is the timmy.
-- *an `.OBT` sentinel marking the bell's block* — 87 of 147 levels have
-  no type with the 0xfffe sentinel at all, and where it does occur the
-  level holds up to 58 objects of that type.
+`VAC.SPR` — the hoover — has a template too (VA 0xa3444), which confirms
+it as an object rather than only an animation.
 
-The thread worth pulling next is the filename. `FUN_0001e5c8` takes the
-name in EAX from its caller rather than a literal, and the enumeration of
-the file loader's literals never showed a `.OB`. The format matches these
-files exactly, 147 for 147, so they are *a* stream of this kind — but the
-game may load a processed per-level file that also carries the bell.
-`TRASHIT.DAT` (716 bytes, read by both binaries) has never been examined
-and is the obvious place to look for how level files are named.
+### The bell — **Confirmed**
 
-**Why some start positions are outside the level.** Of 255, 75 fall
-outside the `.WAM` bounds, several with a small negative x (-19, -29,
--130). It is not an off-screen margin: the bounds the tile lookup checks
-are the level size exactly (`DAT_00410484 = width_in_tiles << 3`, VA
-0x12615 in the decompilation). So either those levels start players off
-the map deliberately, or the coordinates are relative to something not
-yet found.
+Class 13 is the bell, and it is in `.OB` after all. **135 of the 147
+levels carry exactly one**, at `(payload x + 11, payload y + 16)`, and
+118 of those land inside the level bounds. The 12 without one are the
+`T*`/`U*` files, which look like test levels.
 
-`.COL` is still untouched and still looks like editor data.
+The earlier dead end was a wrong assumption, not a wrong decode: the
+subtype word at payload +14 selects which *behaviour* the bell gets
+(VA 0x33e79 dispatches 1, 2, 4, 8, 16), and 16 is only the variant that
+locks itself to the block underneath and waits for it to be smashed. No
+shipped level uses 16 — they use 1 (90x), 8 (39x) and 2 (6x). Reading
+"subtype 16 is the bell" as "the bell is subtype 16" cost an afternoon
+of looking for a bell that was in front of us the whole time.
 
-## Reading the binary with Ghidra
+Which means the locking behaviour described above is real but not what
+most levels do. What 1, 2 and 8 actually do is still open.
 
-Hand-reading assembly was the slow part. Ghidra decompiles the whole image
-to C at once, and on this binary it finds **1019 functions and decompiles
-1017** of them into about 1 MB of greppable code — which turns "who
-compares anything against a percentage" from an afternoon into a `grep`.
+### Start positions still do not all fit
 
-It does not replace the anchors. The binary is stripped, so the output is
-`FUN_00033e79` and `*(short *)(param_2 + 0x58)`; what makes it readable is
-still the strings, the file loader and the routine tables. What changes is
-the cost per function.
-
-Two things are needed to get there, neither obvious:
-
-**Ghidra cannot load DOS/4GW LE.** `scripts/formats/export_flat.py` writes
-the mapped image — objects placed, pages copied, fixups applied — as one
-flat binary. Load that as raw, `x86:LE:32:default`, base `0x10000`, and
-the addresses match the ones in this file.
-
-**A raw binary has no entry points**, so auto-analysis alone finds almost
-nothing. `scripts/ghidra/MarkFunctions.java` seeds it from a list we
-already have: every direct call target from a capstone sweep plus the 47
-constructors in the class registry. 600 seeds in, 1019 functions out.
-
-On Apple Silicon there is a third: the official distribution ships native
-binaries for Linux and Windows only, so the decompiler has to be built
-from the C++ sources that come with it —
-`make -j8 ghidra_opt` in `Ghidra/Features/Decompiler/src/decompile/cpp`,
-then copy `ghidra_opt` to `Ghidra/Features/Decompiler/os/mac_arm_64/decompile`.
-Its Makefile hardcodes `-arch x86_64`; the result runs under Rosetta.
-
-    analyzeHeadless <proj> TrashIt -import G.flat.bin \
-      -processor x86:LE:32:default \
-      -loader BinaryLoader -loader-baseAddr 0x10000 \
-      -scriptPath scripts/ghidra \
-      -preScript MarkFunctions.java entries.txt \
-      -postScript DumpDecomp.java G_decomp.c
-
-The decompiled C is not committed: it is derived from Atari's binary, and
-this repository keeps the original's files out (see the root README). Run
-the recipe against a local copy to regenerate it.
+Of 255 player starts, 75 fall outside the `.WAM` bounds, several with a
+small negative x (-19, -29, -130), and 17 of 135 bells are outside too.
+It is not an off-screen margin: the bounds the tile lookup checks are the
+level size exactly (`DAT_00410484 = width_in_tiles << 3`). Unexplained,
+and the reason this is not yet wired into the client's level export.
 
 ## Game logic
 
