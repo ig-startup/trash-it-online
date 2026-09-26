@@ -270,15 +270,38 @@ a level.
 
 ### Two things this does not answer
 
-**The bell is not in `.OB`.** It is class 13 subtype 16, and across all
-147 levels subtype 16 never occurs — only 1 (90×), 8 (39×) and 2 (6×). So
-something else places it. `FUN_00033e79` has exactly one caller, class
-13's constructor, so the code path is not in doubt; the data is.
+**Where the bell comes from.** The code path is certain: the bell's
+per-frame routine address is written in exactly one place in the whole
+binary (VA 0x33f58, set at 0x33ef2), reached only from the class 13
+dispatcher `FUN_00033e79`, which has exactly one caller — class 13's
+constructor. It fires on subtype 16. And across all 147 levels the
+subtype word (payload +14) is never 16: only 1 (90×), 8 (39×), 2 (6×).
 
-**Some coordinates fall outside the level.** Of 255 start positions, 75
-are outside the `.WAM` bounds, several with a small negative x (-19, -29,
--130). Either levels carry an off-screen margin players walk in from, or
-the coordinates are relative to something not yet found.
+Ruled out, so nobody repeats them:
+
+- *class 2* — exactly one record per level, which looks promising, but
+  its constructor positions an entry in the array `initialise_a_player`
+  fills (`DAT_0028b948`), so it belongs to a player, not the bell.
+- *class 14* — one per eight records; it is the timmy.
+- *an `.OBT` sentinel marking the bell's block* — 87 of 147 levels have
+  no type with the 0xfffe sentinel at all, and where it does occur the
+  level holds up to 58 objects of that type.
+
+The thread worth pulling next is the filename. `FUN_0001e5c8` takes the
+name in EAX from its caller rather than a literal, and the enumeration of
+the file loader's literals never showed a `.OB`. The format matches these
+files exactly, 147 for 147, so they are *a* stream of this kind — but the
+game may load a processed per-level file that also carries the bell.
+`TRASHIT.DAT` (716 bytes, read by both binaries) has never been examined
+and is the obvious place to look for how level files are named.
+
+**Why some start positions are outside the level.** Of 255, 75 fall
+outside the `.WAM` bounds, several with a small negative x (-19, -29,
+-130). It is not an off-screen margin: the bounds the tile lookup checks
+are the level size exactly (`DAT_00410484 = width_in_tiles << 3`, VA
+0x12615 in the decompilation). So either those levels start players off
+the map deliberately, or the coordinates are relative to something not
+yet found.
 
 `.COL` is still untouched and still looks like editor data.
 
