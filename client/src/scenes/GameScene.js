@@ -276,6 +276,8 @@ export default class GameScene extends Phaser.Scene {
       color: '#555555',
     }).setScrollFactor(0);
 
+    /** Timmies hoovered up. The game keeps this tally too. */
+    this._timmyCount = 0;
     this._timmyText = this.add.text(16, 100, `ТИММИ ${this._timmyCount}`, {
       fontSize: '16px',
       fill: '#ffcc33',
@@ -293,8 +295,6 @@ export default class GameScene extends Phaser.Scene {
 
     /** Debris from smashed blocks, oldest first. */
     this._rubble = [];
-    /** Timmies hoovered up. The game keeps this tally too. */
-    this._timmyCount = 0;
 
     // ── Remote players ────────────────────────────────────────────────────────
     this.remotePlayers = new Map();
