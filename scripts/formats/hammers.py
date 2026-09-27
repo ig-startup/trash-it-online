@@ -21,7 +21,7 @@ Record layout:
 | 0x48 | u16 | → player struct +0x88 |
 | 0x5e | u16 | → the hammer entity's +0x58 |
 | 0x60 | u16 | → the hammer entity's +0x5a |
-| 0x62 | u16 | → the hammer entity's **+0x5c**, which is the resistance the damage routine tests when deciding whether a blow carries on into what is underneath |
+| 0x62 | u16 | → the hammer entity's **+0x5c** |
 
 `initialise_a_player's_hammer` (VA 0x216c0) does the copying, through a
 pointer table at VA 0xa2d0c indexed by the chosen hammer.
@@ -40,9 +40,14 @@ nothing. What the values themselves say, across all 37 hammers:
   at 4294967295, the u32 ceiling, which is how you make something
   unbuyable. The front end talks about "timmy points available", and
   timmies are the collectible.
-- **+0x62 is the resistance** the damage routine tests, confirmed by what
-  consumes it, and it too climbs with rank: 14 for a sledge v1, 39 for
-  the silliest one in the table.
+- **+0x62 was written down here as "the resistance the damage routine
+  tests". That was wrong** — the divisor in the damage routine is a
+  *block's* own support count, a different field on a different object
+  (see README.md). What +0x62 does reach is the hammer sprite's `+0x5c`,
+  which VA 0x1fd5a copies into a spawn template at 0x9fef6 along with
+  +0x5e and +0x60; the spawner at VA 0x2f156 is where the trail stops.
+  It does climb with rank all the same — 14 for a sledge v1, 39 for the
+  silliest one in the table.
 - +0x3c is neither monotonic nor obviously damage: it is 100 for most of
   the late hammers while +0x40 explodes past them.
 

@@ -36,19 +36,18 @@ whose meaning isn't pinned down yet).
 
 .OBT: 8 bytes per record, indexed directly by the .WAM `type` field:
 
-    0   u16  graphic id; 0xffff and 0xfffe are sentinels the game
-             turns into -1 (0xfffe additionally sets a flag bit)
+    0   u16  hit points; 0xffff and 0xfffe are sentinels the game
+             turns into -1, i.e. indestructible (0xfffe additionally
+             sets a flag bit)
     2   u16  width in tiles
     4   u16  height in tiles
-    6   u16  a per-type quantity, forced to 1 when stored as 0. Its
-             meaning isn't pinned down: it co-varies with field 0 in
-             round pairs (60000/40000, 40000/20000, 3000/200), which
-             reads like mass/score or health/points rather than a
-             pointer. Both are kept raw below as `gid` and `param`.
+    6   u16  mass, forced to 1 when stored as 0 — what a collapsing
+             structure weighs (see ccs.py). Fields 0 and 6 are kept raw
+             below as `gid` and `param`.
 
-Only .OBT, .WAM, .I, .G2, .G2R, .PAL, .SCN and .SDE are read by the
-game. The .OB and .COL files that sit next to them in LEVELS/ are
-never opened by G.EXE — they belong to the level editor (F.EXE).
+The .OB next to them is read too — it is the level's startup spawn
+stream, where the player starts, the bell and the timmies come from (see
+ob.py). Only .COL is never opened by G.EXE.
 """
 import os
 import struct

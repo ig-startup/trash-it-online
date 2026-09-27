@@ -173,7 +173,7 @@ same *type* (same size/strength) wear different graphics.
 | 0 | u16 graphic id | 0xffff / 0xfffe are sentinels (stored as -1; 0xfffe also sets a flag bit) |
 | 2 | u16 width | in 8x8 tiles — **verified** against every shape |
 | 4 | u16 height | in tiles — **verified** |
-| 6 | u16 | forced to 1 when stored as 0; co-varies with field 0 in round pairs (60000/40000, 3000/200) — reads like mass/score or health/points, meaning not pinned down |
+| 6 | u16 **mass** | forced to 1 when stored as 0; the level loader copies it to the entity's `+0x14`, and the collapse pass sums it up a pile to get the force of an impact (VA 0x69850) — **confirmed by its reader** |
 
 ## `.SCN` — background — **Partly wrong in these notes**
 
@@ -528,61 +528,109 @@ bell frees, whatever the percentage happens to be. The NN% in the
 front-end text is authored per level to describe roughly how much has to
 come down to get at that block — not a rule the game enforces.
 
-### How a structure collapses — **Confirmed**
+### How a structure collapses — **Confirmed, and these notes had it wrong**
 
-This is the game's own mechanic, and the clone has nothing like it.
+This is the game's own mechanic, the clone has nothing like it, and the
+earlier version of this section concluded the opposite of the truth:
+*"a blow stops at the block it lands on; structures do not collapse in any
+level the game ships"*. They do. The reasoning that led there was that the
+`.WAM` loader never writes the support counts the damage routine divides
+by — which is true, and irrelevant: **the engine recomputes them every few
+frames.** A field being absent from the level files says nothing about
+whether it is filled at run time.
 
-Every object carries **hit points** in its entity at `+0x18`, loaded
-straight from `.OBT` field 0 (see below — that field is not a graphic
-id). A hit does not destroy a block; it applies a **force**, and the
-force travels through the structure:
+The game's own word for a falling structure is in one of its debug
+strings, *"looked for ccs off end of list"* — a `ccs` is a connected group
+of blocks that has come loose.
 
-    damage(object, force):                      # VA 0x689e6
-        if object is indestructible: return
-        if force / object.resistance > 2:
-            for every tile in the row directly beneath it:
-                if occupied: damage(that object, force)
+Every object carries **hit points** in its entity at `+0x18`, from `.OBT`
+field 0, and a **mass** at `+0x14`, from `.OBT` field 6 (forced to 1 when
+the table stores 0, VA 0x2d028 — the reader below is what settles what
+that field means). A hit does not remove a block; it applies a **force**,
+and the force travels through the structure:
+
+    damage_down(object, force):                 # VA 0x689e6
+        if object.hp == -1: return              # indestructible
+        supports = object.+0x5e                 # blocks directly beneath
+        if supports and force / supports > 2:
+            for each occupied cell in the row under it:
+                damage_down(that object, force / supports)
         if force < object.hp: object.hp -= force
         else:                 destroy(object)
 
-So hitting the top of a stack presses down through everything holding it
-up, and whichever block runs out of hit points first gives way. The
-`> 2` test is the cutoff: a force has to be more than twice an object's
-resistance before it passes through at all.
+    damage_up (VA 0x68a91) is the mirror image — the row above, and the
+    count at `+0x5c` — so a blow from below pushes up through a structure.
 
-There are two of these, mirrored:
+A blow is therefore **divided among the supports at each step** and stops
+when a share drops to 2 or less. A pillar passes a hit straight down; a
+wide base soaks it up. That division is the whole feel of the demolition,
+and it is the single biggest thing the clone is missing.
 
-| routine | travels | resistance field |
-|---|---|---|
-| VA 0x689e6 | **down** — the row at `tileY + tileHeight` | `+0x5e` |
-| VA 0x68a91 | **up** — the row at `tileY - 1` | `+0x5c` |
+The two counts are refreshed by a flood up from the bottom row of the
+collision map (VA 0x69b88 → 0x69c07): for every object the ground holds
+up, transitively, `+0x5c` = how many objects touch it from above and
+`+0x5e` = how many from below. Anything the flood does not reach is loose,
+and a second flood (VA 0x69660 → 0x698c2) collects the loose ones into
+groups through their contacts. Both run at most **every fifth frame**, and
+only if a dirty flag (0x410474, set by any hit, destruction or landing)
+says something changed (VA 0x69f04).
 
-so an object resists force from above and from below by different
-amounts.
+A group falls as a rigid body (VA 0x690d6): `vy += 10000`, i.e. 0.15
+px/frame² — *not* Jack's 0.28125 — capped at 4 px/frame, with the members
+riding at fixed offsets. It is stamped into a second copy of the collision
+map each frame (VA 0x69386) and unstamped at the start of the next (VA
+0x694ad), which is how group-versus-group contact is tested (VA 0x691e9).
 
-**And that is where it stops for ordinary blocks.** The `.WAM` loader
-never writes `+0x5c` or `+0x5e`, nothing else does for a level's blocks,
-and the entity array is only partly cleared between levels (VA 0x69d33
-zeroes `+0x00` and `+0x04` and nothing else) — so a block's resistance is
-zero, the `resistance != 0` test fails, and **a blow stops at the block
-it lands on**. The recursion is there for the spawned objects that do
-carry a resistance: `initialise_a_player's_hammer` (VA 0x216c0) fills the
-hammer entity's `+0x58`, `+0x5a` and `+0x5c` from its record's `+0x5e`,
-`+0x60` and `+0x62`, and the generic spawner takes them as arguments.
+When it lands (VA 0x68b2d) the numbers are:
 
-Worth being blunt about, because it is tempting to read the recursion as
-"structures collapse" — they do not, in any level the game ships. You
-chip the building down block by block, which is what the "trash NN%"
-mission text describes.
+    speed  = (vy >> 16) + 1                     # 1..5 whole pixels
+    weight = the mass of the object hit plus everything stacked on top of
+             it, flooded upward                 # VA 0x69850
+    force  = weight * speed / 4
+
+applied **both ways** — down into what was hit and up into the block that
+hit it — so a collapse damages itself on impact. The group's y is snapped
+to the 8px grid and its vy *halved* rather than zeroed, which is the
+bounce. Two engine limits are worth knowing before building on this: at
+most **50 groups** at once and **40 members** before a group chains a
+continuation record.
+
+The other way force arises is any moving sprite striking a block (VA
+0x1f28c, and VA 0x1f36d for the other axis):
+
+    force = sprite.mass << (|speed| - 2)        # mass is +0x4c here
+
+needing a speed of at least 3 (5 on the other axis, where the force is
+also halved). Jack's own mass is 25 (VA 0x21610); a class-15 dynamite is 5,
+or 50000 once lit (VA 0x20bc4 / 0x20bf4) — which is how a stick of
+dynamite flattens a building that a hammer chips at.
 
 Destroying a block (`remove_object_data`, VA 0x68724) does not simply
-remove it: it clears the block's tiles from the occupancy map
-(VA 0x68980), turns the block itself into flying rubble with a
-randomised velocity, and spawns a dust puff that cycles through eight
-variants (VA 0x1f784).
+remove it: it clears the block's tiles from the collision map (VA
+0x68980), turns the block itself into flying rubble with a randomised
+velocity, and spawns a dust puff that cycles through eight variants (VA
+0x1f784). How far the rubble is thrown comes from two bit masks, and both
+the hammer catalogue (fields +0x34 / +0x38) and the landing impact (a
+table of eight masks at VA 0xa4970, indexed by bits of `weight * speed`)
+feed them — always values of the form 2^n - 1.
 
-What the hammer's force actually is has not been traced — it arrives in
-a register, and the hammer catalogue is full of unread numbers.
+What the hammer's own force is remains open. It is not the hammer
+record's +0x62, as these notes used to say: that number reaches the hammer
+*sprite's* `+0x5c`, and the divisor in the damage routine is a *block's*
+own support count, a different field on a different object. The trail
+stops at VA 0x1fd5a, which copies the hammer sprite's `+0x58`, `+0x5a` and
+`+0x5c` into a spawn template at 0x9fef6 that VA 0x1fd94 then hands to the
+spawner at VA 0x2f156.
+
+`scripts/formats/ccs.py` reproduces all three floods over the real level
+files, which is how the above was checked rather than argued: across
+**all 147 levels and 51727 objects, not one cell is claimed by two
+objects** — the game's own `"overwritten block"` complaint never fires —
+and only **3 objects in 2 levels are loose at load** (8B has two, 9I one),
+each hovering exactly one tile above what should hold it up. A wrong
+reading of the map layout or the contact test would have thousands of
+blocks falling the moment a level opened.
+
 
 ### Jack's state machine — **Confirmed**
 
@@ -657,6 +705,74 @@ by their `.G2R` routine into 0x3f166a (static) and 0x3f166c
 values dispatched at VA 0x33e79 are the `.OB` sprite subtypes, a
 different thing.
 
+### A block's entity, and the frame it lives in — **Confirmed**
+
+The level's objects live in one array of 112-byte entities at VA 0x3f6178,
+indexed from 1 (index 0 means "no object", which is what an empty cell in
+the collision map holds). The level loader (VA 0x2cce9) fills them, and
+these are the fields the mechanics above use:
+
+| offset | field |
+|---|---|
+| 0x00 | flags; bit 0 alive, bit 2 reached by the ground flood, bit 4 free to be grouped, bit 5 group head, bit 6 already in a group, bit 7 counted by the weight sum |
+| 0x02 | `.WAM` type — the `.OBT` index |
+| 0x04 | vy, 16.16 (on a group head: the whole group's) |
+| 0x08 / 0x0c | y / x, 16.16 |
+| 0x10 | height in pixels, 16.16 |
+| 0x14 | **mass**, from `.OBT` field 6 |
+| 0x18 | **hit points**, from `.OBT` field 0; -1 is indestructible |
+| 0x1c / 0x20 | while falling: this member's fixed offset from its group |
+| 0x44 | the object's own id, as stamped into the collision map |
+| 0x46 / 0x48 | tile x / tile y |
+| 0x4a / 0x4c | width / height in tiles |
+| 0x4e / 0x50 | width / height in pixels |
+| 0x5c / 0x5e | objects touching it from above / below |
+| 0x64 / 0x68 | its `.G2` shape, and the routine its `.G2R` byte selects |
+
+A group head is one of these same entities with bit 5 set, borrowing
+`+0x30`/`+0x34` for its member array, `+0x38`/`+0x3c` for the list of
+members with nothing beneath them, `+0x52` for the group's total mass,
+`+0x56` for the member count and `+0x40` for the continuation record once
+it passes 40 members.
+
+The collision map is one u16 per 8x8 cell with a row stride of the level's
+tile width, and the row table at VA 0x3f5928 is simply `row[i] = i *
+stride` (VA 0x69eb3). There are two of them: the live map at 0x40f330 and
+a provisional copy at 0x40f334 that a falling group is stamped into.
+
+The frame is one function, VA 0x2cbb9, and it calls in this order:
+
+    0x135fc  0x162c7  0x2bfda  0x1c821
+    0x68b2d   <- the structural pass: falling groups, landings, rebuild
+    0x20409  0x2043c  0x2eadb  0x6b90f  0x6b400  0x2d1b5  0x1e1ca
+    0x1e16e  0x60e82  0x6b533  0x15ccd  ...  0x2c911  0x2f9ce
+
+so the structures settle *before* the sprites move, and 0x2d1b5 (which
+builds the draw list by testing every object against the camera) runs
+after both.
+
+### Reading `G.EXE` in Ghidra
+
+Ghidra has no DOS/4GW LE loader, so the image goes in flat
+(`export_flat.py`), seeded with the function entry points
+(`disasm.py … entries`, plus the 47 class constructors) and dumped as one
+C file (`scripts/ghidra/`). That yields 1214 functions, and the
+addresses in it are the ones quoted throughout these notes:
+
+    python3 scripts/formats/export_flat.py Trash-it-original/G.EXE flat.bin
+    python3 scripts/formats/disasm.py Trash-it-original/G.EXE entries > entries.txt
+    analyzeHeadless <proj-dir> trashit -import flat.bin \
+        -processor x86:LE:32:default \
+        -loader BinaryLoader -loader-baseAddr 0x10000 \
+        -scriptPath scripts/ghidra \
+        -preScript MarkFunctions.java entries.txt \
+        -postScript DumpDecomp.java decomp.c
+
+One gotcha that costs a run: **no path given to `analyzeHeadless` may
+contain a directory whose name starts with a dot** — it refuses with
+*"Path element starting with '.' is not permitted"*, so a project under
+`~/.cache` or `~/.claude` fails before it starts.
+
 ## How a level is put together
 
 ```
@@ -678,11 +794,12 @@ same blitter, positioned by the frame's own origin.
 | file | what |
 |---|---|
 | `le_loader.py` | DOS/4GW LE executable loader (objects, pages, fixups) — how `G.EXE` was read |
-| `disasm.py` | disassembly workbench over the LE image: functions, xrefs, strings, constant search, stream-advance tracing |
+| `disasm.py` | disassembly workbench over the LE image: functions, xrefs, strings, constant search, stream-advance tracing. `callers` / `entries` find call sites by byte scan rather than from a linear sweep — a sweep drifts past data and hides whole functions, which is what kept the collapse module's callers invisible |
 | `ob.py` | `.OB` startup-code decoder (partial — see above) |
 | `anims.py` | Jack's animation table from `G.EXE` |
 | `hammers.py` | the 37-hammer catalogue (partial — see its docstring) |
 | `states.py` | Jack's 46-state machine and its transitions |
+| `ccs.py` | the structural simulation: the collision map, the support counts, the falling groups, and what a blow does as it travels — run over the real levels |
 | `rle.py` | the shared scanline codec |
 | `pal.py` `scn.py` `g2.py` `spr.py` `obt.py` | per-format decoders |
 | `level.py` | assembles a whole level from `.WAM` + `.I` + `.OBT` + `.G2` |
@@ -693,13 +810,22 @@ same blitter, positioned by the frame's own origin.
 
 - `.SDE` field meanings; the `.SCN` 3072-byte lead-in (it holds image
   indices, not a palette — it reuses the layers' own colours); the `.I`
-  second u16; `.OBT` fields 0 and 6.
+  second u16.
 - `.WVL` / `.XMI` audio (XMIDI is a documented format; `.WVL` is not
   examined at all).
-- `.OB`: the content-dependent record length that desynchronises 96 of
-  147 files, and the four classes (17, 25, 29, 30) whose length is
-  unknown. Everything else about level placement depends on this.
-- Where the "trash NN%" threshold lives and what counts toward it.
-- What the remaining 45 `.OB` classes are. Timmies and the king timmy
-  are in there; so, probably, are the enemies and pickups.
-- Physics of a collapsing structure, scoring, block strength.
+- The force a hammer blow carries. Not the hammer record's +0x62 — see
+  the collapse section for where the trail stops (VA 0x1fd5a → a spawn
+  template at 0x9fef6 → VA 0x2f156).
+- What the individual bits of the level's option byte (0x98224, and a
+  second at 0x98226) do. `ob.py` lists every field of the rules record
+  that sets them; nothing yet traces a reader.
+- What the remaining 45 `.OB` classes are — the enemies and pickups are
+  in there.
+- `"event list contains no outcome for object type %d"` (VA 0x90e0c):
+  there is an event/outcome table keyed by object type that nothing here
+  has looked at.
+- Scoring beyond the packed-BCD adder and the rules record's +0x38.
+
+Closed since these notes last listed them: `.OBT` field 6 is mass and
+field 0 is hit points; the `.OB` record lengths (all 147 files parse
+exactly); the physics of a collapsing structure and block strength.

@@ -19,19 +19,22 @@ Record: 8 bytes, 4 x u16 little-endian.
         the rest run from 50 to 60000.
     2   width in 8x8 tiles
     4   height in 8x8 tiles
-    6   a per-type quantity, forced to 1 when stored as 0. Co-varies
-        with field 0 in round pairs (60000/40000, 40000/20000,
-        3000/200). **Not hit points**: across the exported levels it
-        takes 26 distinct values including 54411, 50000 and 40000, which
-        no block survives. Score is the likely reading.
+    6   **mass**, forced to 1 when stored as 0. The level loader copies
+        it into the object entity at +0x14 (VA 0x2d028), and the
+        collapse pass sums it up a pile to get the force of an impact
+        (VA 0x69850) — see "How a structure collapses" in README.md.
+        It co-varies with field 0 in round pairs (60000/40000,
+        40000/20000, 3000/200), which is how a heavy block is also a
+        tough one. Across the archive: 51 distinct values; the
+        indestructible types store 0 and so weigh 1.
 
 Record 0 is all zeros in every sample (the unused "no type" slot).
 
-Field 6 is the one the level loader copies into each object entity at
-+0x14 (VA 0x12664 in the decompilation), forcing it to 1 when the table
-stores 0. That is consistent with it being the block's strength, but
-nothing has yet been found that reads it back, so it is still only
-consistent, not confirmed.
+What reads it back is the weight sum at VA 0x69850: when a falling
+structure lands, the game floods upward from the block it struck, adding
+up every `+0x14` in the pile, and the force of the impact is that total
+times the landing speed, over four. `scripts/formats/ccs.py` has the
+whole mechanism.
 
 About `.OB`: the claim that used to be here — that `G.EXE` never opens a
 `.OB` — was wrong, and `scripts/formats/ob.py` now decodes them. The

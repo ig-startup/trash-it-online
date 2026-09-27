@@ -12,6 +12,8 @@ that kept being repeated:
 
     c.func(0x18255)            # disassemble one function, until it returns
     c.xrefs(0x2df37)           # who calls this address
+    c.callers(0x2df37)         # ditto, by byte scan — catches what the
+                               # linear sweep misses
     c.strings("spawn")         # find a string, get its VA
     c.strxref("Invalid")       # find the string AND who points at it
     c.reads(0x3f6178)          # instructions touching a global
@@ -43,6 +45,7 @@ class Code:
         self.base = self.code['base']
         self.mem = bytes(self.code['mem'])
         self._calls = None
+        self._branch = None
 
     # ── reading ───────────────────────────────────────────────────────────
 
@@ -150,6 +153,49 @@ class Code:
         """Direct call/jmp sites targeting `va`."""
         return self._index_calls().get(va, [])
 
+    def callers(self, va):
+        """
+        Call sites reaching `va`, found by scanning for `E8 rel32`.
+
+        `xrefs` reads a linear sweep, and a linear sweep drifts: one jump
+        table or one run of data and every instruction after it decodes at
+        the wrong offset until the stream happens to resynchronise. Whole
+        functions are invisible that way — the collapse module's callers all
+        were. Matching the five bytes of a direct call instead depends on no
+        alignment at all, so it finds every one of them.
+        """
+        out = []
+        for a, m, t in self._branches():
+            if t == va:
+                out.append((a, m))
+        return out
+
+    def _branches(self):
+        """Every direct near call/jmp in the image, as (site, mnemonic, target)."""
+        if self._branch is None:
+            found = []
+            for i in range(len(self.mem) - 5):
+                op = self.mem[i]
+                if op in (0xe8, 0xe9):
+                    rel = int.from_bytes(self.mem[i + 1:i + 5], 'little',
+                                         signed=True)
+                    found.append((self.base + i,
+                                  'call' if op == 0xe8 else 'jmp',
+                                  self.base + i + 5 + rel))
+            self._branch = found
+        return self._branch
+
+    def entries(self):
+        """
+        Every address called by a direct call, sorted — the function list.
+
+        This is what seeds a Ghidra import (see `scripts/ghidra/MarkFunctions.java`):
+        a flat binary has no symbols and auto-analysis finds almost nothing,
+        but a call target is a function by definition.
+        """
+        return sorted({t for _, m, t in self._branches()
+                       if m == 'call' and self.in_code(t)})
+
     def consts(self, value):
         """
         Every instruction whose operand text contains `value`.
@@ -184,6 +230,12 @@ def _main():
     elif cmd == 'xrefs':
         for a, m in c.xrefs(int(sys.argv[3], 0)):
             print(f'{a:#08x}  {m}')
+    elif cmd == 'callers':
+        for a, m in c.callers(int(sys.argv[3], 0)):
+            print(f'{a:#08x}  {m}')
+    elif cmd == 'entries':
+        for va in c.entries():
+            print(f'{va:x}')
     elif cmd == 'str':
         for va, s in c.strings(sys.argv[3]):
             print(f'{va:#08x}  {s!r}')
