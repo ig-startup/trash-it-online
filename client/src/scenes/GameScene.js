@@ -11,7 +11,8 @@ import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
-const SUPPORT_GAP = 2;       // px of slack when deciding what rests on what
+const FORCE_MAX_VISITS = 600; // guard: a blow decays fast, but not in one frame
+const TILE = 8;              // px — the original's collision-map cell
 /** Player states during which a swing connects (see STATES in Player.js). */
 const STRIKE_STATES = new Set(['strikeSide', 'strikeOver']);
 const RUBBLE_LIMIT = 120;    // pieces kept on screen before the oldest goes
@@ -125,6 +126,12 @@ export default class GameScene extends Phaser.Scene {
     // ── Destructibles (rubble, original palette) ────────────────────────────────
     this._destructibles = this.physics.add.staticGroup();
     this._destructibleMap = new Map(); // id → { rect, hp }
+    // The original's collision map: one cell per 8x8 px holding the id of
+    // the block occupying it (VA 0x40f330). A blow divides itself among the
+    // *cells* under a block, so counting objects is not the same thing.
+    this._tile = level.tileSize || TILE;
+    this._gridW = (level.widthTiles || 1) + 2;
+    this._cellOwner = new Map(); // ty * _gridW + tx → block id
     level.destructibles.forEach((d) => {
       const cx = d.x + d.width / 2;
       const cy = d.y + d.height / 2;
@@ -143,12 +150,16 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.existing(rect, true);
       }
       this._destructibles.add(rect);
-      this._destructibleMap.set(d.id, {
+      const entry = {
         rect, id: d.id, hp: d.hp, solid: !!d.solid,
-        // Zero for every block a level file describes; see _applyForce.
-        resistance: d.resistance || 0,
         width: d.width, height: d.height,
-      });
+        tx: Math.round(d.x / this._tile), ty: Math.round(d.y / this._tile),
+        tw: Math.max(1, Math.round(d.width / this._tile)),
+        th: Math.max(1, Math.round(d.height / this._tile)),
+        mass: d.mass || 1,
+      };
+      this._destructibleMap.set(d.id, entry);
+      this._stampCells(entry);
     });
 
     // ── Bell (original palette gold) ────────────────────────────────────────────
@@ -452,64 +463,113 @@ export default class GameScene extends Phaser.Scene {
    *
    * A hit is a *force*, not a kill: the block subtracts it from its hit
    * points and only goes when it runs out. Before that the force carries
-   * on into whatever is holding the block up, recursively, so smashing
-   * the top of a stack presses down through the supports and the weakest
-   * link gives way.
+   * on into whatever holds the block up — so smashing the top of a stack
+   * presses down through the supports and the weakest link gives way.
    *
-   * The gate is the game's own, including the part that matters: an
-   * object only passes a blow on if its *resistance* is non-zero and the
-   * force is more than twice it. Blocks loaded from a level never get a
-   * resistance — the loader does not set that field and nothing else
-   * fills it — so in the original a blow stops at the block it lands on,
-   * and the recursion is there for the spawned objects that do carry
-   * one. Keeping the real condition means this behaves as the game does
-   * today, and starts cascading by itself if the field's source is ever
-   * found and the exporter fills it in.
+   * The division is the mechanic. The force is split among the *cells*
+   * directly beneath the block, and each occupied cell is struck with
+   * that share, which means a block spanning six cells below a narrow one
+   * takes six hits from a single blow. The chain stops when a share drops
+   * to 2 or less, so a wide base soaks up a hit that a single pillar
+   * passes straight down.
+   *
+   * These notes used to say a blow stops at the block it lands on,
+   * because the level files never fill the field being divided by. They
+   * do not: the engine recomputes it from the collision map every fifth
+   * frame (VA 0x69c07). See `scripts/formats/ccs.py`.
    *
    * @param {object} entry the block from `_destructibleMap`
    * @param {number} force
    * @param {number} depth guard against a pathological chain
+   * @param {object} blow bookkeeping shared by one blow: `{ tally, visits }`
    */
-  _applyForce(entry, force, depth) {
-    if (!entry || !entry.rect.active || entry.solid) return;
-    if (depth < FORCE_MAX_DEPTH && entry.resistance > 0
-        && Math.floor(force / entry.resistance) > 2) {
-      this._blocksUnder(entry).forEach((below) => {
-        this._applyForce(below, force, depth + 1);
-      });
+  _applyForce(entry, force, depth, blow = { tally: new Map(), visits: 0 }) {
+    if (!entry || !entry.rect.active) return;
+    if (entry.solid) return;          // indestructible: absorbs it, passes nothing
+    if (blow.visits >= FORCE_MAX_VISITS) return;
+    blow.visits += 1;
+
+    const under = this._cellsUnder(entry);
+    if (depth < FORCE_MAX_DEPTH && under.length > 0) {
+      const share = Math.floor(force / under.length);
+      if (share > 2) {
+        under.forEach((id) => {
+          this._applyForce(this._destructibleMap.get(id), share, depth + 1, blow);
+        });
+      }
     }
 
     entry.hp -= force;
-    const sm = SocketManager.getInstance();
-    if (sm.socket) sm.emit(EVENTS.OBJECT_HIT, { objectId: entry.id, force });
+    blow.tally.set(entry.id, (blow.tally.get(entry.id) || 0) + force);
 
     if (entry.hp <= 0) {
       this._throwRubble(entry);
-      entry.rect.destroy();
-      this._destructibles.remove(entry.rect, true, true);
-      this._destructibleMap.delete(entry.id);
-      // `this.emit` used to be called here. A Phaser Scene is not an
-      // EventEmitter — it has `events` — so every block destroyed threw
-      // "this.emit is not a function" out of the update loop.
+      this._forgetBlock(entry);
     } else if (entry.rect.setFillStyle) {
       entry.rect.setFillStyle(WORLD_COLORS.rubbleDark); // plain rectangle
     } else {
       entry.rect.setTint(0x996655); // real block: darken the artwork
     }
+
+    if (depth === 0) this._reportBlow(blow);
   }
 
   /**
-   * A smashed block does not vanish. The game turns it into a piece of
-   * rubble with a randomised velocity and lets it fall
-   * (`remove_object_data`, VA 0x68724): the block's own artwork is kept
-   * and only its draw routine is swapped, and the spread comes from two
-   * bit masks on the hammer's record — every value in those columns is
-   * 2^n-1, which is how you mask a random number.
+   * Tell the server what one blow did — once per block, not once per visit.
    *
-   * The debris is what is left lying about afterwards, and in the
-   * original it is what the hoover is for. Ours lands and stays; the
-   * hoover is not built yet.
+   * A cascade visits the same block several times; sending each visit would
+   * put hundreds of messages on the wire for one swing, so the shares are
+   * added up first. The server subtracts the same total either way.
    */
+  _reportBlow(blow) {
+    const sm = SocketManager.getInstance();
+    if (!sm.socket) return;
+    blow.tally.forEach((force, objectId) => {
+      sm.emit(EVENTS.OBJECT_HIT, { objectId, force });
+    });
+  }
+
+  /** Write a block's cells into the collision map (VA 0x69de9). */
+  _stampCells(entry) {
+    for (let dy = 0; dy < entry.th; dy += 1) {
+      for (let dx = 0; dx < entry.tw; dx += 1) {
+        const key = (entry.ty + dy) * this._gridW + entry.tx + dx;
+        // First write wins, as the game's own loader does — it complains
+        // "overwritten block" rather than replacing one.
+        if (!this._cellOwner.has(key)) this._cellOwner.set(key, entry.id);
+      }
+    }
+  }
+
+  /** Take a destroyed block out of the world and out of the map. */
+  _forgetBlock(entry) {
+    for (let dy = 0; dy < entry.th; dy += 1) {
+      for (let dx = 0; dx < entry.tw; dx += 1) {
+        const key = (entry.ty + dy) * this._gridW + entry.tx + dx;
+        if (this._cellOwner.get(key) === entry.id) this._cellOwner.delete(key);
+      }
+    }
+    if (entry.rect.active) {
+      entry.rect.destroy();
+      this._destructibles.remove(entry.rect, true, true);
+    }
+    this._destructibleMap.delete(entry.id);
+  }
+
+  /**
+   * Ids in the row of cells directly under a block — one per occupied cell,
+   * repeats included, because the original walks cells and not objects.
+   */
+  _cellsUnder(entry) {
+    const row = (entry.ty + entry.th) * this._gridW;
+    const out = [];
+    for (let dx = 0; dx < entry.tw; dx += 1) {
+      const id = this._cellOwner.get(row + entry.tx + dx);
+      if (id !== undefined) out.push(id);
+    }
+    return out;
+  }
+
   _throwRubble(entry) {
     if (this._rubble.length >= RUBBLE_LIMIT) {
       const oldest = this._rubble.shift();
@@ -562,23 +622,6 @@ export default class GameScene extends Phaser.Scene {
       t.x += (dx / dist) * HOOVER_PULL;
       t.y += (dy / dist) * HOOVER_PULL;
     }
-  }
-
-  /** Blocks whose top edge rests on this one's bottom edge. */
-  _blocksUnder(entry) {
-    const out = [];
-    const bottom = entry.rect.y + entry.height / 2;
-    const left = entry.rect.x - entry.width / 2;
-    const right = entry.rect.x + entry.width / 2;
-    this._destructibleMap.forEach((other) => {
-      if (other === entry || !other.rect.active) return;
-      const top = other.rect.y - other.height / 2;
-      if (Math.abs(top - bottom) > SUPPORT_GAP) return;
-      const oLeft = other.rect.x - other.width / 2;
-      const oRight = other.rect.x + other.width / 2;
-      if (oRight > left && oLeft < right) out.push(other);
-    });
-    return out;
   }
 
   _checkHammerBell() {
@@ -797,11 +840,7 @@ export default class GameScene extends Phaser.Scene {
     // An object was destroyed on the server side
     sm.on(EVENTS.OBJECT_DESTROYED, ({ objectId } = {}) => {
       const entry = this._destructibleMap.get(objectId);
-      if (entry && entry.rect.active) {
-        entry.rect.destroy();
-        this._destructibles.remove(entry.rect, true, true);
-        this._destructibleMap.delete(objectId);
-      }
+      if (entry && entry.rect.active) this._forgetBlock(entry);
     });
   }
 }

@@ -16,11 +16,10 @@ so far, which the level registry imports.
     python3 scripts/export_level.py 0A 0D 2H   # specific levels
     python3 scripts/export_level.py --all      # every level in the game
 
-Faithful parts: every object's position, size and artwork, and the wall
-behind them. Invented parts, because the game stores them somewhere we
-haven't decoded: hit points (the
-.OBT field that co-varies with an object's "value" is carried through as
-`param` so it can be used once its meaning is settled).
+Faithful parts: every object's position, size and artwork, the wall behind
+them, and each block's hit points and mass — `.OBT` fields 0 and 6, both
+now decoded (see scripts/formats/ccs.py for what the game does with
+them).
 """
 import json
 import os
@@ -160,7 +159,9 @@ def export(name):
         "solid": hit_points(o) is None,
         "shape": "%d_%dx%d" % (o["shape"], o["w"], o["h"]),
         "type": o["type"],
-        "param": o["param"],
+        # `.OBT` field 6: what the block weighs. A collapsing structure's
+        # impact force is the mass of the whole pile times its speed.
+        "mass": o["param"] or 1,
     } for i, o in enumerate(lv["objects"])]
 
     # Start positions and the bell come from the level's own `.OB` — the
