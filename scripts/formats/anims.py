@@ -173,12 +173,20 @@ def table(exe):
 #: entity's routine (VA 0x20890) stands it on Jack's own position and shows
 #: entry [Jack's frame index] of that list. Jack's frames do not include
 #: the hammer at all; this is where it comes from. A null pointer means
-#: the slot has no list (the hoover's, for instance).
+#: the slot has no list (the hoover's, for instance). See hammer_lists for
+#: the two flag bits.
 HAMMER_TABLE_VA = 0x9ff88
 
 
-def hammer_lists(exe, jack=None):
-    """-> {slot: [SPA.SPR frame numbers]}, each as long as Jack's list."""
+def hammer_lists(exe, jack=None, raw=False):
+    """
+    -> {slot: [SPA.SPR frame numbers]}, each as long as Jack's list.
+
+    With `raw`, the words keep their top two bits, which are sticky
+    visibility switches the hammer routine reads (VA 0x20905): 0x4000 hides
+    the hammer from that frame on — it has gone into the hard hat — and
+    0x8000 shows it again.
+    """
     code = Code(exe)
     jack = jack or table(exe)
     out = {}
@@ -188,7 +196,7 @@ def hammer_lists(exe, jack=None):
             continue
         words = [struct.unpack_from('<H', code.read(va + 2 * k, 2), 0)[0]
                  for k in range(len(info['frames']))]
-        out[slot] = [w & FRAME_MASK for w in words]
+        out[slot] = words if raw else [w & FRAME_MASK for w in words]
     return out
 
 

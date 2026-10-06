@@ -91,6 +91,16 @@ const ANIM_CATCHUP_LIMIT = 8;   // frames one tick may make up after a hitch
  * used a table read eight bytes early, and named every state after the
  * animation two slots along — see scripts/formats/anims.py.
  */
+/** Slot 70 / 71 as (pose, frame) pairs: hatReach is sheet frames 71-90, hooverOut 113-122. */
+const range = (pose, from, to) => {
+  const out = [];
+  for (let i = from; from <= to ? i <= to : i >= to; i += from <= to ? 1 : -1) out.push([pose, i]);
+  return out;
+};
+const SHEET_STRIP_DRAW = [...range('hatReach', 0, 10), ['hatReach', 10], ...range('hooverOut', 9, 0)];
+const SHEET_STRIP_STOW = [...range('hooverOut', 0, 9), ['hatReach', 10], ['hatReach', 10],
+  ...range('hatReach', 9, 0)];
+
 const STATES = {
   // 0x22892, slot 1 — standing, the hub nearly everything returns to
   stand: { slot: 1, anim: 'idle', ms: 400, loop: true, profile: 'run' },
@@ -124,15 +134,20 @@ const STATES = {
   hat: { slot: 23, anim: 'helmetMove', ms: 60, loop: true, profile: 'slow' },
   hatOut: { slot: 13, anim: 'helmetIn', ms: 45, next: 'stand', locks: true, reverse: true },
 
-  // The hoover. Jack reaches into his hard hat, the hoover comes out, and
-  // from then on he is carrying it (slots 28 and 29 — profile 0, so it
-  // slows him to a walk). Which states those are has not been re-traced
-  // since the slot correction.
-  hatReach: { slot: 10, anim: 'hatReach', ms: 30, next: 'hooverOut', locks: true },
-  hooverOut: { slot: 9, anim: 'hooverOut', ms: 40, next: 'hooverIdle', locks: true },
+  // The hoover. 0x2a88c draws it in one strip, slot 70: Jack reaches into
+  // his hard hat (sheet frames 71-81) and pulls the hoover out (122-113);
+  // the hammer goes into the hat on the way. Then he carries it — 0x24e55
+  // standing (slot 28), 0x250d9 walking (slot 29), profile 0, so it slows
+  // him to a walk — until 0x2ab7a puts it away, slot 71, the same strip
+  // backwards. Both are frames of two of the client's poses, hence `strip`.
+  hooverDraw: {
+    slot: 70, strip: SHEET_STRIP_DRAW, ms: 35, next: 'hooverIdle', locks: true,
+  },
   hooverIdle: { slot: 28, anim: 'hooverIdle', ms: 400, loop: true, hoover: true, profile: 'slow' },
   hooverWalk: { slot: 29, anim: 'hooverWalk', ms: 70, loop: true, hoover: true, profile: 'slow' },
-  hooverAway: { slot: 11, anim: 'hatReach', ms: 30, next: 'stand', locks: true, reverse: true },
+  hooverStow: {
+    slot: 71, strip: SHEET_STRIP_STOW, ms: 35, next: 'stand', locks: true,
+  },
 };
 
 /** States in which the hoover is out and sucking. */
@@ -174,6 +189,11 @@ const OVER_STRIKES = [
     impacts: [5, 6],
   },
 ];
+
+// A hammer-list word: the SPA.SPR frame, and two sticky switches.
+const HAMMER_FRAME = 0x3fff;
+const HAMMER_HIDE = 0x4000;
+const HAMMER_SHOW = 0x8000;
 
 const HITBOX_TEXTURE = 'jack_hitbox';
 
@@ -232,6 +252,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._chargeStep = 0;
     this._skidVx = 0;          // the skid's speed last tick, for the bounce
     this._jumpBoost = 0;       // what is left of a held jump's extra lift
+    this._hammerHidden = false; // in the hat, per the game's list flags
     this._jumpTicks = 0;
 
     scene.add.existing(this);
@@ -366,7 +387,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     // own so the mode can be used at all; that binding is ours, not the
     // game's.
     if (hooverPressed && onGround) {
-      this._enter(HOOVER_STATES.has(this.state) ? 'hooverAway' : 'hatReach', now);
+      this._enter(HOOVER_STATES.has(this.state) ? 'hooverStow' : 'hooverDraw', now);
       body.setVelocityX(0);
       return;
     }
@@ -385,6 +406,9 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this._charge = 0;
       this._chargeTicks = 0;
       this._chargeStep = 0;
+      // Swinging takes the hammer back out of the hat if it was in there:
+      // the game shows it again on the way into a swing (VA 0x234c3).
+      this._hammerHidden = false;
       this._enter(cursors.up.isDown ? 'windupOver' : 'windupSide', now);
       this.emit('hammer_swing');
       return;
@@ -577,22 +601,34 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
   /** Frames in the current state: its strike list, or its whole pose. */
   _length(spec) {
+    if (spec.strip) return spec.strip.length;
     return this._seq ? this._seq.length : this._frameCount(spec.anim);
   }
 
   /** Draws the current frame of a state's animation. */
   _showFrame(spec) {
-    const total = this._frameCount(spec.anim);
-    let i = spec.reverse ? total - 1 - this._animFrame : this._animFrame;
-    if (this._seq) i = this._seq[Math.min(this._animFrame, this._seq.length - 1)];
-    this._show(spec.anim, Phaser.Math.Clamp(i, 0, total - 1));
+    if (spec.strip) {
+      const [pose, at] = spec.strip[Math.min(this._animFrame, spec.strip.length - 1)];
+      this._show(pose, at);
+    } else {
+      const total = this._frameCount(spec.anim);
+      let i = spec.reverse ? total - 1 - this._animFrame : this._animFrame;
+      if (this._seq) i = this._seq[Math.min(this._animFrame, this._seq.length - 1)];
+      this._show(spec.anim, Phaser.Math.Clamp(i, 0, total - 1));
+    }
     if (this.hammer) {
-      const frame = this._hammerFrame(spec);
-      this.hammer.setVisible(frame !== null);
-      if (frame !== null) {
-        this._hammerKey = PROP_ANIMS.hammer[frame];
+      const word = this._hammerFrame(spec);
+      if (word !== null) {
+        // The list's flag bits switch the hammer off and on, and stay
+        // switched (VA 0x20905); ducking into the hat puts it away too
+        // (slot 12, VA 0x20940).
+        if (word & HAMMER_HIDE) this._hammerHidden = true;
+        if (word & HAMMER_SHOW) this._hammerHidden = false;
+        if (spec.slot === 12 && (word & HAMMER_FRAME) <= 15) this._hammerHidden = true;
+        this._hammerKey = PROP_ANIMS.hammer[word & HAMMER_FRAME];
         this.hammer.setTexture(this._hammerKey);
       }
+      this.hammer.setVisible(word !== null && !this._hammerHidden);
     }
   }
 

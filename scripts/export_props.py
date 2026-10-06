@@ -7,7 +7,8 @@ SPA.SPR, all 61 frames: the game draws the tool as its own entity, standing
 on Jack's own position and picking its frame from a list that runs
 alongside each of Jack's animations (anims.hammer_lists). Those lists are
 written into the manifest as `hammerBySlot`, so the client draws exactly
-the frame the game would.
+the frame the game would. The words keep the game's two flag bits
+(0x4000 hide from here on, 0x8000 show again).
 
 Sprites without their own .PAL are drawn in the shared palette, which the
 level supplies below index 151 and JACKS.PAL above it (see pal.merge).
@@ -73,7 +74,7 @@ def main(level_name="0A"):
             names.append(name)
         manifest["anims"][prop] = names
 
-    lists = hammer_lists(os.path.join(ORIG, "G.EXE"))
+    lists = hammer_lists(os.path.join(ORIG, "G.EXE"), raw=True)
     manifest["hammerBySlot"] = {str(k): v for k, v in sorted(lists.items())}
 
     with open(OUT_JSON, "w") as fh:

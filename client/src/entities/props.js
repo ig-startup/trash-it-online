@@ -23,7 +23,8 @@ export const PROP_FRAME_INFO = Object.fromEntries(
 /**
  * For each of Jack's animation slots, the hammer frame (an index into
  * PROP_ANIMS.hammer, which is SPA.SPR's own numbering) to show at each of
- * his frames — the game's list at VA 0x9ff88. Missing slots carry none.
+ * his frames — the game's list at VA 0x9ff88, with its top two bits
+ * (0x4000 hide, 0x8000 show) left on. Missing slots carry none.
  */
 export const HAMMER_BY_SLOT = manifest.hammerBySlot || {};
 

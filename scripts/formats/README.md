@@ -680,6 +680,21 @@ shoulder (SPA frames 0-15); the strike runs 26 → 33, and frame 33 —
 blow's cell. The hoover's slots have no list. `anims.hammer_lists()`
 reads them.
 
+The top two bits of a list word are sticky switches (VA 0x20905):
+`0x4000` hides the hammer from that frame on, `0x8000` shows it again —
+slot 70, drawing the hoover, hides it at the frame the hammer has gone
+into the hat, and slot 71, putting the hoover back, shows it as it comes
+out. Ducking into the hard hat (slot 12) hides it too (VA 0x20940), and
+nothing in the hat states brings it back: the one other place that does
+is the way into a swing, state 0x23499 (VA 0x234c3). So after the hat,
+Jack's hammer is away until he next swings.
+
+The hoover itself is one strip each way, not the two halves the clone
+used: `UP` held with `BUT1` pressed starts 0x2a88c (slot 70, sheet frames
+71-81 then 122-113), which ends in 0x24e55, the hoover held (slot 28);
+a direction walks it, 0x250d9 (slot 29); and the same keys again run
+0x2ab7a (slot 71, the strip backwards) back to standing.
+
 The hammer type (record `+0x48` low u16, wielder `+0x88`) then shapes it
 at VA 0x1fcd3: types 1 and 4 halve the force, and every type also sets
 how many blocks one blow may strike (1..3; type 4 picks 2 or 3 at random).
