@@ -33,15 +33,54 @@ export const GAME_CONFIG = {
 };
 
 /**
- * What one hammer blow is worth against a block's hit points, which come
- * from the original's own `.OBT` table and run from 50 to 60000.
+ * The hammer Jack swings: the first record of the original's hammer
+ * catalogue (VA 0xa1e04, `scripts/formats/hammers.py`), "the sledge
+ * hammer v1" — the one the game starts you on. The clone has no shop, so
+ * it is the only one; the levels' hit points are pitched at the whole
+ * catalogue, which is why some buildings barely notice it and want
+ * dynamite or a collapse instead.
  *
- * The game's own figure has not been recovered — it reaches the damage
- * routine through several registers — so this is ours. 0x9000 is
- * the value, which does appear in the code around this machinery, and
- * against the real hit points it splits the archive cleanly: 57% of
- * blocks go in one blow and the remaining 43% in two, with nothing
- * needing three. See "How a structure collapses" in
- * scripts/formats/README.md.
+ *   lo, hi  record +0x3c / +0x40 — the two ends of the force ramp
+ *   halves  hammer type (record +0x48) 1 and 4 halve the blow (VA 0x1fcd3)
+ *   strikes how many blocks one blow may hit; type 1 gives 3
+ *   overLo, overHi  record +0x44 / +0x46 — the overhead strike's own ramp
+ *
+ * See "What a hammer blow carries" in scripts/formats/README.md.
  */
-export const HAMMER_FORCE = 36864;
+export const HAMMER = {
+  name: 'the sledge hammer v1', lo: 8, hi: 150, halves: true, strikes: 3, overLo: 1, overHi: 8,
+};
+
+/** Holding the key charges the swing up to this (VA 0x23a93). */
+export const MAX_CHARGE = 6;
+
+/**
+ * What a blow carries at a given charge: `lo + ((hi - lo) >> (6 - charge))`
+ * (VA 0x23d54), halved for this hammer's type. A tap is worth 5, a full
+ * charge 75.
+ * @param {number} charge 0..MAX_CHARGE
+ */
+export function hammerForce(charge, hammer = HAMMER) {
+  const c = Math.max(0, Math.min(MAX_CHARGE, charge | 0));
+  const f = hammer.lo + ((hammer.hi - hammer.lo) >>> (MAX_CHARGE - c));
+  return hammer.halves ? f >>> 1 : f;
+}
+
+/** The overhead windup charges to 3, not 6 (VA 0x23f7e). */
+export const MAX_OVER_CHARGE = 3;
+
+/**
+ * The overhead strike: the same ramp over its own two numbers,
+ * `overLo + ((overHi - overLo) >> (3 - charge))` (VA 0x241db). It goes to
+ * a different routine from the sideways blow (VA 0x1fd94), which has not
+ * been followed, so whether that halves it too is not known — it is not
+ * halved here. For this hammer it is 1..8: a tap, next to the side blow.
+ * @param {number} charge 0..MAX_OVER_CHARGE
+ */
+export function overheadForce(charge, hammer = HAMMER) {
+  const c = Math.max(0, Math.min(MAX_OVER_CHARGE, charge | 0));
+  return hammer.overLo + ((hammer.overHi - hammer.overLo) >>> (MAX_OVER_CHARGE - c));
+}
+
+/** A fully charged blow — what the server tests swing. */
+export const HAMMER_FORCE = hammerForce(MAX_CHARGE);

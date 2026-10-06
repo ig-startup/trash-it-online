@@ -3,18 +3,20 @@ import {
   ensureJackTextures, applyJackFrame, PLAYER_WIDTH, FULL_HEIGHT,
 } from './drawJack';
 import { PROP_ANIMS, applyPropFrame, hasProps } from './props';
+import { MAX_CHARGE } from '../../../shared/constants.mjs';
 
 /**
  * The original's physics, in its own units: pixels per frame, and pixels
  * per frame squared, at its own tick rate. Our levels are its pixels 1:1,
  * so the only conversion needed is that rate.
  *
- * `ORIGINAL_HZ` is the one number here that is not read out of the game.
- * 70Hz is mode 13h's refresh and what an action game of this vintage
- * syncs to, but it has not been confirmed in the binary — everything
- * else derives from it, so it is the single dial if the feel is off.
+ * `ORIGINAL_HZ` is the game's tick: one logic frame per vertical retrace
+ * (main loop VA 0x2c654 → 0x2cb6e), and both of its video set-ups are
+ * 480-line modes that retrace at 60Hz. It only falls back on a 13ms
+ * catch-up step when the machine cannot keep up. See "Movement and
+ * gravity" in scripts/formats/README.md.
  */
-const ORIGINAL_HZ = 70;
+const ORIGINAL_HZ = 60;
 const GRAVITY = 0.28125 * ORIGINAL_HZ * ORIGINAL_HZ;  // VA 0x22d31: vy += 0x4800
 const TERMINAL = 24 * ORIGINAL_HZ;                    // clamped at 0x180000
 const JUMP = -4.5 * ORIGINAL_HZ;                      // VA 0x22bc5, out of the walk
@@ -28,19 +30,30 @@ const JUMP = -4.5 * ORIGINAL_HZ;                      // VA 0x22bc5, out of the 
 // eslint-disable-next-line no-unused-vars
 const STEP_UP = -2.0 * ORIGINAL_HZ;
 
-const SPEED = 200;          // top speed, px/s — the original's is not known
-// Reaching top speed takes about a third of a second, and letting go
-// coasts down a little faster than that. The original's numbers are in
-// pixels per frame at a tick rate we have not identified, so the shape
-// is copied and the scale is ours.
-const ACCEL = SPEED / 0.35;
-const DECEL = SPEED / 0.25;
-const EASE_INTO_TOP = 1 / 32;   // the original's `>> 5` as it nears the cap
-const STOP_THRESHOLD = 12;      // px/s below which Jack just stops
+/** 16.16 per tick → px/s, and per tick² → px/s². */
+const perS = (v) => (v / 65536) * ORIGINAL_HZ;
+const perS2 = (v) => (v / 65536) * ORIGINAL_HZ * ORIGINAL_HZ;
+const TICK_MS = 1000 / ORIGINAL_HZ;
+
+/**
+ * Top speed and acceleration belong to the animation being played, not to
+ * Jack: `play_anim` copies them in from a table of eight (VA 0xa10d4 →
+ * 0xa1172). These are the two the clone's states use.
+ */
+const PROFILES = {
+  // profile 1 — the run, standing, the skid
+  run: { top: perS(350000), accel: perS2(12000), turn: perS2(12000) },
+  // profile 0 — the windups and strikes, the hat, the hoover
+  slow: { top: perS(100000), accel: perS2(4000), turn: perS2(8000) },
+};
+const EASE_INTO_TOP = 1 / 32;      // the original's `>> 5` above the cap
+const FRICTION = perS2(2000);      // every tick, keys or not (VA 0x22d31)
+const AT_REST = perS(399);         // below this the shared step stops him
+const SKID_BRAKE = perS2(5000);    // the skid brakes on its own (VA 0x2266d)
+const SKID_STOP = perS(10000);     // …and hands over to standing below this
+const WINDUP_NUDGE = perS(0x8000); // a tap of a direction while winding up
 const MAX_STEP_MS = 50;         // ignore hitches longer than this
 const FALL_VELOCITY = 80;       // downward speed at which rising becomes falling
-const HAT_SPEED = 120;          // the hat travels slower than Jack on his feet
-const HOOVER_SPEED = 150;       // carrying it slows him down
 const ANIM_CATCHUP_LIMIT = 8;   // frames one tick may make up after a hitch
 
 /**
@@ -57,48 +70,97 @@ const ANIM_CATCHUP_LIMIT = 8;   // frames one tick may make up after a hitch
  * twice, the strikes look wrong, and the hard hat need a key held down.
  *
  * `loop` keeps the animation running; without it the state ends when the
- * animation does and hands over to `next`. `locks` means input is
- * ignored until then.
+ * animation does and hands over to `next`, unless `hold` keeps it on its
+ * last frame for the logic to end. `locks` means input is ignored until
+ * then. `profile` is the movement profile the game's animation carries.
+ *
+ * The slot numbers are `play_anim`'s own. Until 2026-10-06 these comments
+ * used a table read eight bytes early, and named every state after the
+ * animation two slots along — see scripts/formats/anims.py.
  */
 const STATES = {
-  // 0x236b9, animation slot 3 — a single standing frame
-  stand: { anim: 'idle', ms: 400, loop: true },
-  // 0x2266d, slot 2 — the run cycle
-  walk: { anim: 'run', ms: 70, loop: true },
-  // 0x23499, slot 4 — four frames, then he is standing
-  skid: { anim: 'skid', ms: 45, next: 'stand' },
-  // 0x2498a, slot 8 — the sideways strike, 18 frames
-  strikeSide: { anim: 'hammerSide', ms: 22, next: 'stand', locks: true },
-  // 0x25468, slot 9 — the overhead strike, 16 frames
-  strikeOver: { anim: 'hammerOver', ms: 22, next: 'stand', locks: true },
-  // 0x25bda, slot 33 — falling
-  fall: { anim: 'fall', ms: 80, loop: true },
-  // 0x25dfc, slot 34 — hitting the ground
+  // 0x22892, slot 1 — standing, the hub nearly everything returns to
+  stand: { anim: 'idle', ms: 400, loop: true, profile: 'run' },
+  // 0x22275, slot 0 — the run
+  walk: { anim: 'run', ms: 70, loop: true, profile: 'run' },
+  // 0x2266d, slot 2 — a frame every fourth tick, held on the last until
+  // the braking has stopped him
+  skid: { anim: 'skid', ms: 4 * TICK_MS, hold: true, profile: 'run' },
+  // 0x23a27, slot 6 — the sideways windup. Its frames step with the charge,
+  // not with a clock, so `ms` is unused.
+  windupSide: { anim: 'hammerSide', ms: Infinity, hold: true, profile: 'slow' },
+  // 0x23cef, slots 15-21 — the strike, one frame a tick; which of the two
+  // frame lists depends on the charge (see SIDE_STRIKES)
+  strikeSide: { anim: 'hammerSide', ms: TICK_MS, next: 'stand', locks: true, brakes: true },
+  // 0x23f0f, slot 7 — the overhead windup
+  windupOver: { anim: 'hammerOver', ms: Infinity, hold: true, profile: 'slow' },
+  // 0x24174, slots 24-27 — the overhead swing, padded longer the more it
+  // was charged (see OVER_STRIKES)
+  strikeOver: { anim: 'hammerOver', ms: TICK_MS, next: 'stand', locks: true, brakes: true },
+  // 0x25813, slot 31 — in the air
+  fall: { anim: 'fall', ms: 80, loop: true, profile: 'slow' },
+  // 0x25a3e, slot 32 — hitting the ground
   land: { anim: 'land', ms: 45, next: 'stand' },
-  // Rising has no state of its own in the game's list; a mid-stride run
-  // frame stands in rather than inventing a pose.
-  rise: { anim: 'run', ms: 999999, loop: true, startFrame: 4 },
-  // The hard hat. Its animations belong to no state in the game's graph,
-  // which fits it being a mode Jack stays in rather than a pose he holds
-  // a key for — so Down toggles it.
+  // The air state again, while still going up; a mid-stride run frame
+  // stands in rather than inventing a pose.
+  rise: { anim: 'run', ms: 999999, loop: true, startFrame: 4, profile: 'slow' },
+  // The hard hat: 0x24346 (slot 12) to duck in, 0x24727 / 0x2498a (slots
+  // 22, 23) still and moving, 0x244c0 (slot 13) to come back out. The
+  // states loop among themselves until he does, so Down toggles it.
   hatIn: { anim: 'helmetIn', ms: 45, next: 'hat', locks: true },
-  hat: { anim: 'helmetMove', ms: 60, loop: true },
+  hat: { anim: 'helmetMove', ms: 60, loop: true, profile: 'slow' },
   hatOut: { anim: 'helmetIn', ms: 45, next: 'stand', locks: true, reverse: true },
 
-  // The hoover, and the second half of the game's state graph. Jack
-  // reaches into his hard hat (0x24346), the hoover comes out, and from
-  // then on he is in a carrying mode with its own standing and walking
-  // states — 0x256e9 and 0x25813, the latter of which 29 transitions
-  // lead to. Carrying it is a mode, not an action.
+  // The hoover. Jack reaches into his hard hat, the hoover comes out, and
+  // from then on he is carrying it (slots 28 and 29 — profile 0, so it
+  // slows him to a walk). Which states those are has not been re-traced
+  // since the slot correction.
   hatReach: { anim: 'hatReach', ms: 30, next: 'hooverOut', locks: true },
   hooverOut: { anim: 'hooverOut', ms: 40, next: 'hooverIdle', locks: true },
-  hooverIdle: { anim: 'hooverIdle', ms: 400, loop: true, hoover: true },
-  hooverWalk: { anim: 'hooverWalk', ms: 70, loop: true, hoover: true },
+  hooverIdle: { anim: 'hooverIdle', ms: 400, loop: true, hoover: true, profile: 'slow' },
+  hooverWalk: { anim: 'hooverWalk', ms: 70, loop: true, hoover: true, profile: 'slow' },
   hooverAway: { anim: 'hatReach', ms: 30, next: 'stand', locks: true, reverse: true },
 };
 
 /** States in which the hoover is out and sucking. */
 const HOOVER_STATES = new Set(['hooverIdle', 'hooverWalk']);
+
+/**
+ * Holding the hammer key winds up; letting go strikes. The frame index of
+ * the windup *is* the charge: it steps when the frame timer reaches a
+ * threshold that grows with every step (VA 0x23a66, 0x23f4d).
+ */
+const WINDUPS = {
+  // sideways: steps 1, 2, 3 … ticks apart, full (6) after 21 ticks
+  windupSide: { first: 1, grow: 1, max: MAX_CHARGE, strike: 'strikeSide' },
+  // overhead: 5, 10, 15 ticks apart, full (3) after 30
+  windupOver: { first: 5, grow: 5, max: 3, strike: 'strikeOver' },
+};
+
+/**
+ * The strikes' frame lists, as indices into the client's pose, and the
+ * frames on which the blow lands. Sideways: slots 15-18 share the short
+ * list and 19-21 the long one, so charge picks one (VA 0x23cef plays slot
+ * 15 + charge); the blow lands on the first frame 54. Overhead: slot
+ * 24 + charge, and the blow lands on every frame the list flags (0x8000).
+ * All read out of the animation table by scripts/formats/anims.py.
+ */
+const SIDE_SHORT = [10, 12, 14, 17, 17, 17, 17, 14, 12];
+const SIDE_LONG = [10, 12, 14, 16, 17, 17, 17, 17, 17, 16, 15, 14, 13, 12, 11, 10, 9];
+const SIDE_STRIKES = (charge) => (charge <= 3
+  ? { seq: SIDE_SHORT, impacts: [3] }
+  : { seq: SIDE_LONG, impacts: [4] });
+const OVER_FAST = [4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const OVER_STRIKES = [
+  { seq: OVER_FAST, impacts: [2, 3] },
+  { seq: OVER_FAST, impacts: [2, 3] },
+  { seq: [4, 4, 5, 6, 7, 7, 7, 7, 7, 8, 8, 9, 10, 11, 12, 13, 14, 15, 15], impacts: [3, 4] },
+  {
+    seq: [4, 4, 4, 5, 5, 6, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 10, 10, 11, 12, 13,
+      14, 14, 15, 15, 15, 15],
+    impacts: [5, 6],
+  },
+];
 
 /**
  * Where Jack's grip is through a swing, relative to his feet (x is mirrored
@@ -161,6 +223,12 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._animFrame = 0;
     this._facingLeft = false;
     this._hammerPhase = 0;
+    this._seq = null;          // a strike's own frame list, while it plays
+    this._impacts = null;      // …and the frames its blow lands on
+    this._strikeCharge = 0;
+    this._charge = 0;          // the windup's charge, which is its frame
+    this._chargeTicks = 0;
+    this._chargeStep = 0;
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -222,22 +290,31 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
   /**
    * @param {Phaser.Types.Input.Keyboard.CursorKeys} cursors
-   * @param {boolean} swingPressed  the hammer key, latched by the scene
+   * @param {boolean} swingHeld  the hammer key — down now, or tapped since
+   *   the last tick (the scene latches taps)
    * @param {number} delta  ms since the last tick
    * @param {boolean} hooverPressed  the hoover key, latched by the scene
    */
-  update(cursors, swingPressed, delta = 1000 / 60, hooverPressed = false) {
+  update(cursors, swingHeld, delta = 1000 / 60, hooverPressed = false) {
     const body = this.body;
     const onGround = body.blocked.down;
     const now = this.scene.time.now;
-    const dt = Math.min(delta, MAX_STEP_MS) / 1000;
+    const ms = Math.min(delta, MAX_STEP_MS);
+    const dt = ms / 1000;
 
     this._advanceAnim(now);
     const spec = STATES[this.state] || STATES.stand;
 
     // ── States that own the player until their animation is done ──────────
     if (spec.locks) {
-      body.setVelocityX(0);
+      body.setVelocityX(spec.brakes ? this._brake(body.velocity.x, dt) : 0);
+      return;
+    }
+
+    // ── Winding up: the key held charges, letting go strikes ──────────────
+    const windup = WINDUPS[this.state];
+    if (windup) {
+      this._windup(windup, cursors, body, ms, swingHeld, now);
       return;
     }
 
@@ -249,7 +326,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     if (this.state === 'hat') {
-      this._steer(cursors, body, dt, HAT_SPEED);
+      this._steer(cursors, body, dt, PROFILES.slow);
       return;
     }
 
@@ -266,23 +343,39 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     if (HOOVER_STATES.has(this.state)) {
-      const moved = this._steer(cursors, body, dt, HOOVER_SPEED);
+      const moved = this._steer(cursors, body, dt, PROFILES.slow);
       this._enter(moved ? 'hooverWalk' : 'hooverIdle', now);
       return;
     }
 
     // ── Strikes ───────────────────────────────────────────────────────────
-    // Two of them, as the original has: the sideways one, and an overhead
-    // one reached with Up held.
-    if (onGround && swingPressed) {
-      this._enter(cursors.up.isDown ? 'strikeOver' : 'strikeSide', now);
+    // The key starts a windup; the strike comes when it is let go. Up picks
+    // the overhead one — in the game that is a direction with the button,
+    // or a button of its own; Up is ours.
+    if (onGround && swingHeld) {
+      this._charge = 0;
+      this._chargeTicks = 0;
+      this._chargeStep = 0;
+      this._enter(cursors.up.isDown ? 'windupOver' : 'windupSide', now);
       this.emit('hammer_swing');
-      body.setVelocityX(0);
+      return;
+    }
+
+    // ── The skid brakes by itself; a direction key runs again ─────────────
+    if (this.state === 'skid' && onGround && !cursors.left.isDown && !cursors.right.isDown) {
+      const vx = body.velocity.x;
+      if (Math.abs(vx) < SKID_STOP) {
+        body.setVelocityX(0);
+        this._enter('stand', now);
+      } else {
+        body.setVelocityX(vx - Math.sign(vx) * SKID_BRAKE * dt);
+      }
       return;
     }
 
     // ── Moving ────────────────────────────────────────────────────────────
-    const moving = this._steer(cursors, body, dt, SPEED);
+    const profile = PROFILES[spec.profile] || PROFILES.run;
+    const moving = this._steer(cursors, body, dt, profile);
 
     if ((cursors.up.isDown || cursors.space.isDown) && onGround) {
       body.setVelocityY(JUMP);
@@ -300,53 +393,94 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this._enter('land', now);
       return;
     }
-    if (this.state === 'land' || this.state === 'skid') return; // let it finish
+    if (this.state === 'land') return; // let it finish
 
     if (moving) this._enter('walk', now);
-    else if (Math.abs(body.velocity.x) > STOP_THRESHOLD) this._enter('skid', now);
-    else this._enter('stand', now);
+    else if (Math.abs(body.velocity.x) >= SKID_STOP) this._enter('skid', now);
+    else {
+      body.setVelocityX(0);
+      this._enter('stand', now);
+    }
   }
 
   /**
-   * Applies the direction keys. Returns true while one is held.
+   * One tick of a windup. While the key is held the charge steps each time
+   * the frame timer reaches a threshold, and the threshold grows by `grow`
+   * after every step. Letting go strikes with whatever has built up.
+   */
+  _windup(w, cursors, body, ms, swingHeld, now) {
+    body.setVelocityX(this._brake(body.velocity.x, ms / 1000));
+    if (Phaser.Input.Keyboard.JustDown(cursors.left)) body.setVelocityX(body.velocity.x - WINDUP_NUDGE);
+    if (Phaser.Input.Keyboard.JustDown(cursors.right)) body.setVelocityX(body.velocity.x + WINDUP_NUDGE);
+
+    if (swingHeld) {
+      this._chargeTicks += ms / TICK_MS;
+      const threshold = w.first + this._chargeStep * w.grow;
+      if (this._charge < w.max && this._chargeTicks >= threshold) {
+        this._chargeTicks = 0;
+        this._chargeStep += 1;
+        this._charge += 1;
+        this._animFrame = this._charge;
+        this._showFrame(STATES[this.state]);
+      }
+      return;
+    }
+
+    const charge = this._charge;
+    const { seq, impacts } = w.strike === 'strikeSide'
+      ? SIDE_STRIKES(charge)
+      : OVER_STRIKES[charge];
+    this._enter(w.strike, now, { seq, impacts, charge });
+  }
+
+  /** The braking a windup, a strike and the skid share: ∓5000 a tick. */
+  _brake(vx, dt) {
+    if (Math.abs(vx) < SKID_STOP) return 0;
+    return vx - Math.sign(vx) * SKID_BRAKE * dt;
+  }
+
+  /**
+   * Applies the direction keys the way the original does (VA 0x257c0):
+   * build up at the profile's rate, push back at its turn rate when the key
+   * is against the motion, and ease off by an eighth-of-a-quarter of the
+   * excess when above the cap. Friction comes off on top, every tick, keys
+   * or not (VA 0x22d31). Returns true while a key is held.
    * @param {Phaser.Types.Input.Keyboard.CursorKeys} cursors
    * @param {Phaser.Physics.Arcade.Body} body
    * @param {number} dt seconds
-   * @param {number} top px/s this state is allowed to reach
+   * @param {{top: number, accel: number, turn: number}} profile px/s, px/s²
    */
-  _steer(cursors, body, dt, top) {
-    const vx = body.velocity.x;
-    if (cursors.left.isDown || cursors.right.isDown) {
+  _steer(cursors, body, dt, profile) {
+    let vx = body.velocity.x;
+    const held = cursors.left.isDown || cursors.right.isDown;
+    if (held) {
       const dir = cursors.left.isDown ? -1 : 1;
       this._facingLeft = dir < 0;
-      body.setVelocityX(this._accelerate(vx, dir, dt, top));
-      return true;
+      if (Math.sign(vx) === -dir) {
+        vx += dir * profile.turn * dt;
+      } else if (Math.abs(vx) < profile.top) {
+        vx = dir * Math.min(profile.top, Math.abs(vx) + profile.accel * dt);
+      } else {
+        vx -= (vx - dir * profile.top) * Math.min(1, EASE_INTO_TOP * dt * ORIGINAL_HZ);
+      }
     }
-    body.setVelocityX(Math.abs(vx) <= STOP_THRESHOLD
-      ? 0
-      : vx - Math.sign(vx) * DECEL * dt);
-    return false;
+    if (Math.abs(vx) <= AT_REST) vx = 0;
+    else vx -= Math.sign(vx) * Math.min(Math.abs(vx), FRICTION * dt);
+    body.setVelocityX(vx);
+    return held;
   }
 
   /**
-   * One step of the original's horizontal acceleration: build up at a
-   * constant rate, then ease onto the top speed instead of hitting it
-   * (VA 0x257c0).
+   * Switches state, restarting its animation. A strike brings its own
+   * frame list (`seq`), the frames its blow lands on, and the charge.
    */
-  _accelerate(vx, dir, dt, top) {
-    const target = dir * top;
-    if (Math.abs(vx) < top && Math.sign(vx) !== -dir) {
-      return Phaser.Math.Clamp(vx + dir * ACCEL * dt, -top, top);
-    }
-    const eased = vx + (target - vx) * EASE_INTO_TOP * (dt * 60);
-    return Phaser.Math.Clamp(eased + dir * ACCEL * dt, -top, top);
-  }
-
-  /** Switches state, restarting its animation. */
-  _enter(name, now) {
+  _enter(name, now, strike = null) {
     if (this.state === name) return;
     this.state = name;
     const spec = STATES[name] || STATES.stand;
+    this._seq = strike ? strike.seq : null;
+    this._impacts = strike ? strike.impacts : null;
+    this._strikeCharge = strike ? strike.charge : 0;
     this._animFrame = spec.startFrame || 0;
     this._animTimer = now;
     this._showFrame(spec);
@@ -354,7 +488,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
   /**
    * Steps the current animation, and ends the state when a one-shot
-   * animation runs out.
+   * animation runs out. A strike announces its blow on the frames that
+   * carry it — once each, which is what makes the force worth anything.
    */
   _advanceAnim(now) {
     // Consume the elapsed time rather than stepping one frame per tick:
@@ -368,29 +503,43 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this._animTimer += spec.ms;
       this._animFrame += 1;
 
-      if (this._animFrame >= this._frameCount(spec.anim)) {
+      if (this._animFrame >= this._length(spec)) {
         if (spec.loop) {
           this._animFrame = spec.startFrame || 0;
+        } else if (spec.hold) {
+          this._animFrame = this._length(spec) - 1;
         } else {
           this._enter(spec.next || 'stand', now);
           return;
         }
       }
+      if (this._impacts && this._impacts.includes(this._animFrame)) {
+        this.emit('hammer_impact', {
+          charge: this._strikeCharge,
+          overhead: this.state === 'strikeOver',
+        });
+      }
     }
     this._showFrame(STATES[this.state] || STATES.stand);
+  }
+
+  /** Frames in the current state: its strike list, or its whole pose. */
+  _length(spec) {
+    return this._seq ? this._seq.length : this._frameCount(spec.anim);
   }
 
   /** Draws the current frame of a state's animation. */
   _showFrame(spec) {
     const total = this._frameCount(spec.anim);
-    const i = spec.reverse ? total - 1 - this._animFrame : this._animFrame;
+    let i = spec.reverse ? total - 1 - this._animFrame : this._animFrame;
+    if (this._seq) i = this._seq[Math.min(this._animFrame, this._seq.length - 1)];
     this._show(spec.anim, Phaser.Math.Clamp(i, 0, total - 1));
     if (this.hammer) {
-      const swinging = spec.locks && spec.anim.startsWith('hammer');
-      this.hammer.setVisible(!!swinging);
+      const swinging = spec.anim.startsWith('hammer');
+      this.hammer.setVisible(swinging);
       if (swinging) {
         this._hammerPhase = Math.min(HAMMER_GRIP.length - 1,
-          Math.floor((this._animFrame / total) * HAMMER_GRIP.length));
+          Math.floor((i / total) * HAMMER_GRIP.length));
         applyPropFrame(this.hammer, PROP_ANIMS.hammer[this._hammerPhase]);
       }
     }

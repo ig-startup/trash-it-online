@@ -73,7 +73,10 @@ export default class RemotePlayer extends Phaser.GameObjects.Image {
     // State names are the game's own now (see STATES in Player.js). The
     // frame a remote player is on is not synced, only the state, so each
     // one shows a representative frame rather than its own cycle.
-    if (this._remoteState === 'strikeSide' || this._remoteState === 'strikeOver') {
+    if (this._remoteState === 'windupSide' || this._remoteState === 'windupOver') {
+      // Winding up: the hammer drawn back, the first frames of the swing.
+      this._show(this._remoteState === 'windupOver' ? 'hammerOver' : 'hammerSide', 3);
+    } else if (this._remoteState === 'strikeSide' || this._remoteState === 'strikeOver') {
       const pose = this._remoteState === 'strikeOver' ? 'hammerOver' : 'hammerSide';
       this._show(pose, Math.floor(this._frameCount(pose) / 2));
     } else if (this._remoteState === 'hat' || this._remoteState === 'hatIn'

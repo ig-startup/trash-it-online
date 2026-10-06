@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import Player from '../entities/Player.js';
 import RemotePlayer from '../entities/RemotePlayer.js';
 import SocketManager from '../network/SocketManager.js';
-import { EVENTS, PLAYER_COLORS, HAMMER_FORCE } from '../../../shared/constants.mjs';
+import {
+  EVENTS, PLAYER_COLORS, HAMMER, hammerForce, overheadForce,
+} from '../../../shared/constants.mjs';
 import { getLevel, nextLevelId, DEFAULT_LEVEL_ID } from '../levels';
 import { WORLD_COLORS } from '../palette';
 import { buildBackground } from '../entities/drawBackground';
@@ -24,6 +26,10 @@ const HOOVER_REACH = 110;    // px the suction reaches — ours, not the game's
 const HOOVER_SWALLOW = 16;   // px at which a timmy is taken
 const HOOVER_PULL = 3.2;     // px per tick a caught timmy is drawn in
 const FUSE_MS = 900;         // how long the fuse burns — ours
+// What the blast puts into each block it catches. Not traced: it is the
+// figure the hammer used before the hammer's own was recovered, kept so
+// dynamite still flattens what it did.
+const BLAST_FORCE = 36864;
 const BLAST_RADIUS = 96;     // px the blast reaches — ours
 const BLAST_FRAME_MS = 45;
 
@@ -219,6 +225,7 @@ export default class GameScene extends Phaser.Scene {
       myPlayerData.id,
       true,
     );
+    this._player.on('hammer_impact', (blow) => this._checkHammerDestructibles(blow));
 
     // Colliders
     this.physics.add.collider(this._player, this._platforms);
@@ -329,11 +336,9 @@ export default class GameScene extends Phaser.Scene {
     if (this._player.hooverOut) this._suckTimmies();
 
     // ── Hammer interactions ───────────────────────────────────────────────────
-    // Both strikes count. This used to test for a state called 'hammer',
-    // which stopped existing when the player was rebuilt on the game's own
-    // state names — and with it, so did every hit.
+    // Blocks take the blow once, on the frame it lands (the player's
+    // `hammer_impact`, wired in create). The bell only needs a touch.
     if (STRIKE_STATES.has(this._player.state)) {
-      this._checkHammerDestructibles();
       this._checkHammerBell();
     } else {
       this._player.bellHit = false; // reset so bell can be hit again after leaving
@@ -392,8 +397,18 @@ export default class GameScene extends Phaser.Scene {
     return new Phaser.Geom.Rectangle(x, b.top + b.height * 0.25, reach, b.height * 0.6);
   }
 
-  _checkHammerDestructibles() {
+  /**
+   * A blow landing. The force is the hammer's ramp at the charge the swing
+   * was let go with, and one blow strikes at most `HAMMER.strikes` blocks —
+   * the original walks its blow box outward from the middle (VA 0x1f905),
+   * so the nearest ones are taken.
+   * @param {{charge: number, overhead: boolean}} blow
+   */
+  _checkHammerDestructibles({ charge, overhead }) {
+    const force = overhead ? overheadForce(charge) : hammerForce(charge);
     const reach = this._hammerReach();
+    const cx = reach.centerX;
+    const cy = reach.centerY;
     const struck = [];
     this._destructibleMap.forEach((entry) => {
       if (!entry.rect.active) return;
@@ -401,7 +416,9 @@ export default class GameScene extends Phaser.Scene {
         struck.push(entry);
       }
     });
-    struck.forEach((entry) => this._applyForce(entry, HAMMER_FORCE, 0));
+    const near = (e) => Phaser.Math.Distance.Between(cx, cy, e.rect.x, e.rect.y);
+    struck.sort((p, q) => near(p) - near(q));
+    struck.slice(0, HAMMER.strikes).forEach((entry) => this._applyForce(entry, force, 0));
 
     // A blow arms any dynamite it reaches.
     this._dynamite.forEach((d) => {
@@ -455,7 +472,7 @@ export default class GameScene extends Phaser.Scene {
         caught.push(entry);
       }
     });
-    caught.forEach((entry) => this._applyForce(entry, HAMMER_FORCE, 0));
+    caught.forEach((entry) => this._applyForce(entry, BLAST_FORCE, 0));
   }
 
   /**

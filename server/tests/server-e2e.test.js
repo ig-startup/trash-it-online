@@ -139,8 +139,9 @@ describe('room lifecycle over the real server', () => {
 
   // The first block in a level is often one the original marks unbreakable,
   // so pick one the room actually tracks.
-  const SOFT_BLOCK = require('../../client/src/levels/level_0C.json')
-    .destructibles.find((o) => !o.solid).id;
+  const SOFT = require('../../client/src/levels/level_0C.json')
+    .destructibles.find((o) => !o.solid);
+  const SOFT_BLOCK = SOFT.id;
 
   test('an unbreakable block is not even tracked', async () => {
     let destroyed = false;
@@ -161,11 +162,21 @@ describe('room lifecycle over the real server', () => {
     expect(destroyed).toBe(false);
   });
 
-  test('a full-force blow breaks it and tells the room which one went', async () => {
+  test('a fully charged sledge only dents it', async () => {
+    // The starting hammer is weak against these: 0C's blocks are 1000+ hit
+    // points and a full charge is 75. Breaking takes many blows.
+    let destroyed = false;
+    guest.once('object_destroyed', () => { destroyed = true; });
+    host.emit('object_hit', { objectId: SOFT_BLOCK, force: HAMMER_FORCE });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(destroyed).toBe(false);
+  });
+
+  test('blows that use up its hit points break it and tell the room', async () => {
     // Ids come from the level json exported from the original game ("o0", …),
     // and the client sends that same string back, with the force it applied.
     const destroyed = once(guest, 'object_destroyed');
-    host.emit('object_hit', { objectId: SOFT_BLOCK, force: HAMMER_FORCE });
+    host.emit('object_hit', { objectId: SOFT_BLOCK, force: SOFT.hp });
     expect(await destroyed).toEqual({ objectId: SOFT_BLOCK });
   });
 
