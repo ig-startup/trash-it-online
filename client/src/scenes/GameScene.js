@@ -25,12 +25,14 @@ const HOOVER_HEIGHT = 20;    // px above his feet the nozzle sits
 const HOOVER_REACH = 110;    // px the suction reaches — ours, not the game's
 const HOOVER_SWALLOW = 16;   // px at which a timmy is taken
 const HOOVER_PULL = 3.2;     // px per tick a caught timmy is drawn in
-const FUSE_MS = 900;         // how long the fuse burns — ours
-// What the blast puts into each block it catches. Not traced: it is the
-// figure the hammer used before the hammer's own was recovered, kept so
-// dynamite still flattens what it did.
-const BLAST_FORCE = 36864;
-const BLAST_RADIUS = 96;     // px the blast reaches — ours
+// Dynamite, all from the original (see "Dynamite" in scripts/formats/README.md).
+// The fuse: 35 ticks of the lit stick hopping, 25 of the flame, then ten
+// steps of eleven ticks counting down (VA 0x1d4ec → 0x1d584 → 0x1d60b).
+const FUSE_MS = (170 * 1000) / 60;
+const BLAST_FORCE = 20000000; // VA 0x1d6aa — through anything that can break
+const BLAST_STRIKES = 4;      // blocks the blast may strike (ecx = 4)
+const BLAST_SPREAD = 8;       // 3x3 cells around the stick: 0, +8, -8 each way
+const BLAST_SHOCK = 70;       // px either way the shock lights other sticks (VA 0x1d8d1)
 const BLAST_FRAME_MS = 45;
 
 
@@ -194,17 +196,17 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // ── Dynamite ──────────────────────────────────────────────────────────
-    // 202 placements across 42 levels. The chain in the game is: a blow
-    // arms it (VA 0x1d405, which also plays a sound), a fuse burns
-    // (0x1d4ec), and the fuse spawns a blast that expands through its
-    // own animation (0x1d584). The stages are the game's; the fuse
-    // length and the blast's reach are ours.
+    // 202 placements across 42 levels, of two kinds: 63 that a hammer
+    // lights — the overhead strike, which is the blow that reaches sprites
+    // (VA 0x1d405) — and 139 that light when Jack walks into them (outcome
+    // 5 of his event list, VA 0x1d7e1). Either way a fuse burns and the
+    // blast goes through the blocks around it and lights the sticks near it.
     this._dynamite = [];
     (level.dynamite || []).forEach((d) => {
       if (!hasProps(this)) return;
       const stick = this.add.image(d.x, d.y, PROP_ANIMS.dyna[0]).setDepth(2);
       applyPropFrame(stick, PROP_ANIMS.dyna[0]);
-      this._dynamite.push({ sprite: stick, lit: 0, pair: !!d.pair });
+      this._dynamite.push({ sprite: stick, lit: 0, litBy: d.lit_by || 'touch' });
     });
 
     // ── Local player ─────────────────────────────────────────────────────────
@@ -455,10 +457,11 @@ export default class GameScene extends Phaser.Scene {
         Math.max(...xs) - Math.min(...xs) + 8, Math.max(...ys) - Math.min(...ys) + 8);
     }
 
-    // A blow arms any dynamite it reaches. Ours: how the game lights a
-    // stick has not been traced — its dynamite does not read the hit flag.
+    // Only the overhead blow reaches sprites, and of the dynamite only the
+    // kind a hammer lights listens for it.
+    if (!overhead) return;
     this._dynamite.forEach((d) => {
-      if (d.lit || !d.sprite.active) return;
+      if (d.lit || d.litBy !== 'hammer' || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {
         d.lit = this.time.now + FUSE_MS;
       }
@@ -467,6 +470,14 @@ export default class GameScene extends Phaser.Scene {
 
   /** Burns the lit fuses and sets off the ones that run out. */
   _tickDynamite(time) {
+    // The other kind lights at Jack's touch.
+    const body = this._player.getBounds();
+    this._dynamite.forEach((d) => {
+      if (d.lit || d.litBy !== 'touch' || !d.sprite.active) return;
+      if (Phaser.Geom.Intersects.RectangleToRectangle(body, d.sprite.getBounds())) {
+        d.lit = time + FUSE_MS;
+      }
+    });
     for (let i = this._dynamite.length - 1; i >= 0; i -= 1) {
       const d = this._dynamite[i];
       if (!d.lit || !d.sprite.active) continue;
@@ -474,19 +485,22 @@ export default class GameScene extends Phaser.Scene {
       // in the game.
       d.sprite.setAlpha(Math.floor(time / 80) % 2 ? 1 : 0.45);
       if (time < d.lit) continue;
-      this._blast(d.sprite.x, d.sprite.y, d.pair ? BLAST_RADIUS * 1.5 : BLAST_RADIUS);
+      const { x, y } = d.sprite;
       d.sprite.destroy();
       this._dynamite.splice(i, 1);
+      this._blast(x, y, time);
     }
   }
 
   /**
-   * The blast: the expanding animation the game plays, and the force it
-   * puts into everything around it. The radius is ours — the game's
-   * blast grows through its own frames and what it touches has not been
-   * traced — but the force is the same model a hammer blow uses.
+   * The blast (VA 0x1d60b). The force goes through the blow routine the
+   * hammer uses, over the cells 0, +8, -8 either way of the stick — a 3x3
+   * patch — striking up to four blocks, and travelling both down and up
+   * through what they touch. At twenty million it breaks everything it
+   * reaches, which is how a stick flattens what a hammer only chips. Then
+   * a shock 70 px either way sets off any stick it catches.
    */
-  _blast(x, y, radius) {
+  _blast(x, y, time) {
     if (hasProps(this)) {
       const boom = this.add.image(x, y, PROP_ANIMS.blast[0]).setDepth(6);
       applyPropFrame(boom, PROP_ANIMS.blast[0]);
@@ -501,14 +515,25 @@ export default class GameScene extends Phaser.Scene {
         },
       });
     }
-    const caught = [];
-    this._destructibleMap.forEach((entry) => {
-      if (!entry.rect.active || entry.solid) return;
-      if (Phaser.Math.Distance.Between(x, y, entry.rect.x, entry.rect.y) <= radius) {
-        caught.push(entry);
-      }
+    const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
+    const steps = [0, BLAST_SPREAD, -BLAST_SPREAD];
+    let left = BLAST_STRIKES;
+    steps.forEach((sy) => steps.forEach((sx) => {
+      if (left <= 0) return;
+      const cx = Math.floor((Math.round(x) + sx) / 8) * 8 + 4;
+      const cy = Math.floor((Math.round(y) + sy) / 8) * 8 + 4;
+      const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(cx, cy));
+      if (!hit) return;
+      this._applyForce(hit, BLAST_FORCE, 0, undefined, { down: true, up: true });
+      left -= 1;
+    }));
+
+    const shock = new Phaser.Geom.Rectangle(x - BLAST_SHOCK, y - BLAST_SHOCK,
+      BLAST_SHOCK * 2, BLAST_SHOCK * 2);
+    this._dynamite.forEach((d) => {
+      if (d.lit || !d.sprite.active) return;
+      if (Phaser.Geom.Intersects.RectangleToRectangle(shock, d.sprite.getBounds())) d.lit = time + FUSE_MS;
     });
-    caught.forEach((entry) => this._applyForce(entry, BLAST_FORCE, 0));
   }
 
   /**
@@ -535,22 +560,27 @@ export default class GameScene extends Phaser.Scene {
    * @param {number} force
    * @param {number} depth guard against a pathological chain
    * @param {object} blow bookkeeping shared by one blow: `{ tally, visits }`
+   * @param {{down: boolean, up: boolean}} dirs which ways it travels. A
+   *   hammer's goes down; the blast's both ways — up is the same rule over
+   *   the row above (damage_up, VA 0x68a91).
    */
-  _applyForce(entry, force, depth, blow = { tally: new Map(), visits: 0 }) {
+  _applyForce(entry, force, depth, blow = { tally: new Map(), visits: 0 },
+    dirs = { down: true, up: false }) {
     if (!entry || !entry.rect.active) return;
     if (entry.solid) return;          // indestructible: absorbs it, passes nothing
     if (blow.visits >= FORCE_MAX_VISITS) return;
     blow.visits += 1;
 
-    const under = this._cellsUnder(entry);
-    if (depth < FORCE_MAX_DEPTH && under.length > 0) {
-      const share = Math.floor(force / under.length);
-      if (share > 2) {
-        under.forEach((id) => {
-          this._applyForce(this._destructibleMap.get(id), share, depth + 1, blow);
-        });
-      }
-    }
+    const pass = (ids, way) => {
+      if (depth >= FORCE_MAX_DEPTH || ids.length === 0) return;
+      const share = Math.floor(force / ids.length);
+      if (share <= 2) return;
+      ids.forEach((id) => {
+        this._applyForce(this._destructibleMap.get(id), share, depth + 1, blow, way);
+      });
+    };
+    if (dirs.down) pass(this._cellsUnder(entry), { down: true, up: false });
+    if (dirs.up) pass(this._cellsAbove(entry), { down: false, up: true });
 
     entry.hp -= force;
     blow.tally.set(entry.id, (blow.tally.get(entry.id) || 0) + force);
@@ -613,6 +643,18 @@ export default class GameScene extends Phaser.Scene {
    * Ids in the row of cells directly under a block — one per occupied cell,
    * repeats included, because the original walks cells and not objects.
    */
+  /** The row of cells just above a block, as owner ids (VA 0x68a91). */
+  _cellsAbove(entry) {
+    if (entry.ty === 0) return [];
+    const row = (entry.ty - 1) * this._gridW;
+    const out = [];
+    for (let dx = 0; dx < entry.tw; dx += 1) {
+      const id = this._cellOwner.get(row + entry.tx + dx);
+      if (id !== undefined) out.push(id);
+    }
+    return out;
+  }
+
   _cellsUnder(entry) {
     const row = (entry.ty + entry.th) * this._gridW;
     const out = [];

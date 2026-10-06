@@ -203,10 +203,12 @@ def export(name):
                if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
 
     # Dynamite. Class 15, drawn at the record's position plus the offset
-    # its constructor applies (VA 0x1d2d5), with the word at +14 choosing
-    # between a single stick and a linked pair.
+    # its constructor applies (VA 0x1d2d5). The word at +14 picks which of
+    # two sticks it is: 1 is lit by a hammer blow (template 0x98c84), 2 by
+    # Jack touching it (template 0x98ca0, outcome 5 of his event list).
     dynamite = [{"x": x + 10, "y": y + 20 + HEADROOM,
-                 "pair": struct.unpack_from("<h", payload, 14)[0] == 2}
+                 "lit_by": ("touch" if struct.unpack_from("<h", payload, 14)[0] == 2
+                            else "hammer")}
                 for cid, _off, payload in placed if cid == DYNAMITE_CLASS
                 for x, y in [struct.unpack_from("<hh", payload, 0)]
                 if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
