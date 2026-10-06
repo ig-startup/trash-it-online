@@ -35,7 +35,10 @@ nothing. What the values themselves say, across all 37 hammers:
   debris code masks a random number exactly this way when it throws a
   smashed block, and the masks grow with the hammer's rank, so these
   read as how wide the rubble scatters.
-- **+0x40 is a price.** It rises monotonically down the whole catalogue —
+- **+0x3c and +0x40 are the blow's force ramp (see README, "What a hammer
+  blow carries"): minimum and maximum.** Below, an earlier reading of +0x40
+  as a price, kept for the record because the front end may also use it:
+- **+0x40 was read as a price.** It rises monotonically down the whole catalogue —
   150, 300, 900 … 1000000, 30000000 — and the joke hammers at the end sit
   at 4294967295, the u32 ceiling, which is how you make something
   unbuyable. The front end talks about "timmy points available", and

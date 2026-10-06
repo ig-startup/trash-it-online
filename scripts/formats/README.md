@@ -393,8 +393,16 @@ timmies work the same way (`*** timmy has no block to lock to?? ***`).
 The client's poses were picked off a numbered contact sheet by eye, and
 several are wrong — a frame lifted out of the middle of a sequence reads
 as a different action entirely. The game keeps the real thing: a flat
-array of pointers at VA 0xa11ca, **79 slots**, each pointing at a list of
-u16 frame numbers into `SPR/JACKS.SPR`.
+array of pointers at VA 0xa11d2, **79 slots**, each pointing at a list of
+u16 frame numbers into `SPR/JACKS.SPR`. The slot number is the argument a
+state passes to `play_anim` (VA 0x21c26, `[slot*4 + 0xa11d2]`).
+
+**Until 2026-10-06 these notes put the array at 0xa11ca**, eight bytes
+early. The frame lists were right, but every slot number was two too high,
+and since `states.py` names a state by looking its `play_anim` argument up
+in that table, **every state was named after the animation two slots
+along.** The frame-number table below was never affected; the state names
+in the section after it were, and are corrected there.
 
 A list's length needs both bounds: the lists are packed back to back, so
 one runs until the next list the array references, *and* a list shorter
@@ -440,8 +448,9 @@ Worth reading that list for what the clone has no mechanic for at all:
 ladders, the hoover, carrying, pushing, throwing, hard-hat mode, and two
 distinct hammer strikes where the clone has one.
 
-Not every slot is a frame list — slot 6 points at 0xa10d0, whose values
-are too small and too repetitive to be frames.
+Not every slot is a clean frame list — slot 4 (state 0x23499) points at
+0xa10d0, two words before the movement-profile index (below), and runs on
+into it.
 
 ### Objectives — **Confirmed** (from `F.EXE`)
 
@@ -614,13 +623,60 @@ the hammer catalogue (fields +0x34 / +0x38) and the landing impact (a
 table of eight masks at VA 0xa4970, indexed by bits of `weight * speed`)
 feed them — always values of the form 2^n - 1.
 
-What the hammer's own force is remains open. It is not the hammer
-record's +0x62, as these notes used to say: that number reaches the hammer
-*sprite's* `+0x5c`, and the divisor in the damage routine is a *block's*
-own support count, a different field on a different object. The trail
-stops at VA 0x1fd5a, which copies the hammer sprite's `+0x58`, `+0x5a` and
-`+0x5c` into a spawn template at 0x9fef6 that VA 0x1fd94 then hands to the
-spawner at VA 0x2f156.
+**What a hammer blow carries** — **Confirmed** (found in Ghidra, from the
+`damage_down` caller side rather than the hammer record's side). The
+strike state at VA 0x23cef reaches the blow at its impact frame:
+
+    t     = 6 - hammer_entity.+0x5a          # frames from swing start to impact
+    force = lo + ((hi - lo) >> t)            # VA 0x23d54..0x23d66
+    lo    = wielder.+0x74                    # hammer record +0x3c
+    hi    = wielder.+0x78                    # hammer record +0x40
+    VA 0x23d93 -> 0x1f83d -> 0x1fcd3 -> 0x1f905 (walks the blow's box cell
+    by cell, calling damage_up 0x68a91 / damage_down 0x689e6 on each block)
+
+**The ramp is a charge, and the hammer key is held to build it.** Pressing
+the key from a standing or walking state enters the windup, VA 0x23a27,
+which plays slot 6 — the first frames of the sideways strike (37-43) —
+but does not let it run: while the key stays down (VA 0x2110d), the
+animation frame index (player `+0x10`) steps only when the entity's frame
+timer `+0x4a` reaches `+0x58`, and every step raises `+0x58` by one. It
+starts at 1, so the frames come 1, 2, 3, 4, 5, 6 ticks apart and the
+index caps at **6 after 21 ticks** (VA 0x23a66-0x23a98). Jack can creep
+meanwhile, `vx ± 0x8000` per tick.
+
+Letting go (VA 0x23b61) copies the index into Jack's `+0x5a`, switches to
+the strike state VA 0x23cef, and that plays slot **15 + charge** — slots
+15-21, the follow-through 47→54→47 in two lengths. At its impact frame
+the formula above runs with `t = 6 - charge`. A full charge carries `hi`;
+a tap carries `lo + (hi-lo)/64`. For a sledge v1 that is **10 against
+150**. (A full charge also picks a different sound, 0xe rather than 0xc,
+VA 0x23b88.) Two things this overturns:
+
+- **Record `+0x40` is the hammer's maximum force, not (only) a price.** It
+  is the top of the ramp. The joke hammers at 4294967295 are not "unbuyable",
+  they flatten anything — which fits them being the silly ones. Whether the
+  shop also reads it as a price is not settled; the *blow* certainly does.
+- **`+0x3c` is the minimum**, the floor of the ramp (8 for a sledge v1,
+  100 for most late hammers).
+
+The hammer type (record `+0x48` low u16, wielder `+0x88`) then shapes it
+at VA 0x1fcd3: types 1 and 4 halve the force, and every type also sets
+how many blocks one blow may strike (1..3; type 4 picks 2 or 3 at random).
+Type 0 depends on two flag bits passed in, not read further. The
+upper u16 of that same u32 (53 for a sledge v1, 51 for a warhammer) lands
+in the wielder's `+0x8a`, which VA 0x1f83d uses as the blow's horizontal
+reach in front of Jack — so reach is per-hammer too. Block hit points run
+25..5000 in the shipped levels (24464 is the heavy stuff), so a sledge v1
+at full ramp (150) clears the weak half and has to be swung repeatedly at
+the rest — which is the design.
+
+The `shr 0x12` at VA 0x1fba6 is something else: it reads `force >> 18`
+(clamped to 63 and 500) to pick the dust and the camera shake, and it is
+zero for any ordinary hammer. Only dynamite and the joke hammers reach it.
+
+Not yet read: how the wielder's +0x74/+0x78 ever differ from the record
+once a hammer is upgraded, and what the strike state's other exits do
+(VA 0x23dbc goes straight back into the windup if the key is still down).
 
 `scripts/formats/ccs.py` reproduces all three floods over the real level
 files, which is how the above was checked rather than argued: across
@@ -651,16 +707,38 @@ and that play-testing already named. So each state can be named by what
 Jack looks like while he is in it.
 
 Two states are hubs: **0x22892**, which 19 transitions lead to and which
-sets animation slot 1, and **0x256e9** with 29. Everything comes back to
-one of them.
+sets animation slot 1 — the single standing frame, so it is simply
+*standing* — and **0x256e9** with 29. Everything comes back to one of them.
+
+With the slot numbering corrected (see the animation table) the graph
+reads as one coherent machine rather than a scatter of names:
+
+| state | slot | what |
+|---|---|---|
+| 0x22892 | 1 | standing — the hub |
+| 0x22275 | 0 | running (cycle A) — `xor eax, eax` before `play_anim`, which is why `states.py` sees no slot |
+| 0x236b9 | 3 | walking (cycle B), at profile 0's 1.53 px/tick; the hammer key from here enters the windup |
+| 0x2266d | 2 | skidding to a halt |
+| 0x23a27 | 6 | **hammer windup** — charges while the key is held (not found by `states.py`: its slot is a constant, but it is entered by `mov edx, 0x23a27` from three places) |
+| 0x23cef | 15+charge | **hammer strike** — computed slot, which is why `states.py` cannot name it |
+| 0x25813 | 31 | in the air — horizontal air control lives here (VA 0x2582d-0x25909) |
+| 0x25a3e | 32 | hitting the ground |
+| 0x24346 → 0x24727 → 0x2498a | 12, 22, 23 | duck into the hard hat → hat, still → hat, moving |
+| 0x244c0 | 13 | come back up out of the hat → standing |
+| 0x25bda → 0x299b6 | 33, 60 | climbing a ladder → topping out onto the platform |
+| 0x25dfc → 0x26167 | 34, 35 | a long fall, two parts |
+| 0x29828 | 58 | hard landing and get up |
+| 0x2820b | 38 | pushing something along |
+| 0x29072 | 55 | air roll |
 
 `scripts/formats/states.py` extracts the whole graph, and will draw it
 with `--dot`.
 
-Worth noting for the clone: the hard-hat animations (slots 14, 15, 16)
-belong to **no state in this list**. Whatever hard-hat mode is, it is
-not one of Jack's states — which fits it being a mode he stays in rather
-than a pose he holds while a key is down.
+The note that used to stand here — *"the hard-hat animations belong to no
+state"* — was an artefact of the slot offset. They belong to three states
+(0x24346, 0x24727, 0x2498a, plus 0x244c0 to leave), and the hat is a
+mode in the sense that those states loop among themselves until Jack
+comes back out.
 
 ### Movement and gravity — **Confirmed**
 
@@ -686,11 +764,52 @@ and stopping dead. `maxspeed` is the player struct's `+0x14` and `accel`
 its `+0x1c`; the struct is 360 bytes, four of them from VA 0x28b97c, and
 the current one is cached at VA 0x28bf2c.
 
-`initialise_a_player` (VA 0x21337) writes `accel = 12000` (0.183
-px/frame²) but puts a *pointer* in `+0x14`, so the top speed is filled in
-later — plausibly from the chosen hammer, since the game lets each Jack
-carry a different one and the hammer records are full of numbers. Not
-confirmed.
+**Top speed and acceleration belong to the animation, not to Jack.**
+`play_anim` (VA 0x21c26), whenever the slot changes, looks the slot up in a
+u16 index at VA 0xa10d4 and copies a 12-byte record from VA 0xa1172 into
+the player: `+0x14` top speed, `+0x1c` acceleration, `+0x20` the rate used
+when pushing against the current direction. There are eight records:
+
+| profile | top speed | accel | turn | used by (slots) |
+|---|---|---|---|---|
+| 0 | 100000 (1.53 px/tick) | 4000 | 8000 | most of them: walk cycle B (3), the windup and strikes (6, 15-21), the hat (22, 23), the hoover (28, 29), in the air (31), carrying |
+| 1 | 350000 (5.34) | 12000 | 12000 | the run (0, state 0x22275), standing (1), skid (2), slot 5, into and out of the hat (12, 13), air roll part 1 (55) |
+| 2 | 200000 (3.05) | 10000 | 10000 | 30, hitting the ground (32), 49, 74 |
+| 3 | 45056 (0.69) | 4000 | 8000 | 43, 63 |
+| 4 | 200000 | 8000 | 10000 | pushing (38) |
+| 5 | 362000 | 12000 | 12000 | air roll part 2 (56) |
+| 6 | 700000 | 12000 | 12000 | 64 |
+| 7 | 1400000 (21.4) | 12000 | 12000 | air roll part 3 (57) |
+
+So the run's top speed is set from *standing* (slot 1 already carries
+profile 1), and a strike, the hat or the hoover drops the cap to 1.53
+px/tick — the `>> 5` ease above is what bleeds
+the excess off when that happens. `initialise_a_player` (VA 0x21337) only
+seeds `+0x1c`/`+0x20` with 12000 before the first `play_anim` replaces
+them. The pointer it puts in `+0x14` is overwritten the same way.
+
+Friction is in the shared step, every tick, keys or no keys: `|vx| > 399`
+→ `vx ∓ 2000`, else `vx = 0`.
+
+Letting go of a run drops into the skid, VA 0x2266d, which moves Jack
+itself rather than through the shared step and brakes harder: `vx ∓ 5000`
+a tick, and once `|vx| < 10000` it zeroes `vx` and hands over to standing.
+Pushing the other way brakes by the profile's turn rate instead and, once
+`vx` crosses zero, goes straight back into the run. The skid's four frames
+step every fourth tick and hold on the last. Running into a wall during
+it bounces him: `vx = -vx / 4` (VA 0x227ea).
+
+**The tick is the display's vertical retrace.** The main loop (VA 0x2c654
+→ 0x2cb6e) waits for retrace (port 0x3da), then runs the logic frame
+(VA 0x2cbb9) once — or, if the machine has fallen behind, `elapsed_ms /
+13` times, clamped to 1..4 and only changed when two measurements agree
+(VA 0x10ad0; the millisecond clock is the PIT read at VA 0x76f26). Both
+video set-ups in the binary are 480-line modes — VESA through `0x4f02`,
+and mode 13h reprogrammed with misc-output `0xe3` (VA 0x61fd1), the 320x240
+"mode X" timing — and those retrace at **60 Hz**. A 30 Hz PIT handler also
+exists (divisor 0x9b5c at VA 0x60ccd, handler 0x685e3) but nothing calls
+its installer directly. So: 60 ticks a second on a machine that keeps up,
+with a catch-up step of 13 ms (≈77 Hz) when it does not.
 
 ### Counters — **Confirmed**
 
@@ -813,9 +932,8 @@ same blitter, positioned by the frame's own origin.
   second u16.
 - `.WVL` / `.XMI` audio (XMIDI is a documented format; `.WVL` is not
   examined at all).
-- The force a hammer blow carries. Not the hammer record's +0x62 — see
-  the collapse section for where the trail stops (VA 0x1fd5a → a spawn
-  template at 0x9fef6 → VA 0x2f156).
+- What sets the swing's starting frame — the operating range of the force
+  ramp (see the collapse section; the formula itself is confirmed).
 - What the individual bits of the level's option byte (0x98224, and a
   second at 0x98226) do. `ob.py` lists every field of the rules record
   that sets them; nothing yet traces a reader.

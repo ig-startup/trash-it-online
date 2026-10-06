@@ -25,8 +25,16 @@ already named. So a state can be named by what Jack looks like while he
 is in it — the one thing about this binary that a person can confirm at
 a glance.
 
-Two states are hubs: 0x22892, which 19 transitions lead to, and
-0x256e9, with 29. Everything comes back to them.
+Two states are hubs: 0x22892 (standing), which 19 transitions lead to,
+and 0x256e9, with 29. Everything comes back to them.
+
+Names come from `anims.KNOWN`, keyed by the `play_anim` slot. Before
+2026-10-06 that table was read eight bytes early and every name here was
+the animation two slots along — see anims.py.
+
+Not every state is found: the hammer windup (0x23a27) is entered with
+`mov edx, 0x23a27` followed by a jump to a shared `call set_state`, which
+the pairing below does not follow.
 
     python3 scripts/formats/states.py          # the table
     python3 scripts/formats/states.py --dot    # graphviz, if you want it drawn
@@ -44,7 +52,9 @@ PLAY_ANIM = '0x21c26'
 
 #: Names that do not come from the animation, argued from the graph.
 EXTRA = {
-    0x22892: 'the hub every action returns to — 19 transitions lead here',
+    0x22275: 'running (slot 0, set with xor eax, eax)',
+    0x22892: 'standing — the hub every action returns to, 19 transitions',
+    0x23cef: 'hammer strike — plays slot 15 + charge, computed',
     0x256e9: 'the second hub — 29 transitions lead here',
 }
 
