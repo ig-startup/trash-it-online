@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import {
   ensureJackTextures, applyJackFrame, PLAYER_WIDTH, FULL_HEIGHT,
 } from './drawJack';
-import { PROP_ANIMS, applyPropFrame, hasProps } from './props';
+import { PROP_ANIMS, PROP_FRAME_INFO, HAMMER_BY_SLOT, hasProps } from './props';
+import { JACK_FRAME_INFO, JACK_SCALE } from './jackSprites';
 import { MAX_CHARGE } from '../../../shared/constants.mjs';
 
 /**
@@ -73,6 +74,8 @@ const ANIM_CATCHUP_LIMIT = 8;   // frames one tick may make up after a hitch
  * animation does and hands over to `next`, unless `hold` keeps it on its
  * last frame for the logic to end. `locks` means input is ignored until
  * then. `profile` is the movement profile the game's animation carries.
+ * `slot` is the game's own animation slot, which also picks the hammer's
+ * frames (a strike's is `slotFrom` + its charge).
  *
  * The slot numbers are `play_anim`'s own. Until 2026-10-06 these comments
  * used a table read eight bytes early, and named every state after the
@@ -80,46 +83,46 @@ const ANIM_CATCHUP_LIMIT = 8;   // frames one tick may make up after a hitch
  */
 const STATES = {
   // 0x22892, slot 1 — standing, the hub nearly everything returns to
-  stand: { anim: 'idle', ms: 400, loop: true, profile: 'run' },
+  stand: { slot: 1, anim: 'idle', ms: 400, loop: true, profile: 'run' },
   // 0x22275, slot 0 — the run
-  walk: { anim: 'run', ms: 70, loop: true, profile: 'run' },
+  walk: { slot: 0, anim: 'run', ms: 70, loop: true, profile: 'run' },
   // 0x2266d, slot 2 — a frame every fourth tick, held on the last until
   // the braking has stopped him
-  skid: { anim: 'skid', ms: 4 * TICK_MS, hold: true, profile: 'run' },
+  skid: { slot: 2, anim: 'skid', ms: 4 * TICK_MS, hold: true, profile: 'run' },
   // 0x23a27, slot 6 — the sideways windup. Its frames step with the charge,
   // not with a clock, so `ms` is unused.
-  windupSide: { anim: 'hammerSide', ms: Infinity, hold: true, profile: 'slow' },
+  windupSide: { slot: 6, anim: 'hammerSide', ms: Infinity, hold: true, profile: 'slow' },
   // 0x23cef, slots 15-21 — the strike, one frame a tick; which of the two
   // frame lists depends on the charge (see SIDE_STRIKES)
-  strikeSide: { anim: 'hammerSide', ms: TICK_MS, next: 'stand', locks: true, brakes: true },
+  strikeSide: { slotFrom: 15, anim: 'hammerSide', ms: TICK_MS, next: 'stand', locks: true, brakes: true },
   // 0x23f0f, slot 7 — the overhead windup
-  windupOver: { anim: 'hammerOver', ms: Infinity, hold: true, profile: 'slow' },
+  windupOver: { slot: 7, anim: 'hammerOver', ms: Infinity, hold: true, profile: 'slow' },
   // 0x24174, slots 24-27 — the overhead swing, padded longer the more it
   // was charged (see OVER_STRIKES)
-  strikeOver: { anim: 'hammerOver', ms: TICK_MS, next: 'stand', locks: true, brakes: true },
+  strikeOver: { slotFrom: 24, anim: 'hammerOver', ms: TICK_MS, next: 'stand', locks: true, brakes: true },
   // 0x25813, slot 31 — in the air
-  fall: { anim: 'fall', ms: 80, loop: true, profile: 'slow' },
+  fall: { slot: 31, anim: 'fall', ms: 80, loop: true, profile: 'slow' },
   // 0x25a3e, slot 32 — hitting the ground
-  land: { anim: 'land', ms: 45, next: 'stand' },
+  land: { slot: 32, anim: 'land', ms: 45, next: 'stand' },
   // The air state again, while still going up; a mid-stride run frame
   // stands in rather than inventing a pose.
-  rise: { anim: 'run', ms: 999999, loop: true, startFrame: 4, profile: 'slow' },
+  rise: { slot: 31, anim: 'run', ms: 999999, loop: true, startFrame: 4, profile: 'slow' },
   // The hard hat: 0x24346 (slot 12) to duck in, 0x24727 / 0x2498a (slots
   // 22, 23) still and moving, 0x244c0 (slot 13) to come back out. The
   // states loop among themselves until he does, so Down toggles it.
-  hatIn: { anim: 'helmetIn', ms: 45, next: 'hat', locks: true },
-  hat: { anim: 'helmetMove', ms: 60, loop: true, profile: 'slow' },
-  hatOut: { anim: 'helmetIn', ms: 45, next: 'stand', locks: true, reverse: true },
+  hatIn: { slot: 12, anim: 'helmetIn', ms: 45, next: 'hat', locks: true },
+  hat: { slot: 23, anim: 'helmetMove', ms: 60, loop: true, profile: 'slow' },
+  hatOut: { slot: 13, anim: 'helmetIn', ms: 45, next: 'stand', locks: true, reverse: true },
 
   // The hoover. Jack reaches into his hard hat, the hoover comes out, and
   // from then on he is carrying it (slots 28 and 29 — profile 0, so it
   // slows him to a walk). Which states those are has not been re-traced
   // since the slot correction.
-  hatReach: { anim: 'hatReach', ms: 30, next: 'hooverOut', locks: true },
-  hooverOut: { anim: 'hooverOut', ms: 40, next: 'hooverIdle', locks: true },
-  hooverIdle: { anim: 'hooverIdle', ms: 400, loop: true, hoover: true, profile: 'slow' },
-  hooverWalk: { anim: 'hooverWalk', ms: 70, loop: true, hoover: true, profile: 'slow' },
-  hooverAway: { anim: 'hatReach', ms: 30, next: 'stand', locks: true, reverse: true },
+  hatReach: { slot: 10, anim: 'hatReach', ms: 30, next: 'hooverOut', locks: true },
+  hooverOut: { slot: 9, anim: 'hooverOut', ms: 40, next: 'hooverIdle', locks: true },
+  hooverIdle: { slot: 28, anim: 'hooverIdle', ms: 400, loop: true, hoover: true, profile: 'slow' },
+  hooverWalk: { slot: 29, anim: 'hooverWalk', ms: 70, loop: true, hoover: true, profile: 'slow' },
+  hooverAway: { slot: 11, anim: 'hatReach', ms: 30, next: 'stand', locks: true, reverse: true },
 };
 
 /** States in which the hoover is out and sucking. */
@@ -160,17 +163,6 @@ const OVER_STRIKES = [
       14, 14, 15, 15, 15, 15],
     impacts: [5, 6],
   },
-];
-
-/**
- * Where Jack's grip is through a swing, relative to his feet (x is mirrored
- * when he faces left). The original hangs the tool off its own entity; this
- * samples three points along our frame list so the sprite follows the hands.
- */
-const HAMMER_GRIP = [
-  { x: 2, y: -34 },   // raised
-  { x: 10, y: -30 },  // coming down
-  { x: 14, y: -14 },  // struck
 ];
 
 const HITBOX_TEXTURE = 'jack_hitbox';
@@ -222,7 +214,6 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._animTimer = 0;
     this._animFrame = 0;
     this._facingLeft = false;
-    this._hammerPhase = 0;
     this._seq = null;          // a strike's own frame list, while it plays
     this._impacts = null;      // …and the frames its blow lands on
     this._strikeCharge = 0;
@@ -246,11 +237,13 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.art = scene.add.image(x, y, this._frames.idle[0]);
     applyJackFrame(this.art, this._frames.idle[0], true);
 
-    // The sledgehammer, shown only mid-swing.
+    // The hammer is its own sprite, as in the game: Jack's frames do not
+    // include it. It stands on his position and shows the frame the game's
+    // list for the current animation names (see HAMMER_BY_SLOT).
     this.hammer = null;
+    this._hammerKey = null;
     if (hasProps(scene)) {
-      this.hammer = scene.add.image(x, y, PROP_ANIMS.hammer[0]);
-      applyPropFrame(this.hammer, PROP_ANIMS.hammer[0]);
+      this.hammer = scene.add.image(x, y, PROP_ANIMS.hammer[0]).setScale(JACK_SCALE);
       this.hammer.setVisible(false);
     }
 
@@ -262,20 +255,43 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
 
-  /** Keeps the visible frame on top of the physics body. */
+  /**
+   * Keeps the visible frames on top of the physics body.
+   *
+   * Both images are mirrored about their anchor, Jack's feet, as the game
+   * draws them. Phaser's own flip mirrors a frame about its middle instead,
+   * which shifts it by `w - 2 * anchor` — up to 20 px on a strike frame,
+   * and far more on a hammer frame whose anchor lies outside it.
+   */
   _syncArt() {
     if (!this.art || !this.art.active) return;
+    const flip = this._facingLeft;
     this.art.setPosition(this.x, this.y);
-    this.art.setFlipX(this._facingLeft);
+    this.art.setFlipX(flip);
+    Player._anchor(this.art, JACK_FRAME_INFO[this.art.texture.key + '|' + this.art.frame.name]
+      || JACK_FRAME_INFO[this.art.texture.key], flip);
 
-    if (!this.hammer) return;
-    const swinging = this.state === 'hammer';
-    this.hammer.setVisible(swinging);
-    if (!swinging) return;
-    const grip = HAMMER_GRIP[this._hammerPhase] || HAMMER_GRIP[0];
-    const dir = this._facingLeft ? -1 : 1;
-    this.hammer.setFlipX(this._facingLeft);
-    this.hammer.setPosition(this.x + grip.x * dir, this.y + grip.y);
+    if (!this.hammer || !this.hammer.visible) return;
+    this.hammer.setPosition(this.x, this.y);
+    this.hammer.setFlipX(flip);
+    Player._anchor(this.hammer, PROP_FRAME_INFO[this._hammerKey], flip);
+  }
+
+  /** Puts a frame's anchor on the object's position, mirrored if `flip`. */
+  static _anchor(obj, info, flip) {
+    if (!info) return;
+    obj.setOrigin((flip ? info.w - info.ax : info.ax) / info.w, info.ay / info.h);
+  }
+
+  /**
+   * The SPA.SPR frame the hammer shows now, or null where the game's
+   * animation carries no hammer list (the hoover's).
+   */
+  _hammerFrame(spec) {
+    const slot = spec.slotFrom !== undefined ? spec.slotFrom + this._strikeCharge : spec.slot;
+    const list = HAMMER_BY_SLOT[slot];
+    if (!list || !list.length) return null;
+    return list[Math.min(this._animFrame, list.length - 1)];
   }
 
   /** True while the hoover is out and able to suck. */
@@ -535,12 +551,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     if (this._seq) i = this._seq[Math.min(this._animFrame, this._seq.length - 1)];
     this._show(spec.anim, Phaser.Math.Clamp(i, 0, total - 1));
     if (this.hammer) {
-      const swinging = spec.anim.startsWith('hammer');
-      this.hammer.setVisible(swinging);
-      if (swinging) {
-        this._hammerPhase = Math.min(HAMMER_GRIP.length - 1,
-          Math.floor((i / total) * HAMMER_GRIP.length));
-        applyPropFrame(this.hammer, PROP_ANIMS.hammer[this._hammerPhase]);
+      const frame = this._hammerFrame(spec);
+      this.hammer.setVisible(frame !== null);
+      if (frame !== null) {
+        this._hammerKey = PROP_ANIMS.hammer[frame];
+        this.hammer.setTexture(this._hammerKey);
       }
     }
   }

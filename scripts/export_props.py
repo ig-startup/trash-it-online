@@ -3,10 +3,11 @@ Export the props the client needs — the bell and Jack's sledgehammer —
 from the original game's sprite files.
 
 The bell is BELL.SPR frame 0, the timmies are TIMMY.SPR. The hammer is
-SPA.SPR, which holds a
-61-frame rotation of the sledgehammer: the game draws the tool as its own
-entity spinning through that arc, so we pick three frames that read as an
-overhead-to-ground swing and hang them off Jack's hands.
+SPA.SPR, all 61 frames: the game draws the tool as its own entity, standing
+on Jack's own position and picking its frame from a list that runs
+alongside each of Jack's animations (anims.hammer_lists). Those lists are
+written into the manifest as `hammerBySlot`, so the client draws exactly
+the frame the game would.
 
 Sprites without their own .PAL are drawn in the shared palette, which the
 level supplies below index 151 and JACKS.PAL above it (see pal.merge).
@@ -26,6 +27,7 @@ sys.path.insert(0, os.path.join(REPO, "scripts", "formats"))
 import pal
 import spr
 import _png
+from anims import hammer_lists
 
 ORIG = os.path.join(REPO, "Trash-it-original")
 OUT_PNG = os.path.join(REPO, "client", "public", "sprites", "props")
@@ -34,7 +36,7 @@ PREFIX = "sprites/props"
 
 PROPS = {
     "bell": ("BELL.SPR", [0]),
-    "hammer": ("SPA.SPR", [45, 2, 60]),   # raised, mid-swing, struck down
+    "hammer": ("SPA.SPR", list(range(61))),   # index = SPA frame number
     # Timmies are the most common object in the game by a wide margin —
     # about 2000 records across three quarters of the levels. TIMMY.SPR
     # holds 35 frames; these six read as a walk cycle.
@@ -70,6 +72,9 @@ def main(level_name="0A"):
             }
             names.append(name)
         manifest["anims"][prop] = names
+
+    lists = hammer_lists(os.path.join(ORIG, "G.EXE"))
+    manifest["hammerBySlot"] = {str(k): v for k, v in sorted(lists.items())}
 
     with open(OUT_JSON, "w") as fh:
         json.dump(manifest, fh, indent=2)

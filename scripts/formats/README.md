@@ -659,6 +659,27 @@ VA 0x23b88.) Two things this overturns:
 - **`+0x3c` is the minimum**, the floor of the ramp (8 for a sledge v1,
   100 for most late hammers).
 
+**Where the blow lands** (VA 0x1f83d → 0x1f905): from Jack's own position
+— his feet, the entity point every sprite is drawn from — the hammer
+record's `+0x4a` ahead and `+0x4c` down (53 and -12 for a sledge v1), then
+outward in 8 px steps (0, +8, -8, +16, …) for as far as `+0x4e` across and
+`+0x50` down allow, each step one cell of the collision map
+(`0x69e6a` is a plain `>> 3`). A sledge's extents are 4 and 7, under one
+step, so **its blow is a single 8x8 cell**, and the "up to 3 blocks" its
+type allows never comes into play. That cell is where the head is drawn
+(next paragraph), 24 px past the end of Jack's own frame.
+
+**The hammer is its own sprite.** Jack's frames do not include it. The
+hammer entity (template 0xa3038, routine VA 0x20890) copies Jack's
+position every frame and shows a frame of `SPR/SPA.SPR` taken from a list
+that runs alongside each animation: `play_anim` puts `[slot*4 + 0x9ff88]`
+in the player's `+0x58`, and the hammer shows entry [Jack's frame index].
+Standing, running and skidding all use 0xa10b0, the hammer on the
+shoulder (SPA frames 0-15); the strike runs 26 → 33, and frame 33 —
+54x16, anchored 14 px ahead of Jack — puts the head exactly over the
+blow's cell. The hoover's slots have no list. `anims.hammer_lists()`
+reads them.
+
 The hammer type (record `+0x48` low u16, wielder `+0x88`) then shapes it
 at VA 0x1fcd3: types 1 and 4 halve the force, and every type also sets
 how many blocks one blow may strike (1..3; type 4 picks 2 or 3 at random).

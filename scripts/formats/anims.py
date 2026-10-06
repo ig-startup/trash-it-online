@@ -167,6 +167,31 @@ def table(exe):
     return out
 
 
+#: A second pointer array, parallel to TABLE_VA: for every slot, the frames
+#: of the *hammer* (SPR/SPA.SPR) to draw alongside Jack's. `play_anim` puts
+#: `[slot*4 + 0x9ff88]` in the player's +0x58 (VA 0x21cc5), and the hammer
+#: entity's routine (VA 0x20890) stands it on Jack's own position and shows
+#: entry [Jack's frame index] of that list. Jack's frames do not include
+#: the hammer at all; this is where it comes from. A null pointer means
+#: the slot has no list (the hoover's, for instance).
+HAMMER_TABLE_VA = 0x9ff88
+
+
+def hammer_lists(exe, jack=None):
+    """-> {slot: [SPA.SPR frame numbers]}, each as long as Jack's list."""
+    code = Code(exe)
+    jack = jack or table(exe)
+    out = {}
+    for slot, info in jack.items():
+        va = code.u32(HAMMER_TABLE_VA + 4 * slot)
+        if not va:
+            continue
+        words = [struct.unpack_from('<H', code.read(va + 2 * k, 2), 0)[0]
+                 for k in range(len(info['frames']))]
+        out[slot] = [w & FRAME_MASK for w in words]
+    return out
+
+
 def _main():
     repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     exe = os.path.join(repo, 'Trash-it-original', 'G.EXE')

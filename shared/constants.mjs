@@ -44,11 +44,14 @@ export const GAME_CONFIG = {
  *   halves  hammer type (record +0x48) 1 and 4 halve the blow (VA 0x1fcd3)
  *   strikes how many blocks one blow may hit; type 1 gives 3
  *   overLo, overHi  record +0x44 / +0x46 — the overhead strike's own ramp
+ *   reach   record +0x4a..+0x50: where the blow lands from Jack's feet
+ *           (dx ahead, dy down) and how far it spreads (w, h) — VA 0x1f83d
  *
  * See "What a hammer blow carries" in scripts/formats/README.md.
  */
 export const HAMMER = {
   name: 'the sledge hammer v1', lo: 8, hi: 150, halves: true, strikes: 3, overLo: 1, overHi: 8,
+  reach: { dx: 53, dy: -12, w: 4, h: 7 },
 };
 
 /** Holding the key charges the swing up to this (VA 0x23a93). */

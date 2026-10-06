@@ -385,40 +385,62 @@ export default class GameScene extends Phaser.Scene {
   // ── Private helpers ───────────────────────────────────────────────────────
 
   /**
-   * The patch of world a hammer blow reaches: a small box in front of Jack,
-   * at chest height. Using his whole body would smash whatever he is
-   * standing on, which on a level built from the original's own blocks means
-   * knocking the floor out from under himself on every swing.
+   * The cells a blow lands in, in the order the original visits them
+   * (VA 0x1f905): from Jack's own point — his feet, which is where the
+   * client's body and the original's entity both sit — out by the hammer's
+   * reach, then outward in steps of 8 (0, +8, -8, +16, …) for as far as its
+   * extent allows, across before down. The sledge's extent is under one
+   * step either way, so its blow is the single 8x8 cell just past the
+   * hammer's head.
+   * @returns {{x: number, y: number}[]} cell centres, level pixels
    */
-  _hammerReach() {
-    const b = this._player.getBounds();
-    const reach = 18;
-    const x = this._player.facingLeft ? b.left - reach : b.right;
-    return new Phaser.Geom.Rectangle(x, b.top + b.height * 0.25, reach, b.height * 0.6);
+  _hammerCells() {
+    const { dx, dy, w, h } = HAMMER.reach;
+    const dir = this._player.facingLeft ? -1 : 1;
+    const ox = Math.round(this._player.x) + dir * dx;
+    const oy = Math.round(this._player.y) + dy;
+    const steps = (extent) => {
+      const out = [0];
+      for (let k = 8; k <= extent; k += 8) out.push(k, -k);
+      return out;
+    };
+    const cells = [];
+    steps(h).forEach((sy) => steps(w).forEach((sx) => {
+      cells.push({
+        x: Math.floor((ox + sx) / 8) * 8 + 4,
+        y: Math.floor((oy + sy) / 8) * 8 + 4,
+      });
+    }));
+    return cells;
   }
 
   /**
    * A blow landing. The force is the hammer's ramp at the charge the swing
-   * was let go with, and one blow strikes at most `HAMMER.strikes` blocks —
-   * the original walks its blow box outward from the middle (VA 0x1f905),
-   * so the nearest ones are taken.
+   * was let go with. Each cell of the blow strikes whatever block fills it,
+   * until `HAMMER.strikes` blocks have been struck.
+   *
+   * The overhead blow goes through a different routine (VA 0x1fd94) whose
+   * box has not been read; it uses the sideways one here.
    * @param {{charge: number, overhead: boolean}} blow
    */
   _checkHammerDestructibles({ charge, overhead }) {
     const force = overhead ? overheadForce(charge) : hammerForce(charge);
-    const reach = this._hammerReach();
-    const cx = reach.centerX;
-    const cy = reach.centerY;
-    const struck = [];
-    this._destructibleMap.forEach((entry) => {
-      if (!entry.rect.active) return;
-      if (Phaser.Geom.Intersects.RectangleToRectangle(reach, entry.rect.getBounds())) {
-        struck.push(entry);
-      }
-    });
-    const near = (e) => Phaser.Math.Distance.Between(cx, cy, e.rect.x, e.rect.y);
-    struck.sort((p, q) => near(p) - near(q));
-    struck.slice(0, HAMMER.strikes).forEach((entry) => this._applyForce(entry, force, 0));
+    const cells = this._hammerCells();
+    const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
+    let left = HAMMER.strikes;
+    for (const c of cells) {
+      if (left <= 0) break;
+      const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(c.x, c.y));
+      if (!hit) continue;
+      this._applyForce(hit, force, 0);
+      left -= 1;
+    }
+
+    // The area the cells cover, for what is not a block.
+    const xs = cells.map((c) => c.x);
+    const ys = cells.map((c) => c.y);
+    const reach = new Phaser.Geom.Rectangle(Math.min(...xs) - 4, Math.min(...ys) - 4,
+      Math.max(...xs) - Math.min(...xs) + 8, Math.max(...ys) - Math.min(...ys) + 8);
 
     // A blow arms any dynamite it reaches.
     this._dynamite.forEach((d) => {
