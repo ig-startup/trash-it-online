@@ -22,6 +22,16 @@ const GRAVITY = 0.28125 * ORIGINAL_HZ * ORIGINAL_HZ;  // VA 0x22d31: vy += 0x480
 const TERMINAL = 24 * ORIGINAL_HZ;                    // clamped at 0x180000
 const JUMP = -4.5 * ORIGINAL_HZ;                      // VA 0x22bc5, out of the walk
 /**
+ * Holding the jump key lifts him further (state 0x22b91): from the eighth
+ * tick on, while the key stays down and he is still rising, `vy -= boost`,
+ * the boost starting at 0x5400 and shrinking by 0x6f0 a tick until it is
+ * spent — about twelve ticks. A tap is the bare 36 px hop; a held jump
+ * goes roughly half as high again.
+ */
+const JUMP_BOOST = 0x5400;
+const JUMP_BOOST_DECAY = 0x6f0;
+const JUMP_BOOST_AFTER = 7;      // ticks
+/**
  * The hop nearly every state in the game can do: -2.0 px/frame, which
  * lifts him seven pixels. Not a jump — a stumble over a kerb. Kept here
  * because it turns up in almost every one of the 46 states and is the
@@ -104,9 +114,9 @@ const STATES = {
   fall: { slot: 31, anim: 'fall', ms: 80, loop: true, profile: 'slow' },
   // 0x25a3e, slot 32 — hitting the ground
   land: { slot: 32, anim: 'land', ms: 45, next: 'stand' },
-  // The air state again, while still going up; a mid-stride run frame
-  // stands in rather than inventing a pose.
-  rise: { slot: 31, anim: 'run', ms: 999999, loop: true, startFrame: 4, profile: 'slow' },
+  // 0x22b91, slot 5 — the jump: frames 6-12 of the sheet, which sit inside
+  // the run pose, a frame every fourth tick and held on the last
+  rise: { slot: 5, anim: 'run', frames: [5, 6, 7, 8, 9, 10, 11], ms: 4 * TICK_MS, hold: true, profile: 'run' },
   // The hard hat: 0x24346 (slot 12) to duck in, 0x24727 / 0x2498a (slots
   // 22, 23) still and moving, 0x244c0 (slot 13) to come back out. The
   // states loop among themselves until he does, so Down toggles it.
@@ -221,6 +231,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._chargeTicks = 0;
     this._chargeStep = 0;
     this._skidVx = 0;          // the skid's speed last tick, for the bounce
+    this._jumpBoost = 0;       // what is left of a held jump's extra lift
+    this._jumpTicks = 0;
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -399,10 +411,25 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const profile = PROFILES[spec.profile] || PROFILES.run;
     const moving = this._steer(cursors, body, dt, profile);
 
-    if ((cursors.up.isDown || cursors.space.isDown) && onGround) {
+    const jumpHeld = cursors.up.isDown || cursors.space.isDown;
+    if (jumpHeld && onGround) {
       body.setVelocityY(JUMP);
+      this._jumpBoost = JUMP_BOOST;
+      this._jumpTicks = 0;
       this._enter('rise', now);
       return;
+    }
+
+    if (this.state === 'rise' && this._jumpBoost > 0) {
+      if (!jumpHeld || body.velocity.y >= 0) {
+        this._jumpBoost = 0;
+      } else {
+        this._jumpTicks += dt * ORIGINAL_HZ;
+        if (this._jumpTicks > JUMP_BOOST_AFTER) {
+          body.setVelocityY(body.velocity.y - perS2(this._jumpBoost) * dt);
+          this._jumpBoost = Math.max(0, this._jumpBoost - JUMP_BOOST_DECAY * dt * ORIGINAL_HZ);
+        }
+      }
     }
 
     if (!onGround) {
@@ -503,7 +530,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     if (this.state === name) return;
     this.state = name;
     const spec = STATES[name] || STATES.stand;
-    this._seq = strike ? strike.seq : null;
+    this._seq = strike ? strike.seq : (spec.frames || null);
     this._impacts = strike ? strike.impacts : null;
     this._strikeCharge = strike ? strike.charge : 0;
     this._animFrame = spec.startFrame || 0;

@@ -845,6 +845,31 @@ exists (divisor 0x9b5c at VA 0x60ccd, handler 0x685e3) but nothing calls
 its installer directly. So: 60 ticks a second on a machine that keeps up,
 with a catch-up step of 13 ms (≈77 Hz) when it does not.
 
+### Controls and the jump — **Confirmed**
+
+The game asks for six keys per player, in this order (VA 0x912c9):
+LEFT, RIGHT, UP, DOWN, BUT1, BUT2 — and the input word the states test
+(`0x28bf36` held, `0x28bf34` just pressed, copied from the player's
+`+0x24` / `+0x28` each tick, VA 0x218a0) carries them as bits 1, 2, 4, 8,
+0x10, 0x20. Bits 0x40 and 0x80 are two more buttons used when the
+player's control mode (`+0x166`) is 4 or more.
+
+| action | test | input |
+|---|---|---|
+| jump | VA 0x20e9f, from standing, running, skidding | BUT2 (0x20) pressed |
+| duck into the hard hat | VA 0x22a66 | DOWN alone, pressed |
+| the hoover | VA 0x2371f | BUT1 (0x10) pressed with UP held — unless the level's option bits 2 / 4 at 0x98224 forbid it |
+| sideways windup | VA 0x2110d | button 0x80 (mode ≥ 4), or BUT2 (mode 2) |
+| overhead windup | VA 0x21185 | button 0x40 (mode ≥ 4), or BUT2 with a direction (mode 2) |
+
+The clone's bindings are its own and have not been changed to match.
+
+The jump (state 0x22b91, slot 5 — frames 6-12) starts at `vy = -4.5`
+px/tick. From its eighth tick, while the key is held and Jack is still
+rising, it adds lift: `vy -= boost`, the boost starting at 0x5400 and
+falling by 0x6f0 a tick until spent (VA 0x22bf8-0x22c2d). A tap clears
+36 px; a held jump about half as much again.
+
 ### Counters — **Confirmed**
 
 A level-state record (pointer at VA 0x317ca8) holds the three counters
