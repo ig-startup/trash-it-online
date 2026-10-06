@@ -3,7 +3,7 @@ import Player from '../entities/Player.js';
 import RemotePlayer from '../entities/RemotePlayer.js';
 import SocketManager from '../network/SocketManager.js';
 import {
-  EVENTS, PLAYER_COLORS, HAMMER, hammerForce, overheadForce,
+  EVENTS, PLAYER_COLORS, HAMMER, hammerForce,
 } from '../../../shared/constants.mjs';
 import { getLevel, nextLevelId, DEFAULT_LEVEL_ID } from '../levels';
 import { WORLD_COLORS } from '../palette';
@@ -415,34 +415,48 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
-   * A blow landing. The force is the hammer's ramp at the charge the swing
-   * was let go with. Each cell of the blow strikes whatever block fills it,
-   * until `HAMMER.strikes` blocks have been struck.
-   *
-   * The overhead blow goes through a different routine (VA 0x1fd94) whose
-   * box has not been read; it uses the sideways one here.
+   * The overhead strike's box: from Jack's feet, `HAMMER.overBox` ahead
+   * and down, mirrored when he faces left (VA 0x2f1d7).
+   */
+  _overheadBox() {
+    const { dx, dy, w, h } = HAMMER.overBox;
+    const x = Math.round(this._player.x);
+    const left = this._player.facingLeft ? x - dx - w + 1 : x + dx;
+    return new Phaser.Geom.Rectangle(left, Math.round(this._player.y) + dy, w, h);
+  }
+
+  /**
+   * A blow landing. The sideways blow carries the hammer's ramp at the
+   * charge it was let go with into the blocks under its cells, until
+   * `HAMMER.strikes` have been struck. The overhead blow strikes no blocks
+   * — in the game it goes to sprites only (VA 0x1fd94) — so here it only
+   * reaches what is not a block.
    * @param {{charge: number, overhead: boolean}} blow
    */
   _checkHammerDestructibles({ charge, overhead }) {
-    const force = overhead ? overheadForce(charge) : hammerForce(charge);
-    const cells = this._hammerCells();
-    const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
-    let left = HAMMER.strikes;
-    for (const c of cells) {
-      if (left <= 0) break;
-      const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(c.x, c.y));
-      if (!hit) continue;
-      this._applyForce(hit, force, 0);
-      left -= 1;
+    let reach;
+    if (overhead) {
+      reach = this._overheadBox();
+    } else {
+      const force = hammerForce(charge);
+      const cells = this._hammerCells();
+      const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
+      let left = HAMMER.strikes;
+      for (const c of cells) {
+        if (left <= 0) break;
+        const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(c.x, c.y));
+        if (!hit) continue;
+        this._applyForce(hit, force, 0);
+        left -= 1;
+      }
+      const xs = cells.map((c) => c.x);
+      const ys = cells.map((c) => c.y);
+      reach = new Phaser.Geom.Rectangle(Math.min(...xs) - 4, Math.min(...ys) - 4,
+        Math.max(...xs) - Math.min(...xs) + 8, Math.max(...ys) - Math.min(...ys) + 8);
     }
 
-    // The area the cells cover, for what is not a block.
-    const xs = cells.map((c) => c.x);
-    const ys = cells.map((c) => c.y);
-    const reach = new Phaser.Geom.Rectangle(Math.min(...xs) - 4, Math.min(...ys) - 4,
-      Math.max(...xs) - Math.min(...xs) + 8, Math.max(...ys) - Math.min(...ys) + 8);
-
-    // A blow arms any dynamite it reaches.
+    // A blow arms any dynamite it reaches. Ours: how the game lights a
+    // stick has not been traced — its dynamite does not read the hit flag.
     this._dynamite.forEach((d) => {
       if (d.lit || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {

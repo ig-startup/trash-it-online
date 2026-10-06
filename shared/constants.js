@@ -45,12 +45,15 @@ const GAME_CONFIG = {
  *   overLo, overHi  record +0x44 / +0x46 — the overhead strike's own ramp
  *   reach   record +0x4a..+0x50: where the blow lands from Jack's feet
  *           (dx ahead, dy down) and how far it spreads (w, h) — VA 0x1f83d
+ *   overBox record +0x5e / +0x62 / +0x60: the overhead strike's box, from
+ *           Jack's feet (VA 0x1fd5a). That strike hits sprites, not blocks.
  *
  * See "What a hammer blow carries" in scripts/formats/README.md.
  */
 const HAMMER = {
   name: 'the sledge hammer v1', lo: 8, hi: 150, halves: true, strikes: 3, overLo: 1, overHi: 8,
   reach: { dx: 53, dy: -12, w: 4, h: 7 },
+  overBox: { dx: 40, dy: -13, w: 27, h: 14 },
 };
 
 /** Holding the key charges the swing up to this (VA 0x23a93). */
@@ -73,10 +76,10 @@ const MAX_OVER_CHARGE = 3;
 
 /**
  * The overhead strike: the same ramp over its own two numbers,
- * `overLo + ((overHi - overLo) >> (3 - charge))` (VA 0x241db). It goes to
- * a different routine from the sideways blow (VA 0x1fd94), which has not
- * been followed, so whether that halves it too is not known — it is not
- * halved here. For this hammer it is 1..8: a tap, next to the side blow.
+ * `overLo + ((overHi - overLo) >> (3 - charge))` (VA 0x241db). It does not
+ * touch blocks at all: VA 0x1fd94 hands it to every *sprite* in the
+ * strike's box (VA 0x2f156), which is how a clock gets smashed or a
+ * hanging sign set swinging. For this hammer it is 1..8.
  * @param {number} charge 0..MAX_OVER_CHARGE
  */
 function overheadForce(charge, hammer = HAMMER) {

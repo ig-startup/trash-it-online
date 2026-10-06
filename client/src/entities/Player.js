@@ -220,6 +220,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._charge = 0;          // the windup's charge, which is its frame
     this._chargeTicks = 0;
     this._chargeStep = 0;
+    this._skidVx = 0;          // the skid's speed last tick, for the bounce
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -379,7 +380,12 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     // ── The skid brakes by itself; a direction key runs again ─────────────
     if (this.state === 'skid' && onGround && !cursors.left.isDown && !cursors.right.isDown) {
+      // Skidding into a wall bounces him back a quarter as fast (VA 0x227ea).
+      // Physics has already stopped him by now, so it is last tick's speed.
+      const into = (this._skidVx > 0 && body.blocked.right) || (this._skidVx < 0 && body.blocked.left);
+      if (into) body.setVelocityX(-this._skidVx / 4);
       const vx = body.velocity.x;
+      this._skidVx = vx;
       if (Math.abs(vx) < SKID_STOP) {
         body.setVelocityX(0);
         this._enter('stand', now);
@@ -412,7 +418,10 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     if (this.state === 'land') return; // let it finish
 
     if (moving) this._enter('walk', now);
-    else if (Math.abs(body.velocity.x) >= SKID_STOP) this._enter('skid', now);
+    else if (Math.abs(body.velocity.x) >= SKID_STOP) {
+      this._skidVx = body.velocity.x;
+      this._enter('skid', now);
+    }
     else {
       body.setVelocityX(0);
       this._enter('stand', now);

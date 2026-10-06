@@ -695,6 +695,19 @@ The `shr 0x12` at VA 0x1fba6 is something else: it reads `force >> 18`
 (clamped to 63 and 500) to pick the dust and the camera shake, and it is
 zero for any ordinary hammer. Only dynamite and the joke hammers reach it.
 
+**The overhead strike hits sprites, not blocks.** Its force (above) goes
+to VA 0x1fd94, which builds a box from the hammer entity's `+0x58`,
+`+0x5c`, `+0x5a` (record `+0x5e`, `+0x62`, `+0x60`; for a sledge v1, 40
+ahead, 13 up, 27 wide, 14 tall — mirrored when facing left, VA 0x2f1d7)
+and hands it to the sprite search at VA 0x2f156. That walks the sprite
+list, keeps those whose class mask meets 4, and for up to 32 of them sets
+the attacker (`+8`), the force (`+0x4e`) and the hit flag (`+0x40 |=
+0x80`). Three things read that flag: a clock, `CLOK.SPR` (VA 0x11edd —
+it bursts into twelve pieces and is gone), a hanging sign, `DIS.SPR`
+(VA 0x5f3c0 — it swings, amplitude `force >> 5` clamped to 3..32), and a
+creature whose state goes to VA 0x14935 with sound 0x84 (not yet named).
+Dynamite does not read it; how a stick gets lit is still open.
+
 Not yet read: how the wielder's +0x74/+0x78 ever differ from the record
 once a hammer is upgraded, and what the strike state's other exits do
 (VA 0x23dbc goes straight back into the windup if the key is still down).
