@@ -1055,6 +1055,94 @@
       "ax": 14,
       "ay": 24,
       "src": "SUCKER.SPR:1"
+    },
+    "telly_00": {
+      "file": "sprites/props/telly_00.png",
+      "w": 63,
+      "h": 19,
+      "ax": 32,
+      "ay": 15,
+      "src": "TELLY.SPR:0"
+    },
+    "telly_01": {
+      "file": "sprites/props/telly_01.png",
+      "w": 63,
+      "h": 22,
+      "ax": 32,
+      "ay": 18,
+      "src": "TELLY.SPR:1"
+    },
+    "telly_02": {
+      "file": "sprites/props/telly_02.png",
+      "w": 63,
+      "h": 28,
+      "ax": 32,
+      "ay": 24,
+      "src": "TELLY.SPR:2"
+    },
+    "telly_03": {
+      "file": "sprites/props/telly_03.png",
+      "w": 63,
+      "h": 31,
+      "ax": 32,
+      "ay": 27,
+      "src": "TELLY.SPR:3"
+    },
+    "telly_04": {
+      "file": "sprites/props/telly_04.png",
+      "w": 63,
+      "h": 32,
+      "ax": 32,
+      "ay": 28,
+      "src": "TELLY.SPR:4"
+    },
+    "telly_05": {
+      "file": "sprites/props/telly_05.png",
+      "w": 63,
+      "h": 31,
+      "ax": 32,
+      "ay": 27,
+      "src": "TELLY.SPR:5"
+    },
+    "telly_06": {
+      "file": "sprites/props/telly_06.png",
+      "w": 63,
+      "h": 28,
+      "ax": 32,
+      "ay": 24,
+      "src": "TELLY.SPR:6"
+    },
+    "telly_07": {
+      "file": "sprites/props/telly_07.png",
+      "w": 63,
+      "h": 24,
+      "ax": 32,
+      "ay": 20,
+      "src": "TELLY.SPR:7"
+    },
+    "telly_08": {
+      "file": "sprites/props/telly_08.png",
+      "w": 63,
+      "h": 20,
+      "ax": 32,
+      "ay": 16,
+      "src": "TELLY.SPR:8"
+    },
+    "telly_09": {
+      "file": "sprites/props/telly_09.png",
+      "w": 63,
+      "h": 18,
+      "ax": 32,
+      "ay": 14,
+      "src": "TELLY.SPR:9"
+    },
+    "telly_10": {
+      "file": "sprites/props/telly_10.png",
+      "w": 30,
+      "h": 65,
+      "ax": 15,
+      "ay": 72,
+      "src": "TELLY.SPR:10"
     }
   },
   "anims": {
@@ -1215,6 +1303,19 @@
     "sucker": [
       "sucker_00",
       "sucker_01"
+    ],
+    "telly": [
+      "telly_00",
+      "telly_01",
+      "telly_02",
+      "telly_03",
+      "telly_04",
+      "telly_05",
+      "telly_06",
+      "telly_07",
+      "telly_08",
+      "telly_09",
+      "telly_10"
     ]
   },
   "hammerBySlot": {

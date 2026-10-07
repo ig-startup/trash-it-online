@@ -1088,8 +1088,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._climbFrame();
   }
 
-  /** Held on a sucker at (x, y), his feet on its cup. */
-  holdAt(x, y) {
+  /**
+   * Held in place — on a sucker's cup, or in a teleporter's beam — at
+   * (x, y), drawn squeezed by (sx, sy).
+   */
+  holdAt(x, y, sx = 1, sy = 1) {
     const body = this.body;
     if (this.state !== 'caught') {
       // Hands full, what he holds drops, as under a falling block (ours).
@@ -1102,6 +1105,18 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this._enter('caught', this.scene.time.now);
     }
     body.reset(x, y);
+    this._squashX = sx;
+    this._squashY = sy;
+  }
+
+  /** Let go where he is held, to fall as he will. */
+  letGo() {
+    const body = this.body;
+    body.setAllowGravity(true);
+    body.checkCollision.none = false;
+    this._squashX = 1;
+    this._squashY = 1;
+    this._enter('fall', this.scene.time.now);
   }
 
   /** Thrown off it straight up, at `vy` px/tick, from (x, y). */
@@ -1110,6 +1125,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     body.setAllowGravity(true);
     body.checkCollision.none = false;
     body.reset(x, y);
+    this._squashX = 1;
+    this._squashY = 1;
     body.setVelocity(0, vy * ORIGINAL_HZ);
     this._jumpBoost = 0;
     this._enter('rise', this.scene.time.now);

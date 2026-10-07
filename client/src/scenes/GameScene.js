@@ -15,6 +15,7 @@ import Rubble from './rubble';
 import Collapse from './collapse';
 import Cannons from './cannons';
 import Suckers from './suckers';
+import Tellies from './tellies';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -230,6 +231,14 @@ export default class GameScene extends Phaser.Scene {
         })
       : null;
 
+    // ── Teleporters (.OB class 27) ────────────────────────────────────────
+    // Made before him too: he stands in their beams, not behind them.
+    this._tellies = hasProps(this) && PROP_ANIMS.telly && (level.tellies || []).length
+      ? new Tellies(this, level.tellies, (x, y) => this._blockAt(x, y),
+        level.ground ? level.ground.y : levelHeight)
+      : null;
+    if (this._tellies) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._tellies.destroy());
+
     // ── Cannonballs (.OB class 7) ─────────────────────────────────────────
     // Things to pick up, like the dynamite — and what a cannon fires.
     this._balls = [];
@@ -441,6 +450,12 @@ export default class GameScene extends Phaser.Scene {
 
     this._tickDynamite(time);
     if (this._cannons) this._tickCannons(delta);
+    if (this._tellies) {
+      if (this._player.state !== 'caught') this._tellies.meet(this._player);
+      this._tellies.update(delta,
+        (pl, x, y, sx, sy) => pl.holdAt(x, y, sx, sy),
+        (pl) => pl.letGo());
+    }
     if (this._suckers) {
       if (this._player.state !== 'caught') this._suckers.catchJack(this._player);
       this._suckers.update(delta,

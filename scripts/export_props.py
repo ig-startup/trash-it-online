@@ -66,6 +66,9 @@ PROPS = {
     # The sucker (.OB class 22, VA 0x18fba): a base, and the red cup on it
     # that rides up and down with what it is doing.
     "sucker": ("SUCKER.SPR", [0, 1]),
+    # The teleporter (.OB class 27, VA 0x347c1): the pad opening and
+    # closing (0-9) and the beam that rises over it while it is on (10).
+    "telly": ("TELLY.SPR", list(range(11))),
 }
 
 

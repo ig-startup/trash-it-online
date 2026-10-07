@@ -55,6 +55,8 @@ CANNON_CLASS = 6
 BALL_CLASS = 7
 #: Class 22 places a sucker — the spring that throws what lands on it.
 SUCKER_CLASS = 22
+#: Class 27 places a teleporter pad (TELLY.SPR).
+TELLY_CLASS = 27
 TIME_LIMIT = 240
 PAD = 1  # transparent gutter between packed shapes
 
@@ -247,6 +249,16 @@ def export(name):
                for x, y in [struct.unpack_from("<hh", payload, 0)]
                if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
 
+    # Teleporters. Class 27: x, y; at +14 bit 0 keeps it on for good, at
+    # +16 its own number (under 8) and at +18 the number of the pad it
+    # sends to (VA 0x347c1).
+    tellies = [{"x": x, "y": y + HEADROOM, "id": w[8], "target": w[9],
+                "alwaysOn": bool(w[7] & 1)}
+               for cid, _off, payload in placed if cid == TELLY_CLASS
+               for w in [struct.unpack_from("<10h", payload, 0)]
+               for x, y in [(w[0], w[1])]
+               if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
+
     rung = ob.bells(placed)
     if rung:
         bx, by, _subtype = rung[0]
@@ -273,6 +285,7 @@ def export(name):
         "cannons": cannons,
         "balls": balls,
         "suckers": suckers,
+        "tellies": tellies,
         # The bottom edge of a level is solid ground in the original. It is
         # not made of objects — in 0B all 179 are destructible and nothing
         # sits under the start at all — but every level's authored start is
