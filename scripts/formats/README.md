@@ -942,7 +942,7 @@ Empty-handed, standing (0x22892) or running (0x22275):
 | UP held, at a ladder | climb (0x25bda) |
 | DOWN held alone, **running** (arrow let go, still moving) | **pick up** (0x267e3, via 0x20ee0) |
 | UP held, running | push (0x2820b) |
-| UP held, standing | 0x28691: holds on to a sprite of category bit 1 that is moving towards him, taking it from whoever had it |
+| UP held, standing | 0x28691: the pushing stance, still — holds on to a cannon rolling at him (see Pushing) |
 
 With the hammer out (0x23499 standing, 0x236b9 walking — cycle B,
 profile 0, so slower):
@@ -971,7 +971,7 @@ The level's option byte (0x98224) switches actions off: bit 1 the
 hammer, 2 the hammer's DOWN action, 4 the hoover, 8 the hoover's.
 
 The clone plays this layout with Z as BUT1 and X (or Space) as BUT2.
-Not yet in it: pushing, 0x28691, the hammer's and the
+Not yet in it: the hammer's and the
 hoover's DOWN actions, and the hat's BUT2. Two choices are its own:
 putting a carried thing down takes a fresh press of Down (the game tests
 Down held, so keeping it held after the lift would drop it at once), and
@@ -1224,6 +1224,59 @@ feet are set on the top of the block 30 px over where he started
 0x22a05 → 0x29b15, slot 61 — the same frame list backwards): 9 px down at
 once, the table backwards from frame 11, and then 31 px under the top,
 climbing.
+
+### Pushing — **Confirmed**
+
+UP held on the run goes into **0x2820b** (slot 38, sheet 207-222: arms
+out, leaning in), standing into **0x28691** (slot 52, frame 245, the same
+stance still). Neither pushes anything by itself — 0x2820b is a walk with
+movement profile 4 (top 3.05 px/tick, accel 8000, turn 10000) whose frame
+is his x, `(x >> 3) & 15`, run backwards facing left. Pushing back the
+other way faster than 0x2bf20 (2.75 px/tick) skids him; with no direction
+he brakes 5000 a tick and below 10000 stands in 0x28691, and a direction
+from there walks again. BUT2 jumps, BUT1 does what it does from standing.
+
+What makes it pushing is a search both states run while UP is held
+(0x284e5 / 0x28771): sprites whose category has **bit 1** (template
+`+0x10` set to 2 for the call, VA 0x2f0ab), up to the list at 0x3f1670,
+that his box overlaps (0x2ddd6) and that are coming at him — `vx <= 0`
+facing right, `vx > 0` facing left. The first is linked both ways (`jack[4]
+= obj`, `jack+0x41 |= 0x20`; `obj[4] = jack`, `obj+0x41 |= 0x40`); one
+another player holds is taken from him, and he gets a 3-tick wait
+(`+0xa4`). The link lasts while they overlap. A linked sprite copies its
+holder's `vx` every tick (VA 0x27f96) — and then runs its own physics and
+friction on top, so it lags him slightly and he stays against it.
+
+Of the whole cast **only one template has category bit 1: CWHL.SPR**, the
+cannon's wheel. Pushing is for cannons.
+
+### The cannon — **Confirmed, except firing**
+
+`.OB` class 6 (constructor VA 0x5f69a, 20-byte payload): `i16 x, y` — the
+wheel's position — then at +14 which way it faces (1 left, 2 right) and at
++18 what it stands on: **2 a wheel** (CWHL, template 0xa4470, category 6 —
+pushable, and hit by the overhead blow) or **1 a fixed carriage** (CFIX,
+0xa448c, category 0, `+0x64 |= 4`). On it the constructor stacks three
+parts of CFIR.SPR that follow it each tick: the barrel with its fuse
+(frame 0, template 0xa441c), and two halves of the breech (frames 10 and
+9, 0xa4438 and 0xa4454 — the second shown only while the first is on 10).
+All four share the one anchor. 46 levels carry 60 of them; in 0H, 0S, 2H
+and 3I among the exported ones.
+
+The wheel (state 0x5f8b0): its frame is `(x >> 1) & 3`, backwards facing
+left; it takes its holder's speed (0x27f96); gravity 0x4800 and friction
+2000 a tick, zeroed below 10000 (0x5fd1e). The overhead blow's hit flag,
+on the ground and on wheels only, throws it up at `vy = -0x30d40` and
+turns it round (`+0x40 ^= 4`, VA 0x5f944).
+
+**Not traced: what fires it.** The breech half 0xa4438 (state 0x5fd78)
+waits for the barrel's frame to be 0 and its own to leave 10, then runs a
+spark along the fuse (template 0xa44a8, points at 0xa4522 ending on 1234)
+and at the end puts the wheel into 0x5f964, which fires through 0x6010e
+with a recoil of half the result on the wheel — none of it on a fixed
+carriage. Nothing found yet sets that frame: the barrel's event type is 4
+and category 0x20, Jack's outcome 4 is empty, and no sprite search found
+passes 0x20.
 
 ### Reading `G.EXE` in Ghidra
 
