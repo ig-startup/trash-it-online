@@ -61,7 +61,7 @@ CLASSES = {
     14: 'timmy, and the king timmy (TIMMY/KTIMMY.SPR)',
     15: 'DYNA.SPR — dynamite',
     17: 'TIMMY.SPR',
-    22: 'SUCKER.SPR',
+    22: 'SUCKER.SPR — a spring that throws what lands on it (VA 0x18fba)',
     23: 'FORK.SPR',
     32: 'TIMMY.SPR',
     44: 'CRAWL.SPR',
