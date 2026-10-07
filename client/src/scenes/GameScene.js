@@ -13,6 +13,9 @@ import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/
 import LooseObjects from './looseObjects';
 import Rubble from './rubble';
 import Collapse from './collapse';
+import {
+  COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
+} from './blockKinds';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
@@ -158,8 +161,10 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.existing(rect, true);
       }
       this._destructibles.add(rect);
+      const col = d.col === undefined ? COL.SOLID : d.col;
+      applyCollisionKind(rect.body, col);
       const entry = {
-        rect, id: d.id, hp: d.hp, solid: !!d.solid,
+        rect, id: d.id, hp: d.hp, solid: !!d.solid, col,
         width: d.width, height: d.height,
         tx: Math.round(d.x / this._tile), ty: Math.round(d.y / this._tile),
         tw: Math.max(1, Math.round(d.width / this._tile)),
@@ -243,6 +248,15 @@ export default class GameScene extends Phaser.Scene {
       if (!this._collapse) return null;
       const b = this._player.body;
       return this._collapse.over(b.left, b.right, b.top, b.bottom);
+    };
+    // Ladders: the probes his climbing states make of the tile map.
+    const blockAt = (x, y) => this._blockAt(x, y);
+    const bottom = level.ground ? level.ground.y : levelHeight;
+    this._player.ladder = {
+      at: (x, feet) => ladderAt(blockAt, x, feet),
+      topUnder: (x, feet) => ladderTopUnder(blockAt, x, feet),
+      topAt: (x, y) => { const b = blockAt(x, y); return b ? b.top : null; },
+      floor: (x, from, to) => (to >= bottom ? bottom : floorUnder(blockAt, x, from, to)),
     };
     this._player.on('pickup', (h) => this._loose.pick(h));
     this._player.on('putdown', ({ handle, x, y }) => this._loose.place(handle, x, y));
@@ -660,6 +674,18 @@ export default class GameScene extends Phaser.Scene {
         if (!this._cellOwner.has(key)) this._cellOwner.set(key, entry.id);
       }
     }
+  }
+
+  /**
+   * The block whose cell holds a point, as the probes see it (VA 0x60301):
+   * its collision kind and its top. Null for an empty cell.
+   */
+  _blockAt(x, y) {
+    if (x < 0 || y < 0 || x >= this._gridW * this._tile) return null;
+    const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+    const entry = id === undefined ? null : this._destructibleMap.get(id);
+    if (!entry || !entry.rect.active) return null;
+    return { col: entry.col, top: entry.ty * this._tile };
   }
 
   /** Clear a block's cells from the collision map (VA 0x68980). */

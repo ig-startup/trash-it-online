@@ -86,6 +86,11 @@ ANIMS = {
     # (slot 65) and the tumble back onto his feet (slot 64).
     "flat": [323, 324, 325],             # slot 65
     "tumble": list(range(277, 289)),     # slot 64
+    # Ladders: climbing (slot 33, the frame picked by his height, not a
+    # clock) and topping out onto the platform (60) — or, the same list
+    # backwards, stepping off the top onto the ladder (61).
+    "climb": list(range(175, 191)),      # slot 33
+    "topOut": list(range(289, 301)),     # slots 60 / 61
 }
 
 #: Where the held-button strike starts inside `hammerSide` (frame 47).

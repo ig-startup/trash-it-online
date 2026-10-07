@@ -162,6 +162,9 @@ def export(name):
         # `.OBT` field 6: what the block weighs. A collapsing structure's
         # impact force is the mass of the whole pile times its speed.
         "mass": o["param"] or 1,
+        # `.COL` word 0: how Jack collides with it — 0 not at all, 1 solid,
+        # 2 a platform from above, 4 a ladder, 5 a ladder's top (level.py).
+        "col": o["col"],
     } for i, o in enumerate(lv["objects"])]
 
     # Start positions and the bell come from the level's own `.OB` — the

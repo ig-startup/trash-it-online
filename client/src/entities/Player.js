@@ -191,6 +191,37 @@ const STATES = {
   flattened: { slot: 65, anim: 'flat', ms: Infinity, hold: true, crushed: true },
   hatPop: { slot: 69, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, crushed: true },
   tumble: { slot: 64, anim: 'tumble', ms: 3 * TICK_MS, next: 'stand', locks: true, brakes: true },
+
+  // Ladders. 0x25bda climbs (slot 33), its frame picked by his height, not
+  // a clock; 0x299b6 tops out onto the platform (slot 60) and 0x29b15 steps
+  // off a top onto the ladder (slot 61, the same list backwards). Their
+  // frames are set by the ladder logic, so `ms` is unused.
+  climb: { slot: 33, anim: 'climb', ms: Infinity, hold: true, ladder: true },
+  topOut: { slot: 60, anim: 'topOut', ms: Infinity, hold: true, ladder: true },
+  stepOn: { slot: 61, anim: 'topOut', ms: Infinity, hold: true, ladder: true },
+};
+
+/**
+ * Ladders (see "Ladders" in scripts/formats/README.md). He climbs at 2
+ * px/tick either way. Topping out and stepping off a top each run twelve
+ * frames two ticks apart, lifting him by half a frame's entry in the table
+ * at VA 0xa130e a tick — 25 px in all — before he is set on the top. Off a
+ * ladder by any way but the top, he cannot catch hold of one in the air
+ * for 15 ticks (`+0x15c`). From a run or in the air he catches one only
+ * slower than 5 px/tick.
+ */
+const LADDER_TOP = 5;   // the ladder probe's answer at a ladder's top
+const LADDER = {
+  climb: 2,
+  stepTicks: 2,
+  lift: [0, -2, -3, 0, 0, -1, -3, -3, -3, -3, -2, -5],
+  frames: 12,
+  stepDown: 9,          // 0x29b15 drops him this far onto the ladder at once
+  belowTop: 31,         // …and leaves him this far under the top's edge
+  regrab: 15,
+  topOutRise: 25,       // what the strip lifts him, should there be no top
+  probeUp: 30,          // the ladder probe's row, over his feet (box 0xa0264)
+  grabSpeed: perS(0x50000),
 };
 
 /**
@@ -367,6 +398,16 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._reach = THROW.reachStart;
     this._lift = THROW.liftStart;
     this._aimTicks = 0;
+    /**
+     * Set by the scene: the probes his ladder states make of the tile map —
+     * `at(x, feet)` the ladder probe (0, 4 or 5), `topUnder(x, feet)` a
+     * ladder's top under him, `topAt(x, y)` the top of the block at a point,
+     * `floor(x, from, to)` what stops him climbing down.
+     */
+    this.ladder = null;
+    this._regrab = 0;          // ticks before he may catch a ladder in the air
+    this._ladderTicks = 0;     // into a top-out or a step-off
+    this._ladderTarget = 0;    // the y it ends on
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -604,6 +645,13 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       return;
     }
     if (this._checkCrusher(body, now, onGround)) return;
+    this._regrab = Math.max(0, this._regrab - dt * ORIGINAL_HZ);
+
+    // ── On a ladder ───────────────────────────────────────────────────────
+    if (spec.ladder) {
+      this._ladderTick(cursors, body, dt, now, but2Pressed);
+      return;
+    }
 
     // ── States that own the player until their animation is done ──────────
     if (spec.locks) {
@@ -705,11 +753,23 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this._enter('pickBend', now);
         return;
       }
-      if (Phaser.Input.Keyboard.JustDown(cursors.down) && still) {
+      if (still && Phaser.Input.Keyboard.JustDown(cursors.down)) {
         body.setVelocityX(0);
-        this._enter('hatIn', now);
+        // On a ladder's top, Down goes down it (0x22a05) — before the hat.
+        const top = this.ladder ? this.ladder.topUnder(this.x, this.y) : null;
+        if (top !== null) this._stepOnLadder(top, now);
+        else this._enter('hatIn', now);
         return;
       }
+    }
+
+    // ── Up at a ladder climbs it (0x22a99, 0x22598, 0x22e16) ──────────────
+    if (!this._armed && cursors.up.isDown && this.ladder
+        && (onGround || this._regrab <= 0)
+        && Math.abs(body.velocity.x) < LADDER.grabSpeed
+        && this.ladder.at(this.x, this.y)) {
+      this._grabLadder(now);
+      return;
     }
 
     // ── The skid brakes by itself; a direction key runs again ─────────────
@@ -889,6 +949,109 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
   }
 
+  /** Onto the ladder: no gravity, and the probes instead of collisions. */
+  _grabLadder(now) {
+    const body = this.body;
+    body.setVelocity(0, 0);
+    body.setAllowGravity(false);
+    body.checkCollision.none = true;
+    this._enter('climb', now);
+    this._climbFrame();
+  }
+
+  /** Off the top onto the ladder (0x29b15): 9 px down at once, then the strip. */
+  _stepOnLadder(top, now) {
+    this._grabLadder(now);
+    this._ladderTicks = 0;
+    this._ladderTarget = top;
+    this.body.reset(this.x, this.y + LADDER.stepDown);
+    this._enter('stepOn', now);
+    this._animFrame = LADDER.frames - 1;
+    this._showFrame(STATES.stepOn);
+  }
+
+  /** Back to gravity and collisions, leaving the ladder by any way. */
+  _offLadder() {
+    this.body.setAllowGravity(true);
+    this.body.checkCollision.none = false;
+  }
+
+  /** The climb's frame is his height: `(y >> 1) & 15` (VA 0x25de3). */
+  _climbFrame() {
+    this._animFrame = (Math.floor(this.y) >> 1) & 15;
+    this._showFrame(STATES.climb);
+  }
+
+  /**
+   * One tick on a ladder. Climbing (0x25bda): Up and Down move him 2 px a
+   * tick and nothing else steers; the jump leaves; a floor under him going
+   * down stands him on it; running out of ladder going up tops him out if
+   * he was at its top, and otherwise, either way, he falls. Topping out and
+   * stepping off run their strips (0x299b6, 0x29b15).
+   */
+  _ladderTick(cursors, body, dt, now, but2Pressed) {
+    const ticks = dt * ORIGINAL_HZ;
+    body.setVelocity(0, 0);
+    const x = this.x;
+
+    if (this.state === 'topOut' || this.state === 'stepOn') {
+      this._ladderTicks += ticks;
+      const step = Math.floor(this._ladderTicks / LADDER.stepTicks);
+      const out = this.state === 'topOut';
+      const f = out ? 1 + step : LADDER.frames - 1 - step;
+      if (out ? f >= LADDER.frames : f <= 0) {
+        if (out) {
+          body.reset(x, this._ladderTarget);
+          this._enter('stand', now);
+        } else {
+          body.reset(x, this._ladderTarget + LADDER.belowTop);
+          this._enter('climb', now);
+          this._climbFrame();
+        }
+        return;
+      }
+      const lift = LADDER.lift[f] / 2;
+      body.reset(x, this.y + (out ? lift : -lift) * ticks);
+      this._animFrame = f;
+      this._showFrame(STATES[this.state]);
+      return;
+    }
+
+    if (but2Pressed) {
+      this._regrab = LADDER.regrab;
+      this._jump(now);
+      return;
+    }
+    const dir = cursors.up.isDown ? -1 : (cursors.down.isDown ? 1 : 0);
+    const to = this.y + dir * LADDER.climb * ticks;
+    if (dir > 0) {
+      const floor = this.ladder.floor(x, this.y, to);
+      if (floor !== null) {
+        body.reset(x, floor);
+        this._enter('stand', now);
+        return;
+      }
+    }
+    if (dir !== 0) {
+      if (this.ladder.at(x, to)) {
+        body.reset(x, to);
+      } else if (dir < 0 && this.ladder.at(x, this.y) === LADDER_TOP) {
+        // Out of ladder at its top: up onto the platform it holds, whose
+        // top is the block's 30 px over his feet (0x25d80).
+        this._ladderTicks = 0;
+        const top = this.ladder.topAt(x, this.y - LADDER.probeUp);
+        this._ladderTarget = top === null ? this.y - LADDER.topOutRise : top;
+        this._enter('topOut', now);
+        return;
+      } else {
+        this._regrab = LADDER.regrab;
+        this._enter('fall', now);
+        return;
+      }
+    }
+    this._climbFrame();
+  }
+
   /** The jump (0x22b91): -4.5 px/tick, more while BUT2 stays down. */
   _jump(now) {
     this.body.setVelocityY(JUMP);
@@ -978,6 +1141,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const prev = this.state;
     this.state = name;
     const spec = STATES[name] || STATES.stand;
+    if (STATES[prev] && STATES[prev].ladder && !spec.ladder) this._offLadder();
     // In hand once it is out of the hat, until it goes back in — or into
     // the hat with the hoover's strip, or with him when he ducks.
     if (name === 'hammerStand' && (prev === 'hammerDraw' || prev === 'hooverStow')) this._hammerOut = true;
