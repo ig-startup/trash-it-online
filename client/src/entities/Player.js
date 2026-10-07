@@ -181,6 +181,36 @@ const STATES = {
   // The aim's frames step with its own schedule (see THROW), so `ms` is unused.
   throwAim: { slot: 47, anim: 'throwAim', ms: Infinity, hold: true, carry: true },
   throwRelease: { slot: 41, anim: 'throwRelease', ms: 4 * TICK_MS, next: 'stand', locks: true, brakes: true },
+
+  // A falling block on him (VA 0x21aef). Pinned under it: 0x29c92 (slot
+  // 62, the standing frame, squashed) or, in the hard hat, 0x29e16 (slot
+  // 68, the hat). Then flattened, 0x29f7a (slot 65), and the tumble back
+  // up, 0x2a2fe (slot 64) — or out of the hat with a wobble, 0x2a199.
+  pinned: { slot: 62, anim: 'idle', ms: Infinity, hold: true, crushed: true },
+  pinnedHat: { slot: 68, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, crushed: true },
+  flattened: { slot: 65, anim: 'flat', ms: Infinity, hold: true, crushed: true },
+  hatPop: { slot: 69, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, crushed: true },
+  tumble: { slot: 64, anim: 'tumble', ms: 3 * TICK_MS, next: 'stand', locks: true, brakes: true },
+};
+
+/**
+ * Under a falling block (see "A falling block on Jack" in the formats
+ * README). Squash is the block's descent since it touched him; past 32 px
+ * he shoots out. Flattened he lies 150 ticks, flapping ±0x3000 a tick with
+ * 0x1500 of friction; out of the hat he falls at half gravity while his
+ * width and height spring back (kicked 0x28000 / -0x20000, each pulled
+ * back by half its offset a tick).
+ */
+const CRUSH = {
+  squashOut: 32,
+  popOut: -6,          // px/tick, without the hat
+  popHat: -4,          // px/tick, in it
+  flatTicks: 150,
+  flap: 0x3000 / 65536,
+  flapFriction: 0x1500 / 65536,
+  flatFriction: 4000 / 65536,
+  wobbleW: 0x28000 / 65536,
+  wobbleH: -0x20000 / 65536,
 };
 
 /** States in which the hoover is out and sucking. */
@@ -324,6 +354,16 @@ export default class Player extends Phaser.Physics.Arcade.Image {
      * @type {null | ((x: number, y: number) => any)}
      */
     this.findPickup = null;
+    /**
+     * Set by the scene: the falling block over his head, if any, as
+     * `{ id, bottom, vy }` — vy in px/tick (VA 0x60a00 reads the map the
+     * falling groups are stamped into).
+     * @type {null | (() => ({id: any, bottom: number, vy: number} | null))}
+     */
+    this.findCrusher = null;
+    this._crush = null;        // the pin: which block, and where it touched
+    this._squashX = 1;         // art scale on top of the frame's own
+    this._squashY = 1;
     this._reach = THROW.reachStart;
     this._lift = THROW.liftStart;
     this._aimTicks = 0;
@@ -387,6 +427,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.art.setFlipX(flip);
     Player._anchor(this.art, JACK_FRAME_INFO[this.art.texture.key + '|' + this.art.frame.name]
       || JACK_FRAME_INFO[this.art.texture.key], flip);
+    this.art.setScale(JACK_SCALE * this._squashX, JACK_SCALE * this._squashY);
 
     if (this.vac && this.vac.visible) {
       this.vac.setPosition(this.x, this.y);
@@ -556,6 +597,13 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     this._advanceAnim(now);
     const spec = STATES[this.state] || STATES.stand;
+
+    // ── Under a falling block ─────────────────────────────────────────────
+    if (spec.crushed) {
+      this._crushTick(body, dt, now, onGround);
+      return;
+    }
+    if (this._checkCrusher(body, now, onGround)) return;
 
     // ── States that own the player until their animation is done ──────────
     if (spec.locks) {
@@ -727,6 +775,117 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     else {
       body.setVelocityX(0);
       this._enter('stand', now);
+    }
+  }
+
+  /**
+   * Every tick (VA 0x21aef): a falling block over him. In the air it turns
+   * a rise into a fall, or adds half its speed to his; on the ground it
+   * pins him — unless his hands are full, when what he holds drops.
+   * Returns true when it has taken the tick.
+   */
+  _checkCrusher(body, now, onGround) {
+    const c = this.findCrusher && this.findCrusher();
+    if (!c) return false;
+    if (!onGround) {
+      if (body.velocity.y < 0) body.setVelocityY(-body.velocity.y);
+      else body.setVelocityY(body.velocity.y + (c.vy * ORIGINAL_HZ) / 2);
+      return false;
+    }
+    if (this.carried) {
+      this.emit('putdown', { handle: this.carried, ...this._feetAhead() });
+      this.carried = null;
+      this._enter('stand', now);
+      return true;
+    }
+    const inHat = this.state === 'hat' || this.state === 'hatIn';
+    this._crush = { id: c.id, contact: c.bottom, ticks: 0, w: 0, h: 0, vw: 0, vh: 0 };
+    body.setVelocity(0, 0);
+    body.setAllowGravity(false);
+    body.checkCollision.up = false;
+    this._hammerOut = false;
+    this._hammerHidden = true;
+    this._enter(inHat ? 'pinnedHat' : 'pinned', now);
+    return true;
+  }
+
+  /** One tick pinned, flattened or popping out of the hat. */
+  _crushTick(body, dt, now, onGround) {
+    const k = this._crush || { ticks: 0, w: 0, h: 0, vw: 0, vh: 0 };
+    const ticks = dt * ORIGINAL_HZ;
+    k.ticks += ticks;
+
+    if (this.state === 'pinned' || this.state === 'pinnedHat') {
+      body.setVelocity(0, 0);
+      const c = this.findCrusher && this.findCrusher();
+      const squash = c && c.id === k.id ? Math.max(0, c.bottom - k.contact) : null;
+      if (squash === null || squash > CRUSH.squashOut) {
+        this._squashX = 1;
+        this._squashY = 1;
+        body.setAllowGravity(true);
+        if (this.state === 'pinned') {
+          // Out at -6 and flattened, flung a random way (rand >> 15).
+          const fling = Math.random() * 2;
+          body.setVelocity((Math.random() < 0.5 ? -1 : 1) * fling * ORIGINAL_HZ,
+            (CRUSH.popOut + Math.random() * 2) * ORIGINAL_HZ);
+          k.ticks = 0;
+          this._enter('flattened', now);
+        } else {
+          body.setVelocity(0, CRUSH.popHat * ORIGINAL_HZ);
+          body.setGravityY(-this.scene.physics.world.gravity.y / 2);
+          Object.assign(k, { w: 0, h: 0, vw: CRUSH.wobbleW, vh: CRUSH.wobbleH, ticks: 0 });
+          this._enter('hatPop', now);
+        }
+        return;
+      }
+      this._squashY = Math.max(0.15, (FULL_HEIGHT - squash) / FULL_HEIGHT);
+      this._squashX = (PLAYER_WIDTH + squash / 2) / PLAYER_WIDTH;
+      return;
+    }
+
+    if (this.state === 'hatPop') {
+      // Width and height spring back about their rest (VA 0x2a1f0).
+      k.w += k.vw * ticks;
+      k.vw -= k.w * 0.5 * ticks;
+      k.h += k.vh * ticks;
+      k.vh -= k.h * 0.5 * ticks;
+      this._squashX = Math.max(0.3, (PLAYER_WIDTH + k.w) / PLAYER_WIDTH);
+      this._squashY = Math.max(0.3, (FULL_HEIGHT + k.h) / FULL_HEIGHT);
+      if (onGround && body.velocity.y >= 0 && k.ticks > 2) {
+        this._squashX = 1;
+        this._squashY = 1;
+        body.setGravityY(0);
+        body.checkCollision.up = true;
+        this._crush = null;
+        this._enter('hat', now);
+      }
+      return;
+    }
+
+    // Flattened: through the air with friction, then flapping on the floor.
+    if (!onGround) {
+      const vx = body.velocity.x / ORIGINAL_HZ;
+      const slowed = Math.abs(vx) > 9999 / 65536 ? vx - Math.sign(vx) * CRUSH.flatFriction * ticks : 0;
+      body.setVelocityX(slowed * ORIGINAL_HZ);
+      return;
+    }
+    const phase = Math.floor(k.ticks) & 0x1f;
+    const back = Math.floor(k.ticks) & 0x20;
+    const ahead = this._facingLeft ? -1 : 1;
+    let vx = body.velocity.x / ORIGINAL_HZ;
+    if (phase < 0x14) vx += (back ? -ahead : ahead) * CRUSH.flap * ticks;
+    vx = Math.abs(vx) > 9999 / 65536 ? vx - Math.sign(vx) * CRUSH.flapFriction * ticks : 0;
+    body.setVelocityX(vx * ORIGINAL_HZ);
+    const frame = (phase < 0x10) === !back ? 1 : 2;
+    if (this._animFrame !== frame) {
+      this._animFrame = frame;
+      this._showFrame(STATES.flattened);
+    }
+    if (k.ticks > CRUSH.flatTicks) {
+      body.checkCollision.up = true;
+      this._crush = null;
+      body.setVelocityY(JUMP * 0.6);
+      this._enter('tumble', now);
     }
   }
 

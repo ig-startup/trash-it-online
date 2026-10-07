@@ -126,6 +126,9 @@ export default class Collapse {
       this._s._unstampCells(m);
       this.falling.add(m.id);
       m.y0 = m.ty * this._s._tile;
+      // Out of the live map, out of the way: sprites only meet a falling
+      // group through the map it is stamped into (VA 0x60a00).
+      if (m.rect.body) m.rect.body.enable = false;
     });
     this._groups.push({ members, dy: 0, vy: 0 });
   }
@@ -199,6 +202,10 @@ export default class Collapse {
     g.members.forEach((m) => {
       this.falling.delete(m.id);
       this._s._stampCells(m);
+      if (m.rect.body) {
+        m.rect.body.enable = true;
+        if (m.rect.body.updateFromGameObject) m.rect.body.updateFromGameObject();
+      }
     });
     this._dirty = true;
 
@@ -207,6 +214,23 @@ export default class Collapse {
     if (!hit) return;
     const force = Math.floor((this._weightOn(hit) * speed) / 4);
     this._s._landed(hit, hitter, force);
+  }
+
+  /**
+   * The falling block over a span — what Jack's check finds (VA 0x60a00):
+   * one that covers his width and whose underside is inside his height.
+   * @returns {{id: any, bottom: number, vy: number} | null}
+   */
+  over(left, right, top, feet) {
+    for (const g of this._groups) {
+      for (const m of g.members) {
+        if (!m.rect.active) continue;
+        const b = m.rect.getBounds();
+        if (b.right <= left || b.left >= right) continue;
+        if (b.bottom > top && b.bottom <= feet) return { id: m.id, bottom: b.bottom, vy: g.vy };
+      }
+    }
+    return null;
   }
 
   /** Mass of a block and everything stacked above it (VA 0x69850). */

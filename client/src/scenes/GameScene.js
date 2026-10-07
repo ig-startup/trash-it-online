@@ -239,6 +239,11 @@ export default class GameScene extends Phaser.Scene {
     });
     this._timmies.forEach((t) => this._loose.add(t, 'timmy'));
     this._player.findPickup = (x, y) => this._loose.find(x, y, this._player.getBounds());
+    this._player.findCrusher = () => {
+      if (!this._collapse) return null;
+      const b = this._player.body;
+      return this._collapse.over(b.left, b.right, b.top, b.bottom);
+    };
     this._player.on('pickup', (h) => this._loose.pick(h));
     this._player.on('putdown', ({ handle, x, y }) => this._loose.place(handle, x, y));
     this._player.on('throw', ({ handle, x, y, vx, vy }) => this._loose.throw(handle, x, y, vx, vy));

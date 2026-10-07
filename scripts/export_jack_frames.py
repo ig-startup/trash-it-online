@@ -82,6 +82,10 @@ ANIMS = {
     "carryWalk": list(range(191, 207)),  # slots 37 / 48
     "throwAim": list(range(232, 236)),   # slot 47
     "throwRelease": list(range(236, 240)),  # slot 41
+    # Under a falling block (see "A falling block on Jack"): squashed flat
+    # (slot 65) and the tumble back onto his feet (slot 64).
+    "flat": [323, 324, 325],             # slot 65
+    "tumble": list(range(277, 289)),     # slot 64
 }
 
 #: Where the held-button strike starts inside `hammerSide` (frame 47).
