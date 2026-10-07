@@ -66,7 +66,7 @@ CLASSES = {
     32: 'TIMMY.SPR',
     44: 'CRAWL.SPR',
     46: 'PANEL.SPR',
-    7: 'CFIR.SPR — part of the crane',
+    7: 'CFIR.SPR — a cannonball, small or big (VA 0x20b58)',
     16: "the level's rules record — see RULES below",
     27: 'TELLY.SPR',
     31: 'BON/UFO.SPR',
