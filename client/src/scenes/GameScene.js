@@ -234,11 +234,15 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.collider(this._player, this._destructibles);
 
     // ── Input ─────────────────────────────────────────────────────────────────
+    // The game's six keys are LEFT RIGHT UP DOWN BUT1 BUT2 (VA 0x912c9):
+    // BUT1 is the hammer — with UP held, the overhead strike — and BUT2 the
+    // jump, so Up is free of the jump and Up+Z does not hop. Z and X stand
+    // in for the two buttons; Space jumps too.
     this._cursors = this.input.keyboard.createCursorKeys();
     this._hammerKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
-    // Also support X as alt hammer key
-    this._hammerKeyAlt = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
-    // The hoover. Ours, not the game's — see the note in Player.js STATES.
+    this._jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
+    // The hoover. In the game it is BUT1 with UP held, which here is the
+    // overhead strike; C keeps them apart. See the note in Player.js.
     this._hooverKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
 
     // ── Camera ────────────────────────────────────────────────────────────────
@@ -324,16 +328,15 @@ export default class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (!this._player || !this._cursors) return;
 
-    // Combine Z and X as hammer keys
-    // Either key swings, and a tap shorter than a frame still counts:
-    // JustDown latches it, where testing isDown would miss a key that was
-    // already back up by the time we looked.
-    const swing = Phaser.Input.Keyboard.JustDown(this._hammerKey)
-      || Phaser.Input.Keyboard.JustDown(this._hammerKeyAlt)
-      || this._hammerKey.isDown || this._hammerKeyAlt.isDown;
+    // A tap shorter than a frame still counts: JustDown latches it, where
+    // testing isDown would miss a key that was already back up by the time
+    // we looked.
+    const swing = Phaser.Input.Keyboard.JustDown(this._hammerKey) || this._hammerKey.isDown;
+    const jump = Phaser.Input.Keyboard.JustDown(this._jumpKey) || this._jumpKey.isDown
+      || this._cursors.space.isDown;
 
     const hoover = Phaser.Input.Keyboard.JustDown(this._hooverKey);
-    this._player.update(this._cursors, swing, delta, hoover);
+    this._player.update(this._cursors, swing, delta, hoover, jump);
 
     if (this._player.hooverOut) this._suckTimmies();
 

@@ -911,7 +911,10 @@ player's control mode (`+0x166`) is 4 or more.
 | sideways windup | VA 0x2110d | button 0x80 (mode ≥ 4), or BUT2 (mode 2) |
 | overhead windup | VA 0x21185 | button 0x40 (mode ≥ 4), or BUT2 with a direction (mode 2) |
 
-The clone's bindings are its own and have not been changed to match.
+The clone follows the mode-2 layout as far as two buttons allow: Z is
+BUT1 (the hammer; Up+Z the overhead strike), X or Space is BUT2 (the
+jump), and Up alone does nothing. The hoover keeps a key of its own, C,
+because BUT1 with UP held is already the overhead strike there.
 
 The jump (state 0x22b91, slot 5 — frames 6-12) starts at `vy = -4.5`
 px/tick. From its eighth tick, while the key is held and Jack is still

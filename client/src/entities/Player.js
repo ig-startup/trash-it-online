@@ -344,8 +344,9 @@ export default class Player extends Phaser.Physics.Arcade.Image {
    *   the last tick (the scene latches taps)
    * @param {number} delta  ms since the last tick
    * @param {boolean} hooverPressed  the hoover key, latched by the scene
+   * @param {boolean} jumpHeld  the jump key (the game's BUT2), latched too
    */
-  update(cursors, swingHeld, delta = 1000 / 60, hooverPressed = false) {
+  update(cursors, swingHeld, delta = 1000 / 60, hooverPressed = false, jumpHeld = false) {
     const body = this.body;
     const onGround = body.blocked.down;
     const now = this.scene.time.now;
@@ -399,9 +400,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     // ── Strikes ───────────────────────────────────────────────────────────
-    // The key starts a windup; the strike comes when it is let go. Up picks
-    // the overhead one — in the game that is a direction with the button,
-    // or a button of its own; Up is ours.
+    // The key starts a windup; the strike comes when it is let go. Up held
+    // picks the overhead one — the game's direction-with-the-button.
     if (onGround && swingHeld) {
       this._charge = 0;
       this._chargeTicks = 0;
@@ -435,7 +435,6 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const profile = PROFILES[spec.profile] || PROFILES.run;
     const moving = this._steer(cursors, body, dt, profile);
 
-    const jumpHeld = cursors.up.isDown || cursors.space.isDown;
     if (jumpHeld && onGround) {
       body.setVelocityY(JUMP);
       this._jumpBoost = JUMP_BOOST;

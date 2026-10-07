@@ -35,7 +35,8 @@ class DevBoot extends Phaser.Scene {
   }
 }
 
-new Phaser.Game({
+// Exposed, as main.js does, for scripted checks to read the live scene.
+window.game = new Phaser.Game({
   type: Phaser.AUTO,
   width: 800,
   height: 600,
