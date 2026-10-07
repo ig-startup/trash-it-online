@@ -22,7 +22,10 @@ const NEXT_LEVEL_DELAY = 4000; // matches the client's result overlay
  */
 function loadLevel(id) {
   try {
-    return require(`../../client/src/levels/${id}.json`);
+    // Converted levels are served to the client from client/public/levels;
+    // the hand-built one ships in the client bundle.
+    if (id === 'level_01') return require('../../client/src/levels/level01.json');
+    return require(`../../client/public/levels/${id}.json`);
   } catch (err) {
     console.warn(`[level] no data for ${id}: ${err.message}`);
     return id;

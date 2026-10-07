@@ -5,7 +5,9 @@ import SocketManager from '../network/SocketManager.js';
 import {
   EVENTS, PLAYER_COLORS, HAMMER, hammerForce,
 } from '../../../shared/constants.mjs';
-import { getLevel, nextLevelId, DEFAULT_LEVEL_ID } from '../levels';
+import {
+  BUNDLED, levelIdOr, levelUrl, nextLevelId, DEFAULT_LEVEL_ID,
+} from '../levels';
 import { WORLD_COLORS } from '../palette';
 import { buildBackground } from '../entities/drawBackground';
 import { preloadRealJackFrames } from '../entities/jackSprites';
@@ -59,7 +61,8 @@ export default class GameScene extends Phaser.Scene {
     this._roomCode = data.roomCode || '';
     this._players = data.players || [];
     this._mode = data.mode || 'coop';
-    this._levelId = data.levelId || DEFAULT_LEVEL_ID;
+    this._levelId = levelIdOr(data.levelId || DEFAULT_LEVEL_ID);
+    this._level = null;
     this._myPlayerId = data.myPlayerId || (data.players && data.players[0] ? data.players[0].id : 'local');
     this._hostId = data.hostId || null;
   }
@@ -68,9 +71,23 @@ export default class GameScene extends Phaser.Scene {
     preloadRealJackFrames(this);
     preloadProps(this);
 
-    // Levels converted from the original game bring their own artwork:
-    // one texture per building block plus the wall behind them.
-    const level = getLevel(this._levelId);
+    // A converted level is served, not bundled: its data comes first, and
+    // then the artwork it names — one texture of building blocks plus the
+    // wall behind them.
+    const id = this._levelId;
+    const key = `leveldata_${id}`;
+    if (BUNDLED[id]) {
+      this._useLevel(BUNDLED[id]);
+    } else if (this.cache.json.exists(key)) {
+      this._useLevel(this.cache.json.get(key));
+    } else {
+      this.load.once(`filecomplete-json-${key}`, (_k, _t, data) => this._useLevel(data));
+      this.load.json(key, levelUrl(id));
+    }
+  }
+
+  /** Takes a level's data, and queues the artwork it names. */
+  _useLevel(level) {
     this._level = level;
     if (level.background) {
       this.load.image(this._bgKey(level), level.background);
@@ -93,7 +110,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
-    const level = this._level || getLevel(this._levelId);
+    const level = this._level;
     const levelWidth = level.widthTiles * level.tileSize;
     const levelHeight = level.heightTiles * level.tileSize;
 
@@ -1038,7 +1055,7 @@ export default class GameScene extends Phaser.Scene {
     // Game started — create RemotePlayer for each other player
     sm.on(EVENTS.GAME_STARTED, (data = {}) => {
       const players = data.players || [];
-      const level = this._level || getLevel(this._levelId);
+      const level = this._level;
       players.forEach((p, idx) => {
         if (p.id === this._myPlayerId) return;
         const spawn = level.spawnPoints[Math.max(0, idx)] || level.spawnPoints[0];

@@ -139,7 +139,7 @@ describe('room lifecycle over the real server', () => {
 
   // The first block in a level is often one the original marks unbreakable,
   // so pick one the room actually tracks.
-  const SOFT = require('../../client/src/levels/level_0C.json')
+  const SOFT = require('../../client/public/levels/level_0C.json')
     .destructibles.find((o) => !o.solid);
   const SOFT_BLOCK = SOFT.id;
 
