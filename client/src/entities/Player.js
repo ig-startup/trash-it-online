@@ -100,12 +100,24 @@ const range = (pose, from, to) => {
 const SHEET_STRIP_DRAW = [...range('hatReach', 0, 10), ['hatReach', 10], ...range('hooverOut', 9, 0)];
 const SHEET_STRIP_STOW = [...range('hooverOut', 0, 9), ['hatReach', 10], ['hatReach', 10],
   ...range('hatReach', 9, 0)];
+// Slots 11 and 10: the hammer out of the hat (sheet 90-81, 81, 80-71) and
+// back in (71-90). Their hammer lists carry the show / hide flags.
+const HAMMER_STRIP_DRAW = [...range('hatReach', 19, 10), ['hatReach', 10], ...range('hatReach', 9, 0)];
+const HAMMER_STRIP_STOW = range('hatReach', 0, 19);
 
 const STATES = {
   // 0x22892, slot 1 — standing, the hub nearly everything returns to
   stand: { slot: 1, anim: 'idle', ms: 400, loop: true, profile: 'run' },
-  // 0x22275, slot 0 — the run
+  // 0x22275, slot 0 — the run, empty-handed
   walk: { slot: 0, anim: 'run', ms: 70, loop: true, profile: 'run' },
+
+  // The hammer is a mode. 0x22fa5 takes it out of the hard hat (slot 11)
+  // and 0x2320a puts it back (slot 10); with it Jack stands in 0x23499
+  // (slot 4, sheet frame 34) and walks the slower cycle of 0x236b9 (slot 3).
+  hammerDraw: { slot: 11, strip: HAMMER_STRIP_DRAW, ms: 35, next: 'hammerStand', locks: true, brakes: true },
+  hammerStow: { slot: 10, strip: HAMMER_STRIP_STOW, ms: 35, next: 'stand', locks: true, brakes: true },
+  hammerStand: { slot: 4, anim: 'standHammer', ms: 400, loop: true, armed: true, profile: 'slow' },
+  hammerWalk: { slot: 3, anim: 'walkHammer', ms: 70, loop: true, armed: true, profile: 'slow' },
   // 0x2266d, slot 2 — a frame every fourth tick, held on the last until
   // the braking has stopped him
   skid: { slot: 2, anim: 'skid', ms: 4 * TICK_MS, hold: true, profile: 'run' },
@@ -114,12 +126,12 @@ const STATES = {
   windupSide: { slot: 6, anim: 'hammerSide', ms: Infinity, hold: true, profile: 'slow' },
   // 0x23cef, slots 15-21 — the strike, one frame a tick; which of the two
   // frame lists depends on the charge (see SIDE_STRIKES)
-  strikeSide: { slotFrom: 15, anim: 'hammerSide', ms: TICK_MS, next: 'stand', locks: true, brakes: true },
+  strikeSide: { slotFrom: 15, anim: 'hammerSide', ms: TICK_MS, next: 'hammerStand', locks: true, brakes: true },
   // 0x23f0f, slot 7 — the overhead windup
   windupOver: { slot: 7, anim: 'hammerOver', ms: Infinity, hold: true, profile: 'slow' },
   // 0x24174, slots 24-27 — the overhead swing, padded longer the more it
   // was charged (see OVER_STRIKES)
-  strikeOver: { slotFrom: 24, anim: 'hammerOver', ms: TICK_MS, next: 'stand', locks: true, brakes: true },
+  strikeOver: { slotFrom: 24, anim: 'hammerOver', ms: TICK_MS, next: 'hammerStand', locks: true, brakes: true },
   // 0x25813, slot 31 — in the air
   fall: { slot: 31, anim: 'fall', ms: 80, loop: true, profile: 'slow' },
   // 0x25a3e, slot 32 — hitting the ground
@@ -146,15 +158,19 @@ const STATES = {
   hooverIdle: { slot: 28, anim: 'hooverIdle', ms: 400, loop: true, hoover: true, profile: 'slow' },
   hooverWalk: { slot: 29, anim: 'hooverWalk', ms: 70, loop: true, hoover: true, profile: 'slow' },
   hooverStow: {
-    slot: 71, strip: SHEET_STRIP_STOW, ms: 35, next: 'stand', locks: true,
+    // …and the strip brings the hammer back out of the hat (its list sets
+    // the show flag), so he ends up holding it.
+    slot: 71, strip: SHEET_STRIP_STOW, ms: 35, next: 'hammerStand', locks: true,
   },
 
-  // Carrying. 0x267e3 / 0x26971 bend down and take hold (slots 44, 50 —
-  // frames 223-224 — and 45, the whole 223-230); 0x26fe0 stands holding it
-  // overhead (slot 40), 0x270e1 walks with it (37), 0x27a94 is in the air
-  // with it (48). From standing, Down puts it down (0x27356, slot 45) and
-  // Up takes aim (0x2767d, slot 47); a button lets fly (0x27954, slot 41).
-  // No hammer list belongs to any of these slots: his hands are full.
+  // Carrying. 0x267e3 / 0x26971 bend down and search while Down is held
+  // (slots 44, 50 — frames 223-224), then lift (45, the whole 223-230);
+  // 0x26fe0 stands holding it overhead (slot 40), 0x270e1 walks with it
+  // (37), 0x27a94 is in the air with it (48). From standing, Down puts it
+  // down (0x27356, slot 45) and Up takes aim (0x2767d, slot 47); a button
+  // lets fly (0x27954, slot 41). No hammer list belongs to any of these
+  // slots: his hands are full.
+  pickBend: { slot: 44, anim: 'pickUp', frames: [0, 1], ms: 2 * TICK_MS, hold: true, brakes: true },
   pickUp: { slot: 45, anim: 'pickUp', ms: 2 * TICK_MS, next: 'carryIdle', locks: true, brakes: true },
   carryIdle: { slot: 40, anim: 'carryIdle', ms: 400, loop: true, carry: true, profile: 'slow' },
   carryWalk: { slot: 37, anim: 'carryWalk', ms: 70, loop: true, carry: true, profile: 'slow' },
@@ -294,7 +310,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._chargeStep = 0;
     this._skidVx = 0;          // the skid's speed last tick, for the bounce
     this._jumpBoost = 0;       // what is left of a held jump's extra lift
-    this._hammerHidden = false; // in the hat, per the game's list flags
+    this._hammerHidden = true;  // in the hat, per the game's list flags
+    this._hammerOut = false;    // the hammer mode: out of the hat, in hand
     this._jumpTicks = 0;
 
     /** What he holds overhead — an opaque handle the scene owns — or null. */
@@ -483,19 +500,24 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   }
 
   /**
+   * One tick of Jack, on the game's keyboard layout (mode 2): six keys,
+   * LEFT RIGHT UP DOWN BUT1 BUT2, and every action a combination of them.
+   * See "The keyboard layout, state by state" in scripts/formats/README.md.
+   *
    * @param {Phaser.Types.Input.Keyboard.CursorKeys} cursors
-   * @param {boolean} swingHeld  the hammer key — down now, or tapped since
-   *   the last tick (the scene latches taps)
+   * @param {{but1: boolean, but2: boolean, but2Pressed: boolean}} keys
+   *   BUT1 pressed this tick; BUT2 held, and pressed this tick (the scene
+   *   latches taps shorter than a frame)
    * @param {number} delta  ms since the last tick
-   * @param {boolean} hooverPressed  the hoover key, latched by the scene
-   * @param {boolean} jumpHeld  the jump key (the game's BUT2), latched too
    */
-  update(cursors, swingHeld, delta = 1000 / 60, hooverPressed = false, jumpHeld = false) {
+  update(cursors, keys = {}, delta = 1000 / 60) {
+    const { but1 = false, but2 = false, but2Pressed = false } = keys;
     const body = this.body;
     const onGround = body.blocked.down;
     const now = this.scene.time.now;
     const ms = Math.min(delta, MAX_STEP_MS);
     const dt = ms / 1000;
+    const across = cursors.left.isDown || cursors.right.isDown;
 
     this._advanceAnim(now);
     const spec = STATES[this.state] || STATES.stand;
@@ -506,10 +528,10 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       return;
     }
 
-    // ── Winding up: the key held charges, letting go strikes ──────────────
+    // ── Winding up: BUT2 held charges, letting go strikes ─────────────────
     const windup = WINDUPS[this.state];
     if (windup) {
-      this._windup(windup, cursors, body, ms, swingHeld, now);
+      this._windup(windup, cursors, body, ms, but2, now);
       return;
     }
 
@@ -518,71 +540,101 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       if (!this.carried) {
         this._enter('stand', now);
       } else {
-        this._carryTick(cursors, body, dt, now, onGround, swingHeld || jumpHeld);
+        this._carryTick(cursors, body, dt, now, onGround, but1 || but2Pressed);
         return;
       }
     }
 
-    // ── Down: pick up what is at his feet, or duck into the hard hat ──────
-    // In the game picking up is a button of its own (0x40, VA 0x22ad1),
-    // and on the keyboard layout what keeps the bend going is Down alone
-    // (VA 0x20ee0). With no spare button here, Down does both: it picks up
-    // when there is something under his grab point and ducks otherwise.
-    if (Phaser.Input.Keyboard.JustDown(cursors.down) && onGround) {
+    // ── Bent down for something: searches while Down alone is held ───────
+    if (this.state === 'pickBend') {
+      body.setVelocityX(this._brake(body.velocity.x, dt));
+      const alone = cursors.down.isDown && !across && !cursors.up.isDown;
+      if (!alone) {
+        this._enter('stand', now);
+        return;
+      }
       const dir = this._facingLeft ? -1 : 1;
-      const found = this.state !== 'hat' && this.findPickup
-        && this.findPickup(this.x + dir * GRAB_AHEAD, this.y - GRAB_UP);
-      body.setVelocityX(0);
+      const found = this.findPickup && this.findPickup(this.x + dir * GRAB_AHEAD, this.y - GRAB_UP);
       if (found) {
+        // The press that bent him down is spent: putting it down again
+        // takes a fresh one (ours — the game tests Down held, VA 0x20f1d).
+        Phaser.Input.Keyboard.JustDown(cursors.down);
         this.carried = found;
         this._enter('pickUp', now);
         this.emit('pickup', found);
-        return;
       }
-      this._enter(this.state === 'hat' ? 'hatOut' : 'hatIn', now);
       return;
     }
 
+    // ── The hard hat: Down went in, Up comes out (0x244c0) ────────────────
     if (this.state === 'hat') {
+      if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
+        body.setVelocityX(0);
+        this._enter('hatOut', now);
+        return;
+      }
       this._steer(cursors, body, dt, PROFILES.slow);
       return;
     }
 
-    // ── The hoover ────────────────────────────────────────────────────────
-    // In the game this comes off the same Down press as the hard hat —
-    // reaching into the hat is one state, and where it goes next is a
-    // branch that has not been traced. Until it is, it gets a key of its
-    // own so the mode can be used at all; that binding is ours, not the
-    // game's.
-    if (hooverPressed && onGround) {
-      this._enter(HOOVER_STATES.has(this.state) ? 'hooverStow' : 'hooverDraw', now);
-      body.setVelocityX(0);
-      return;
-    }
-
+    // ── The hoover: BUT1 puts it away (0x2ab7a, 0x25468) ──────────────────
     if (HOOVER_STATES.has(this.state)) {
+      if (but1) {
+        body.setVelocityX(0);
+        this._enter('hooverStow', now);
+        return;
+      }
       const moved = this._steer(cursors, body, dt, PROFILES.slow);
       this._enter(moved ? 'hooverWalk' : 'hooverIdle', now);
       return;
     }
 
-    // ── Strikes ───────────────────────────────────────────────────────────
-    // The key starts a windup; the strike comes when it is let go. Up held
-    // picks the overhead one — the game's direction-with-the-button.
-    if (onGround && swingHeld) {
-      this._charge = 0;
-      this._chargeTicks = 0;
-      this._chargeStep = 0;
-      // Swinging takes the hammer back out of the hat if it was in there:
-      // the game shows it again on the way into a swing (VA 0x234c3).
-      this._hammerHidden = false;
-      this._enter(cursors.up.isDown ? 'windupOver' : 'windupSide', now);
-      this.emit('hammer_swing');
+    // ── BUT1: the hammer in and out of the hat; with UP, the hoover ───────
+    if (but1 && onGround) {
+      body.setVelocityX(0);
+      if (cursors.up.isDown) this._enter('hooverDraw', now);
+      else this._enter(this._armed ? 'hammerStow' : 'hammerDraw', now);
       return;
     }
 
+    // ── With the hammer out, BUT2 swings it (0x23499, 0x236b9) ────────────
+    // Held alone, the sideways windup; with a direction, the overhead one.
+    if (this._armed && onGround) {
+      if (but2) {
+        this._charge = 0;
+        this._chargeTicks = 0;
+        this._chargeStep = 0;
+        this._enter(across ? 'windupOver' : 'windupSide', now);
+        this.emit('hammer_swing');
+        return;
+      }
+      const moved = this._steer(cursors, body, dt, PROFILES.slow);
+      this._enter(moved ? 'hammerWalk' : 'hammerStand', now);
+      return;
+    }
+
+    // ── Empty-handed: Down ducks into the hat from standing, and picks up
+    // when he is still moving with the arrows let go (0x225d7) ─────────
+    if (onGround && !this._armed) {
+      const downAlone = cursors.down.isDown && !across && !cursors.up.isDown;
+      const still = Math.abs(body.velocity.x) <= AT_REST;
+      if (downAlone && !still) {
+        this._enter('pickBend', now);
+        return;
+      }
+      if (Phaser.Input.Keyboard.JustDown(cursors.down) && still) {
+        body.setVelocityX(0);
+        this._enter('hatIn', now);
+        return;
+      }
+    }
+
     // ── The skid brakes by itself; a direction key runs again ─────────────
-    if (this.state === 'skid' && onGround && !cursors.left.isDown && !cursors.right.isDown) {
+    if (this.state === 'skid' && onGround && !across) {
+      if (but2Pressed) {
+        this._jump(now);
+        return;
+      }
       // Skidding into a wall bounces him back a quarter as fast (VA 0x227ea).
       // Physics has already stopped him by now, so it is last tick's speed.
       const into = (this._skidVx > 0 && body.blocked.right) || (this._skidVx < 0 && body.blocked.left);
@@ -602,16 +654,14 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const profile = PROFILES[spec.profile] || PROFILES.run;
     const moving = this._steer(cursors, body, dt, profile);
 
-    if (jumpHeld && onGround) {
-      body.setVelocityY(JUMP);
-      this._jumpBoost = JUMP_BOOST;
-      this._jumpTicks = 0;
-      this._enter('rise', now);
+    // BUT2 jumps — only empty-handed; with the hammer out it swings.
+    if (but2Pressed && onGround) {
+      this._jump(now);
       return;
     }
 
     if (this.state === 'rise' && this._jumpBoost > 0) {
-      if (!jumpHeld || body.velocity.y >= 0) {
+      if (!but2 || body.velocity.y >= 0) {
         this._jumpBoost = 0;
       } else {
         this._jumpTicks += dt * ORIGINAL_HZ;
@@ -643,6 +693,19 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       body.setVelocityX(0);
       this._enter('stand', now);
     }
+  }
+
+  /** The jump (0x22b91): -4.5 px/tick, more while BUT2 stays down. */
+  _jump(now) {
+    this.body.setVelocityY(JUMP);
+    this._jumpBoost = JUMP_BOOST;
+    this._jumpTicks = 0;
+    this._enter('rise', now);
+  }
+
+  /** True while the hammer is out of the hat and in his hands. */
+  get _armed() {
+    return this._hammerOut;
   }
 
   /**
@@ -721,6 +784,10 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const prev = this.state;
     this.state = name;
     const spec = STATES[name] || STATES.stand;
+    // In hand once it is out of the hat, until it goes back in — or into
+    // the hat with the hoover's strip, or with him when he ducks.
+    if (name === 'hammerStand' && (prev === 'hammerDraw' || prev === 'hooverStow')) this._hammerOut = true;
+    if (name === 'hammerStow' || name === 'hooverDraw' || name === 'hatIn') this._hammerOut = false;
     // Putting down lets go at the end, with the object back at his feet.
     if (prev === 'putDown' && this.carried) {
       const handle = this.carried;

@@ -970,6 +970,13 @@ traced).
 The level's option byte (0x98224) switches actions off: bit 1 the
 hammer, 2 the hammer's DOWN action, 4 the hoover, 8 the hoover's.
 
+The clone plays this layout with Z as BUT1 and X (or Space) as BUT2.
+Not yet in it: the ladders, pushing, 0x28691, the hammer's and the
+hoover's DOWN actions, and the hat's BUT2. Two choices are its own:
+putting a carried thing down takes a fresh press of Down (the game tests
+Down held, so keeping it held after the lift would drop it at once), and
+the level's option byte is not applied.
+
 ### Carrying and throwing — **Confirmed** (except where noted)
 
 **What can be picked up** is the template's business: Jack's search

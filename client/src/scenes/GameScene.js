@@ -249,16 +249,14 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.collider(this._player, this._destructibles);
 
     // ── Input ─────────────────────────────────────────────────────────────────
-    // The game's six keys are LEFT RIGHT UP DOWN BUT1 BUT2 (VA 0x912c9):
-    // BUT1 is the hammer — with UP held, the overhead strike — and BUT2 the
-    // jump, so Up is free of the jump and Up+Z does not hop. Z and X stand
-    // in for the two buttons; Space jumps too.
+    // The game's six keys are LEFT RIGHT UP DOWN BUT1 BUT2 (VA 0x912c9), and
+    // on the keyboard every action is a combination of them: BUT1 takes the
+    // hammer out of the hat and puts it back (with UP held, the hoover), BUT2
+    // jumps empty-handed and swings the hammer when it is out. Z and X stand
+    // in for the two buttons; Space is BUT2 too. See Player.update.
     this._cursors = this.input.keyboard.createCursorKeys();
-    this._hammerKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
-    this._jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
-    // The hoover. In the game it is BUT1 with UP held, which here is the
-    // overhead strike; C keeps them apart. See the note in Player.js.
-    this._hooverKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
+    this._but1Key = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+    this._but2Key = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
 
     // ── Camera ────────────────────────────────────────────────────────────────
     this.cameras.main.setBounds(0, 0, levelWidth, levelHeight);
@@ -346,12 +344,13 @@ export default class GameScene extends Phaser.Scene {
     // A tap shorter than a frame still counts: JustDown latches it, where
     // testing isDown would miss a key that was already back up by the time
     // we looked.
-    const swing = Phaser.Input.Keyboard.JustDown(this._hammerKey) || this._hammerKey.isDown;
-    const jump = Phaser.Input.Keyboard.JustDown(this._jumpKey) || this._jumpKey.isDown
-      || this._cursors.space.isDown;
-
-    const hoover = Phaser.Input.Keyboard.JustDown(this._hooverKey);
-    this._player.update(this._cursors, swing, delta, hoover, jump);
+    const { JustDown } = Phaser.Input.Keyboard;
+    const but2Pressed = JustDown(this._but2Key) || JustDown(this._cursors.space);
+    this._player.update(this._cursors, {
+      but1: JustDown(this._but1Key),
+      but2: but2Pressed || this._but2Key.isDown || this._cursors.space.isDown,
+      but2Pressed,
+    }, delta);
 
     if (this._player.hooverOut) this._suckTimmies();
 

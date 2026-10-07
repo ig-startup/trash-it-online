@@ -49,6 +49,10 @@ ANIMS = {
     "idle": [0],                         # slots 3/61/64/77
     "run": list(range(1, 17)),           # slot 2
     "skid": list(range(17, 21)),         # slot 4 — stopping after a run
+    # With the hammer out the game walks a cycle of its own (slot 3) and
+    # stands on its frame 34 (slot 4, whose hammer frame is 13).
+    "walkHammer": list(range(21, 37)),   # slot 3
+    "standHammer": [34],                 # slot 4
     "hammerSide": list(range(37, 55)),   # slot 8 — the sideways strike.
                                          # Held-button version is the same
                                          # run from index 10 (frame 47),
