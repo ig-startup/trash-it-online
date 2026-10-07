@@ -1099,6 +1099,76 @@ so the structures settle *before* the sprites move, and 0x2d1b5 (which
 builds the draw list by testing every object against the camera) runs
 after both.
 
+### What a destroyed block becomes — **Confirmed**
+
+`remove_object_data` (VA 0x68724) keeps the block's entity and turns it
+into **rubble**: it swaps the draw routine from 0x2d285 (opaque, through
+0x38be8) to 0x2d381, which draws through 0x34ed8 — a blit that writes
+`dst = table[src * 256 + dst]` with the 256x256 blend table at 0xbd4e4,
+so the rubble is **see-through**. Its state becomes 0x60f60:
+
+- it flies with a random push (`vy = -((rand & mask) + 0x4e29)`, `vx = ±(rand
+  & mask)`, the masks those of "What a hammer blow carries") and falls at
+  **5000 a tick** (0.076 px/tick²) — *through* everything, to the bottom of
+  the level (`0x41044c`), not onto the blocks below;
+- on the bottom it bounces, `vy = -(vy / 4)`, puffs dust (0x6125c,
+  `DUST.SPR`) and comes to rest;
+- resting, it counts down `+0x60` from **2000 ticks** (about 33 s) and every
+  tick puts itself on the rubble list (0x3f3390, count 0x3f4022) — the list
+  the hoover reads;
+- when the count runs out (0x61205) it sinks into the floor a pixel a tick
+  until it is gone.
+
+A second mode (`0x41044e`, state 0x6109e) sends rubble flying sideways
+towards a point instead; not traced.
+
+### The hoover — **Confirmed**
+
+The hoover is a sprite of its own, `VAC.SPR` (template 0xa3444, made for
+each player at VA 0x21616 and kept at the player's `+0x4c`), and like the
+hammer it follows Jack and shows a frame from a list per animation slot
+(table 0xa47c4, indexed by the frame index): slot 70, drawing it, shows
+nothing until entry 12 (`0x8009` — show, frame 9) and then frames 9 → 0;
+slot 28, held, frame 26; slot 29, walking, frames 10-26; slot 71, putting
+it away, frames 0-9 then `0x4000` (hide). Showing plays sound 0x16, hiding
+0x17.
+
+From frame 10 on it **sucks** (VA 0x617xx → 0x61472): a box 32 px wide
+starting **40 px ahead** of Jack (72 px when facing left: `x - 0x48`), at
+`y - 8`, tested against **the rubble list only**. A caught piece (state
+0x61518) moves an eighth of the way to the nozzle across and a quarter
+down each tick while its height shrinks by a quarter a tick, then its
+width; at 4 px it is gone and counted (0x61327: area / 16). Timmies are
+not on that list — the hoover does not take them.
+
+### A falling block on Jack — **Confirmed**
+
+Every tick (VA 0x21aef, from Jack's routine) 0x60a00 looks along Jack's
+width in the **falling** map (0x69fdf reads the provisional map 0x40f334,
+where moving groups are stamped) for a solid block over him:
+
+- in the air: rising, his `vy` flips downward; falling, he gets half the
+  block's `vy` on top of his own;
+- on the ground without the hat: the block goes in the player's `+0xac`
+  and Jack enters **0x29c92** — pinned; each tick the block's descent since
+  contact is his squash, `+0x52` (height) down by it and `+0x50` (width) up
+  by half of it. When the block stops pressing, or has pressed him more
+  than **32 px**, he shoots out at `vy = -6` into **0x29f7a**: flattened
+  (slot 65, sheet frames 323-325, Jack as a pancake), thrown with a random
+  `vx` (`rand >> 15`, either way), then flapping across the floor (±0x3000
+  a tick, friction 0x1500) for **150 ticks** before he gets up;
+- on the ground in the hard hat: **0x29e16**, the same pin, but he pops out
+  at `vy = -4` into **0x2a199** (slot 69): no sideways push, half gravity
+  (0x2400), and a springy wobble of width and height (`+0x50` kicked by
+  0x28000, `+0x52` by -0x20000, each damped by `-value * 0x8000`) until he
+  lands, back in the hat.
+- holding something (`+0x40 & 0x20`), he drops it (0x1e7d5) and goes to
+  0x256e9, or 0x26539 in the hat.
+
+The same squash handler (0x21a70: hat → 0x2a199 at -4, else 0x29f7a at
+-6) is outcome 2 of a "generic thing" (`.OB` class 26, event 9), which no
+shipped level places.
+
 ### Reading `G.EXE` in Ghidra
 
 Ghidra has no DOS/4GW LE loader, so the image goes in flat
