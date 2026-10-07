@@ -10,6 +10,7 @@ import { WORLD_COLORS } from '../palette';
 import { buildBackground } from '../entities/drawBackground';
 import { preloadRealJackFrames } from '../entities/jackSprites';
 import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/props';
+import LooseObjects from './looseObjects';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
@@ -229,6 +230,20 @@ export default class GameScene extends Phaser.Scene {
     );
     this._player.on('hammer_impact', (blow) => this._checkHammerDestructibles(blow));
 
+    // ── What can be picked up ─────────────────────────────────────────────
+    this._loose = new LooseObjects(this,
+      () => [...this._platforms.getChildren(), ...this._destructibles.getChildren()],
+      levelHeight + 120);
+    this._dynamite.forEach((d) => {
+      if (d.litBy === 'hammer') d.handle = this._loose.add(d.sprite, 'dynamite');
+    });
+    this._timmies.forEach((t) => this._loose.add(t, 'timmy'));
+    this._player.findPickup = (x, y) => this._loose.find(x, y, this._player.getBounds());
+    this._player.on('pickup', (h) => this._loose.pick(h));
+    this._player.on('putdown', ({ handle, x, y }) => this._loose.place(handle, x, y));
+    this._player.on('throw', ({ handle, x, y, vx, vy }) => this._loose.throw(handle, x, y, vx, vy));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._loose.destroy());
+
     // Colliders
     this.physics.add.collider(this._player, this._platforms);
     this.physics.add.collider(this._player, this._destructibles);
@@ -350,6 +365,11 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this._tickDynamite(time);
+
+    // A stick that goes off in his hands is gone from them.
+    const held = this._player.carried;
+    if (held && !held.sprite.active) this._player.dropCarried();
+    this._loose.update(delta, this._player.carried ? this._player.carryPoint : null, this._player.aim);
 
     // Timmies mill about on the spot; each keeps its own phase so they
     // do not step in unison.
@@ -706,6 +726,7 @@ export default class GameScene extends Phaser.Scene {
     for (let i = this._timmies.length - 1; i >= 0; i -= 1) {
       const t = this._timmies[i];
       if (!t.active) { this._timmies.splice(i, 1); continue; }
+      if (this._loose.isBusy(t)) continue;
       const dx = jx - t.x;
       const dy = jy - t.y;
       const dist = Math.hypot(dx, dy);

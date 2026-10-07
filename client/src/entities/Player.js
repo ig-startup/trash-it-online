@@ -148,10 +148,52 @@ const STATES = {
   hooverStow: {
     slot: 71, strip: SHEET_STRIP_STOW, ms: 35, next: 'stand', locks: true,
   },
+
+  // Carrying. 0x267e3 / 0x26971 bend down and take hold (slots 44, 50 —
+  // frames 223-224 — and 45, the whole 223-230); 0x26fe0 stands holding it
+  // overhead (slot 40), 0x270e1 walks with it (37), 0x27a94 is in the air
+  // with it (48). From standing, Down puts it down (0x27356, slot 45) and
+  // Up takes aim (0x2767d, slot 47); a button lets fly (0x27954, slot 41).
+  // No hammer list belongs to any of these slots: his hands are full.
+  pickUp: { slot: 45, anim: 'pickUp', ms: 2 * TICK_MS, next: 'carryIdle', locks: true, brakes: true },
+  carryIdle: { slot: 40, anim: 'carryIdle', ms: 400, loop: true, carry: true, profile: 'slow' },
+  carryWalk: { slot: 37, anim: 'carryWalk', ms: 70, loop: true, carry: true, profile: 'slow' },
+  carryFall: { slot: 48, anim: 'carryWalk', ms: 70, loop: true, carry: true, profile: 'slow' },
+  putDown: { slot: 45, anim: 'pickUp', ms: 2 * TICK_MS, next: 'stand', locks: true, brakes: true, reverse: true },
+  // The aim's frames step with its own schedule (see THROW), so `ms` is unused.
+  throwAim: { slot: 47, anim: 'throwAim', ms: Infinity, hold: true, carry: true },
+  throwRelease: { slot: 41, anim: 'throwRelease', ms: 4 * TICK_MS, next: 'stand', locks: true, brakes: true },
 };
 
 /** States in which the hoover is out and sucking. */
 const HOOVER_STATES = new Set(['hooverIdle', 'hooverWalk']);
+
+/**
+ * Picking up (VA 0x26971 → 0x21d51): the game searches the sprites whose
+ * template category has bit 0 — dynamite of the hammer kind, `LEAD`, the
+ * saws, timmies — and takes the first that Jack's frame overlaps and whose
+ * frame holds his grab point, 11 px ahead of his feet and 5 up (VA 0xa0288).
+ *
+ * Throwing (0x2767d, then 0x27954): while he aims, the throw's frame steps
+ * 3, 8, 13 ticks apart up to the last, and only then is the arc drawn
+ * (VA 0x15bcb). A direction ahead or back moves the reach index (0..31,
+ * from 16), Up and Down the lift index (0..7, from 4), one a tick; the
+ * object leaves at `vx = ±reach[i]`, `vy = -lift[j]` px/tick, from 10 px
+ * ahead of him and 41 up. Tables at VA 0x93eb0 and 0x93f30.
+ */
+export const THROW = {
+  reach: Array.from({ length: 32 }, (_, i) => 0.5 + (2.5 * i) / 31),
+  lift: [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4],
+  reachStart: 16,
+  liftStart: 4,
+  frameSteps: [3, 8, 13],   // ticks into the aim at which its frame steps
+  fromAhead: 10,
+  fromUp: 41,
+};
+const GRAB_AHEAD = 11;
+const GRAB_UP = 5;
+/** Where a carried object sits: on his head. Ours — the game's is not traced. */
+export const CARRY_UP = 41;
 
 /**
  * Holding the hammer key winds up; letting go strikes. The frame index of
@@ -255,6 +297,18 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._hammerHidden = false; // in the hat, per the game's list flags
     this._jumpTicks = 0;
 
+    /** What he holds overhead — an opaque handle the scene owns — or null. */
+    this.carried = null;
+    /**
+     * Set by the scene: given the grab point, the thing there that can be
+     * picked up, or null.
+     * @type {null | ((x: number, y: number) => any)}
+     */
+    this.findPickup = null;
+    this._reach = THROW.reachStart;
+    this._lift = THROW.liftStart;
+    this._aimTicks = 0;
+
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -333,6 +387,96 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     return HOOVER_STATES.has(this.state);
   }
 
+  /** Where the carried object sits now: on his head, or at his feet while he bends for it. */
+  get carryPoint() {
+    const dir = this._facingLeft ? -1 : 1;
+    const bending = (this.state === 'pickUp' && this._animFrame < 4)
+      || (this.state === 'putDown' && this._animFrame >= 4);
+    if (bending) return this._feetAhead();
+    if (this.state === 'throwAim') return { x: this.x + dir * THROW.fromAhead, y: this.y - THROW.fromUp };
+    return { x: this.x, y: this.y - CARRY_UP };
+  }
+
+  /**
+   * The throw as aimed, in px/tick from the throw's own start point, or
+   * null until the aim has wound up far enough for the game to draw its arc.
+   */
+  get aim() {
+    if (this.state !== 'throwAim' || this._aimTicks < THROW.frameSteps[2]) return null;
+    return this._throwVelocity();
+  }
+
+  /** His grab point's column, at his feet. */
+  _feetAhead() {
+    return { x: this.x + (this._facingLeft ? -1 : 1) * GRAB_AHEAD, y: this.y };
+  }
+
+  _throwVelocity() {
+    const dir = this._facingLeft ? -1 : 1;
+    return {
+      x: this.x + dir * THROW.fromAhead,
+      y: this.y - THROW.fromUp,
+      vx: dir * THROW.reach[this._reach],
+      vy: -THROW.lift[this._lift],
+    };
+  }
+
+  /** Lets go of what he holds without throwing it — it went off, or was taken. */
+  dropCarried() {
+    if (!this.carried) return;
+    this.carried = null;
+    if (STATES[this.state] && STATES[this.state].carry) this._enter('stand', this.scene.time.now);
+  }
+
+  /**
+   * One tick while he holds something: walking with it, putting it down,
+   * taking aim and letting fly. Returns true when it has handled the tick.
+   */
+  _carryTick(cursors, body, dt, now, onGround, buttonDown) {
+    if (this.state === 'throwAim') {
+      body.setVelocityX(this._brake(body.velocity.x, dt));
+      this._aimTicks += dt * ORIGINAL_HZ;
+      this._animFrame = THROW.frameSteps.filter((t) => this._aimTicks >= t).length;
+      this._showFrame(STATES.throwAim);
+      // A direction ahead throws further, back nearer; Up and Down lift.
+      const ahead = this._facingLeft ? cursors.left.isDown : cursors.right.isDown;
+      const back = this._facingLeft ? cursors.right.isDown : cursors.left.isDown;
+      if (ahead) this._reach = Math.min(THROW.reach.length - 1, this._reach + 1);
+      else if (back) this._reach = Math.max(0, this._reach - 1);
+      if (cursors.up.isDown) this._lift = Math.min(THROW.lift.length - 1, this._lift + 1);
+      else if (cursors.down.isDown) this._lift = Math.max(0, this._lift - 1);
+      if (buttonDown) {
+        const shot = this._throwVelocity();
+        const handle = this.carried;
+        this.carried = null;
+        this._enter('throwRelease', now);
+        this.emit('throw', { handle, ...shot });
+      }
+      return true;
+    }
+
+    if (!onGround) {
+      this._steer(cursors, body, dt, PROFILES.slow);
+      this._enter('carryFall', now);
+      return true;
+    }
+    if (Phaser.Input.Keyboard.JustDown(cursors.down)) {
+      body.setVelocityX(0);
+      this._enter('putDown', now);
+      return true;
+    }
+    if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
+      this._reach = THROW.reachStart;
+      this._lift = THROW.liftStart;
+      this._aimTicks = 0;
+      this._enter('throwAim', now);
+      return true;
+    }
+    const moved = this._steer(cursors, body, dt, PROFILES.slow);
+    this._enter(moved ? 'carryWalk' : 'carryIdle', now);
+    return true;
+  }
+
   /** True when Jack is facing left. */
   get facingLeft() {
     return this._facingLeft;
@@ -369,10 +513,33 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       return;
     }
 
-    // ── The hard hat is a mode, not a pose: Down toggles it ───────────────
+    // ── Carrying: his hands are full until he puts it down or throws it ──
+    if (spec.carry) {
+      if (!this.carried) {
+        this._enter('stand', now);
+      } else {
+        this._carryTick(cursors, body, dt, now, onGround, swingHeld || jumpHeld);
+        return;
+      }
+    }
+
+    // ── Down: pick up what is at his feet, or duck into the hard hat ──────
+    // In the game picking up is a button of its own (0x40, VA 0x22ad1),
+    // and on the keyboard layout what keeps the bend going is Down alone
+    // (VA 0x20ee0). With no spare button here, Down does both: it picks up
+    // when there is something under his grab point and ducks otherwise.
     if (Phaser.Input.Keyboard.JustDown(cursors.down) && onGround) {
-      this._enter(this.state === 'hat' ? 'hatOut' : 'hatIn', now);
+      const dir = this._facingLeft ? -1 : 1;
+      const found = this.state !== 'hat' && this.findPickup
+        && this.findPickup(this.x + dir * GRAB_AHEAD, this.y - GRAB_UP);
       body.setVelocityX(0);
+      if (found) {
+        this.carried = found;
+        this._enter('pickUp', now);
+        this.emit('pickup', found);
+        return;
+      }
+      this._enter(this.state === 'hat' ? 'hatOut' : 'hatIn', now);
       return;
     }
 
@@ -551,8 +718,15 @@ export default class Player extends Phaser.Physics.Arcade.Image {
    */
   _enter(name, now, strike = null) {
     if (this.state === name) return;
+    const prev = this.state;
     this.state = name;
     const spec = STATES[name] || STATES.stand;
+    // Putting down lets go at the end, with the object back at his feet.
+    if (prev === 'putDown' && this.carried) {
+      const handle = this.carried;
+      this.carried = null;
+      this.emit('putdown', { handle, ...this._feetAhead() });
+    }
     this._seq = strike ? strike.seq : (spec.frames || null);
     this._impacts = strike ? strike.impacts : null;
     this._strikeCharge = strike ? strike.charge : 0;

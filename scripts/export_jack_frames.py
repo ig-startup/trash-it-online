@@ -69,6 +69,15 @@ ANIMS = {
     "hooverOut": list(range(113, 123)),  # slot 11, second half
     "hooverIdle": [139],                 # slot 30
     "hooverWalk": list(range(123, 139)), # slot 31
+    # Carrying (slot numbers as play_anim has them, after the 2026-10-06
+    # fix): bend down for it (44 / 50 show 223-224, 45 the whole 223-230),
+    # stand holding it overhead (40), walk with it (37), take aim (47) and
+    # let fly (41).
+    "pickUp": list(range(223, 231)),     # slots 39 / 45 / 51
+    "carryIdle": [231],                  # slot 40
+    "carryWalk": list(range(191, 207)),  # slots 37 / 48
+    "throwAim": list(range(232, 236)),   # slot 47
+    "throwRelease": list(range(236, 240)),  # slot 41
 }
 
 #: Where the held-button strike starts inside `hammerSide` (frame 47).
