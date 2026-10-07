@@ -971,7 +971,7 @@ The level's option byte (0x98224) switches actions off: bit 1 the
 hammer, 2 the hammer's DOWN action, 4 the hoover, 8 the hoover's.
 
 The clone plays this layout with Z as BUT1 and X (or Space) as BUT2.
-Not yet in it: the ladders, pushing, 0x28691, the hammer's and the
+Not yet in it: pushing, 0x28691, the hammer's and the
 hoover's DOWN actions, and the hat's BUT2. Two choices are its own:
 putting a carried thing down takes a fresh press of Down (the game tests
 Down held, so keeping it held after the lift would drop it at once), and
@@ -1168,6 +1168,62 @@ where moving groups are stamped) for a solid block over him:
 The same squash handler (0x21a70: hat → 0x2a199 at -4, else 0x29f7a at
 -6) is outcome 2 of a "generic thing" (`.OB` class 26, event 9), which no
 shipped level places.
+
+### What Jack collides with: `.COL` — **Confirmed**
+
+Not every block is solid, and the clone treated every one as if it were.
+The game keeps a **collision kind per object** in `.COL` — the one level
+file these notes used to say `G.EXE` never opens. It does (VA 0x108db
+builds the name, VA 0x6028f reads it whole into 0x3f20c4, 4800 bytes):
+6 bytes per object, three i16, indexed by the object's number, so record
+0 is the "no object" slot and the file holds `N + 1` records — true of
+all 147 levels. Every probe of the tile map reads word 0 of the record
+for the object it finds:
+
+| kind | objects | what the probes do with it |
+|---|---|---|
+| 0 | 24553 | nothing — scenery Jack walks in front of: the buildings he smashes |
+| 1 | 21555 | solid: the only kind that stops him sideways (VA 0x6040a, 0x60513) |
+| 2 | 3220 | a floor only from above — feet over its top (VA 0x607c1); the girders |
+| 4 | 2139 | a ladder: no collision; the ladder probe looks for it |
+| 5 | 407 | a ladder's top: a floor from above, and still a ladder |
+
+Kinds 3 (overhead only, VA 0x60666) and 6 (floor from above) are in the
+code and in no level. In 0A, 328 of 371 objects are kind 0 and only 7 are
+solid. Words 1 (0..9) and 2 (mostly 0) are read by the hammer's code
+(0x1fb66, 0x1fc64, 0x2fc51) and not traced.
+
+### Ladders — **Confirmed**
+
+**The ladder probe** (VA 0x60920, box 0xa0264 = 4, 30) reads the row of
+cells 31 px over his feet, across x ± 4. *Every* cell there must be kind 4
+or 5 — anything else, empty included, answers 0 — and the answer is 5 if
+a top is among them, else 4. So he must stand squarely at the ladder.
+
+**Catching hold**: UP held and the probe non-zero, from standing
+(0x22a99), running (0x22598) or in the air (0x22e16); from the last two
+only while `|vx| < 5 px/tick` (faster goes to the hard landing, 0x29828),
+and in the air only once `+0x15c` has counted down — 15 ticks, set when he
+leaves a ladder any way but the top. Only empty-handed: no state with the
+hammer out leads to it.
+
+**Climbing** (0x25bda, slot 33): UP sets `vy = -2`, DOWN `+2` px/tick,
+nothing steers sideways (the state's tail is a bare return), and the
+frame shown is his height, `(y >> 1) & 15`. BUT2 pressed jumps off
+(0x22b91). Going down, the floor probe 0x606eb with `& 6` — a solid block
+or a platform he is above; a ladder's top he passes through — stands him
+on it, as does the bottom of the level. Going up, if the probe at the new
+height answers 0 but answered 5 where he was, he tops out; any other
+empty answer drops him (0x256e9).
+
+**Topping out** (0x299b6, slot 60): twelve frames two ticks apart; at
+frame `f` he moves `table[f] / 2` px a tick, the table at VA 0xa130e being
+`0, -2, -3, 0, 0, -1, -3, -3, -3, -3, -2, -5` — 25 px up — and then his
+feet are set on the top of the block 30 px over where he started
+(`+0xa6`). **Stepping down** from a top (DOWN pressed, standing on kind 5,
+0x22a05 → 0x29b15, slot 61 — the same frame list backwards): 9 px down at
+once, the table backwards from frame 11, and then 31 px under the top,
+climbing.
 
 ### Reading `G.EXE` in Ghidra
 
