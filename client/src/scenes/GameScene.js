@@ -12,6 +12,7 @@ import { preloadRealJackFrames } from '../entities/jackSprites';
 import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/props';
 import LooseObjects from './looseObjects';
 import Rubble from './rubble';
+import Collapse from './collapse';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
@@ -318,6 +319,9 @@ export default class GameScene extends Phaser.Scene {
     // ── Throttle timestamp ────────────────────────────────────────────────────
     this._lastUpdateSent = 0;
 
+    /** Structures that lose their support fall (see collapse.js). */
+    this._collapse = new Collapse(this, level.heightTiles || Math.ceil(levelHeight / this._tile));
+
     /** What smashed blocks become: see-through rubble the hoover clears. */
     this._rubble = new Rubble(this, level.ground ? level.ground.y : levelHeight);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._rubble.destroy());
@@ -352,6 +356,7 @@ export default class GameScene extends Phaser.Scene {
       but2Pressed,
     }, delta);
 
+    this._collapse.update(delta);
     const taken = this._rubble.update(delta, this._player.hooverBox, this._player.nozzle);
     if (taken) {
       this._rubbleTaken += taken;
@@ -611,6 +616,7 @@ export default class GameScene extends Phaser.Scene {
 
     entry.hp -= force;
     blow.tally.set(entry.id, (blow.tally.get(entry.id) || 0) + force);
+    if (this._collapse) this._collapse.touch();   // any hit sets the dirty flag
 
     if (entry.hp <= 0) {
       this._rubble.add(entry.rect, blow.mask || HAMMER_RUBBLE_MASK);
@@ -651,13 +657,38 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Take a destroyed block out of the world and out of the map. */
-  _forgetBlock(entry) {
+  /** Clear a block's cells from the collision map (VA 0x68980). */
+  _unstampCells(entry) {
     for (let dy = 0; dy < entry.th; dy += 1) {
       for (let dx = 0; dx < entry.tw; dx += 1) {
         const key = (entry.ty + dy) * this._gridW + entry.tx + dx;
         if (this._cellOwner.get(key) === entry.id) this._cellOwner.delete(key);
       }
+    }
+  }
+
+  /**
+   * A falling group has come down on `hit`, `hitter` first: the impact goes
+   * down into the one and up into the other (VA 0x68b2d → 0x689e6 / 0x68a91),
+   * and shakes the screen by how hard it was.
+   */
+  _landed(hit, hitter, force) {
+    if (force > 0) {
+      this._applyForce(hit, force, 0, undefined, { down: true, up: false });
+      if (hitter && hitter.rect.active) {
+        this._applyForce(hitter, force, 0, undefined, { down: false, up: true });
+      }
+    }
+    const shake = Math.min(0.012, force / 400000);
+    if (shake > 0.0015) this.cameras.main.shake(120, shake);
+  }
+
+  /** Take a destroyed block out of the world and out of the map. */
+  _forgetBlock(entry) {
+    this._unstampCells(entry);
+    if (this._collapse) {
+      this._collapse.falling.delete(entry.id);
+      this._collapse.touch();
     }
     if (entry.rect.active) {
       entry.rect.destroy();
