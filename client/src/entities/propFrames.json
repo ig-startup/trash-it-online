@@ -1039,6 +1039,22 @@
       "ax": 13,
       "ay": 24,
       "src": "CFIR.SPR:13"
+    },
+    "sucker_00": {
+      "file": "sprites/props/sucker_00.png",
+      "w": 23,
+      "h": 17,
+      "ax": 11,
+      "ay": 14,
+      "src": "SUCKER.SPR:0"
+    },
+    "sucker_01": {
+      "file": "sprites/props/sucker_01.png",
+      "w": 29,
+      "h": 16,
+      "ax": 14,
+      "ay": 24,
+      "src": "SUCKER.SPR:1"
     }
   },
   "anims": {
@@ -1195,6 +1211,10 @@
     "ball": [
       "ball_00",
       "ball_01"
+    ],
+    "sucker": [
+      "sucker_00",
+      "sucker_01"
     ]
   },
   "hammerBySlot": {

@@ -14,6 +14,7 @@ import LooseObjects from './looseObjects';
 import Rubble from './rubble';
 import Collapse from './collapse';
 import Cannons from './cannons';
+import Suckers from './suckers';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -267,7 +268,9 @@ export default class GameScene extends Phaser.Scene {
       levelHeight + 120, {
         // A ball coming down into a cannon's bowl is taken in (VA 0x20c15).
         falling: (h) => {
-          if (h.kind !== 'ball' || !this._cannons || !this._cannons.tryLoad(h)) return false;
+          const taken = (h.kind === 'ball' && this._cannons && this._cannons.tryLoad(h))
+            || (this._suckers && this._suckers.catchLoose(h));
+          if (!taken) return false;
           h.inside = true;
           h.flying = false;
           h.vx = 0;
@@ -281,6 +284,10 @@ export default class GameScene extends Phaser.Scene {
     });
     this._timmies.forEach((t) => this._loose.add(t, 'timmy', true));
     this._balls.forEach((b) => { this._loose.add(b.sprite, 'ball').big = b.big; });
+    this._suckers = hasProps(this) && PROP_ANIMS.sucker
+      ? new Suckers(this, level.suckers || [], this._loose)
+      : null;
+    if (this._suckers) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._suckers.destroy());
     this._player.findPickup = (x, y) => this._loose.find(x, y, this._player.getBounds());
     this._player.findCrusher = () => {
       if (!this._collapse) return null;
@@ -434,6 +441,12 @@ export default class GameScene extends Phaser.Scene {
 
     this._tickDynamite(time);
     if (this._cannons) this._tickCannons(delta);
+    if (this._suckers) {
+      if (this._player.state !== 'caught') this._suckers.catchJack(this._player);
+      this._suckers.update(delta,
+        (pl, x, y) => pl.holdAt(x, y),
+        (pl, x, y, vy) => pl.thrownUp(x, y, vy));
+    }
 
     // A stick that goes off in his hands is gone from them.
     const held = this._player.carried;
@@ -553,6 +566,7 @@ export default class GameScene extends Phaser.Scene {
     // kind a hammer lights listens for it.
     if (!overhead) return;
     if (this._cannons) this._cannons.hit(reach);
+    if (this._suckers) this._suckers.hit(reach);
     this._dynamite.forEach((d) => {
       if (d.lit || d.litBy !== 'hammer' || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {

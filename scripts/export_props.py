@@ -63,6 +63,9 @@ PROPS = {
     "spark": ("BLAM.SPR", list(range(9, 15))),
     # The cannonballs (.OB class 7): small, and the big one (VA 0x20b84).
     "ball": ("CFIR.SPR", [12, 13]),
+    # The sucker (.OB class 22, VA 0x18fba): a base, and the red cup on it
+    # that rides up and down with what it is doing.
+    "sucker": ("SUCKER.SPR", [0, 1]),
 }
 
 

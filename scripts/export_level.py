@@ -53,6 +53,8 @@ DYNAMITE_CLASS = 15
 #: Class 6 places a cannon (VA 0x5f69a), class 7 a cannonball (VA 0x20b58).
 CANNON_CLASS = 6
 BALL_CLASS = 7
+#: Class 22 places a sucker — the spring that throws what lands on it.
+SUCKER_CLASS = 22
 TIME_LIMIT = 240
 PAD = 1  # transparent gutter between packed shapes
 
@@ -239,6 +241,12 @@ def export(name):
              for x, y in [struct.unpack_from("<hh", payload, 0)]
              if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
 
+    # Suckers. Class 22: x, y as given (VA 0x18fdd).
+    suckers = [{"x": x, "y": y + HEADROOM}
+               for cid, _off, payload in placed if cid == SUCKER_CLASS
+               for x, y in [struct.unpack_from("<hh", payload, 0)]
+               if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
+
     rung = ob.bells(placed)
     if rung:
         bx, by, _subtype = rung[0]
@@ -264,6 +272,7 @@ def export(name):
         "dynamite": dynamite,
         "cannons": cannons,
         "balls": balls,
+        "suckers": suckers,
         # The bottom edge of a level is solid ground in the original. It is
         # not made of objects — in 0B all 179 are destructible and nothing
         # sits under the start at all — but every level's authored start is

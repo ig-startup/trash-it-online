@@ -208,6 +208,11 @@ const STATES = {
   // hold of what can be pushed — see `pushing`.
   push: { slot: 38, anim: 'push', ms: Infinity, hold: true, push: true, profile: 'push' },
   pushStand: { slot: 52, anim: 'pushStand', ms: 400, loop: true, push: true, profile: 'push' },
+
+  // Caught on a sucker's cup (VA 0x194d6 sets his `+0x40 |= 0x400020` and
+  // holds him there) until it throws him. Which frame he shows there is
+  // not traced; the fall's is ours.
+  caught: { slot: 31, anim: 'fall', ms: Infinity, hold: true, caught: true },
 };
 
 /**
@@ -660,6 +665,10 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this._crushTick(body, dt, now, onGround);
       return;
     }
+    if (spec.caught) {
+      body.setVelocity(0, 0);
+      return;
+    }
     if (this._checkCrusher(body, now, onGround)) return;
     this._regrab = Math.max(0, this._regrab - dt * ORIGINAL_HZ);
 
@@ -1077,6 +1086,33 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       }
     }
     this._climbFrame();
+  }
+
+  /** Held on a sucker at (x, y), his feet on its cup. */
+  holdAt(x, y) {
+    const body = this.body;
+    if (this.state !== 'caught') {
+      // Hands full, what he holds drops, as under a falling block (ours).
+      if (this.carried) {
+        this.emit('putdown', { handle: this.carried, ...this._feetAhead() });
+        this.carried = null;
+      }
+      body.setAllowGravity(false);
+      body.checkCollision.none = true;
+      this._enter('caught', this.scene.time.now);
+    }
+    body.reset(x, y);
+  }
+
+  /** Thrown off it straight up, at `vy` px/tick, from (x, y). */
+  thrownUp(x, y, vy) {
+    const body = this.body;
+    body.setAllowGravity(true);
+    body.checkCollision.none = false;
+    body.reset(x, y);
+    body.setVelocity(0, vy * ORIGINAL_HZ);
+    this._jumpBoost = 0;
+    this._enter('rise', this.scene.time.now);
   }
 
   /** True while he is in the stance that takes hold of what can be pushed. */
