@@ -8,8 +8,9 @@
   room lifecycle
 - Unified server: Node.js + Express + Socket.io
 - Server serves both WebSocket API and client static files
-- The deploy path (`npm install && npm run build && npm start` from the repo
-  root, `NODE_ENV=production`) was verified on a clean copy of the tree
+- The deploy path (`npm run build && npm start` from the repo root, with
+  `NODE_ENV=production` set for **both** steps, as Railway does) was
+  verified on a clean copy of the tree — 2026-10-07
 - Atari permission confirmed for non-commercial use
 
 ## How the build fits together
@@ -19,11 +20,17 @@ is what drives the deploy:
 
 | Command | What it does |
 |---|---|
-| `npm run build` | installs client deps → `vite build` → installs server prod deps |
+| `npm run build` | installs client deps, dev ones included → `vite build` → installs server prod deps |
 | `npm start` | `node server/src/index.js` — serves `client/dist/` and the socket API |
 
 `railway.json` points `startCommand` at `npm start` and sets
 `healthcheckPath` to `/health`.
+
+Railway's service variables are visible at build time too, so the build
+runs under `NODE_ENV=production` — and under it a plain `npm install`
+skips devDependencies, which is where `vite` lives. That is why the client
+install says `--include=dev`; without it the build stops at
+`vite: command not found`.
 
 ## Deployment to Railway
 

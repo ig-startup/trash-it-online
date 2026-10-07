@@ -7,7 +7,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "npm --prefix client install && npm --prefix client run build && npm --prefix server install --omit=dev",
+    "build": "npm --prefix client install --include=dev && npm --prefix client run build && npm --prefix server install --omit=dev",
     "start": "node server/src/index.js",
     "test": "npm --prefix server test",
     "lint": "npm --prefix server run lint && npm --prefix client run lint"
