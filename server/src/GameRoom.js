@@ -56,7 +56,9 @@ class GameRoom {
    * @param {object} levelData — level descriptor from tech-spec (or level id string for compat)
    */
   startGame(levelData) {
-    if (this.state !== 'lobby') return;
+    // 'ended' is allowed too: that is how the room moves on to the next level.
+    if (this.state !== 'lobby' && this.state !== 'ended') return;
+    this._clearTimer();
 
     // Support passing either a full levelData object or just an id
     if (typeof levelData === 'string') {
@@ -68,10 +70,14 @@ class GameRoom {
     this.objects.clear();
     const destructibles = levelData.destructibles || [];
     for (const obj of destructibles) {
+      // Blocks the original marks unbreakable are scenery and structure;
+      // they are never destroyed, so the room does not track them.
+      if (obj.solid) continue;
       const id = obj.id || `${obj.x}_${obj.y}`;
       this.objects.set(id, { hp: obj.hp });
     }
 
+    this.levelId = levelData.id || null;
     this.timeLeft = levelData.timeLimit || 180;
     this.state = 'playing';
 
@@ -107,13 +113,19 @@ class GameRoom {
    * @param {string} socketId
    * @param {string} objectId
    */
-  handleObjectHit(socketId, objectId) {
+  handleObjectHit(socketId, objectId, force = 1) {
     if (this.state !== 'playing') return;
 
     const obj = this.objects.get(objectId);
     if (!obj) return;
 
-    obj.hp--;
+    // A blow is worth its force against the block's hit points, which
+    // come from the original's own table. The client works out which
+    // blocks a swing reaches and how the force carries down through
+    // their supports, and reports each one it hit with the force it
+    // applied; the arithmetic here is the same, from the same hit
+    // points, so both sides destroy the same blocks.
+    obj.hp -= force;
 
     if (obj.hp <= 0) {
       this.objects.delete(objectId);

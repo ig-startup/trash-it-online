@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "build": "cd ../client && npm install && npm run build",
-    "postinstall": "npm run build",
+    "build": "npm --prefix ../client install && npm --prefix ../client run build",
     "test": "jest",
     "lint": "eslint src --ext .js"
   },

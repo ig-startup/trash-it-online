@@ -48,7 +48,7 @@ export default class LobbyScene extends Phaser.Scene {
   }
 
   create() {
-    const { width, height } = this.scale;
+    const { width } = this.scale;
     const cx = width / 2;
     const sm = SocketManager.getInstance();
 
@@ -147,6 +147,9 @@ export default class LobbyScene extends Phaser.Scene {
         mode: this._mode,
         hostId: this._hostId,
         roomCode: this._roomCode,
+        // Without this GameScene falls back to players[0] — every client
+        // would think it is the host, and spawn on the host's point.
+        myPlayerId: sm.playerId,
       });
     };
 

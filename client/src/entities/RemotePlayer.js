@@ -1,25 +1,32 @@
 import Phaser from 'phaser';
+import { ensureJackTextures, applyJackFrame, FULL_HEIGHT } from './drawJack';
 
-const PLAYER_WIDTH = 32;
-const PLAYER_HEIGHT = 48;
+const RUN_FRAME_MS = 70;
+const IDLE_FRAME_MS = 500;
 
 /**
  * RemotePlayer — visual representation of another player received via network.
+ * Drawn with the same real frames as the local player (see jackSprites.js),
+ * in the room's per-player overalls colour.
  * Uses linear interpolation to smoothly move towards the server-reported position.
  */
-export default class RemotePlayer extends Phaser.GameObjects.Rectangle {
+export default class RemotePlayer extends Phaser.GameObjects.Image {
   /**
    * @param {Phaser.Scene} scene
    * @param {number} x
    * @param {number} y
-   * @param {string} color  hex color string, e.g. '#4444ff'
+   * @param {string} color  hex color string, e.g. '#4444ff' — overalls tint
    * @param {string} playerId
    * @param {string} [playerName]
    */
   constructor(scene, x, y, color, playerId, playerName = 'Player') {
-    const colorInt = Phaser.Display.Color.HexStringToColor(color).color;
-    super(scene, x, y, PLAYER_WIDTH, PLAYER_HEIGHT, colorInt);
+    const frames = ensureJackTextures(scene, playerId, color);
+    super(scene, x, y, frames.idle[0]);
+    // applyJackFrame sets the origin per frame, from the sprite sheet's own
+    // anchor, so Jack's feet land on (x, y) whichever pose is showing.
+    applyJackFrame(this, frames.idle[0], true);
 
+    this._frames = frames;
     this.playerId = playerId;
     this.playerName = playerName;
 
@@ -29,12 +36,16 @@ export default class RemotePlayer extends Phaser.GameObjects.Rectangle {
 
     /** Direction: 'left' | 'right' */
     this.dir = 'right';
+    /** @type {'idle'|'run'|'jump'|'crouch'|'hammer'} */
+    this._remoteState = 'idle';
+    this._animTimer = 0;
+    this._animFrame = 0;
 
-    // Add rectangle to scene
+    // Add to scene
     scene.add.existing(this);
 
-    // Name label above the rectangle
-    this.nameText = scene.add.text(x, y - PLAYER_HEIGHT / 2 - 10, playerName, {
+    // Name label above the sprite
+    this.nameText = scene.add.text(x, y - FULL_HEIGHT - 10, playerName, {
       fontSize: '11px',
       color: '#ffffff',
       stroke: '#000000',
@@ -46,17 +57,71 @@ export default class RemotePlayer extends Phaser.GameObjects.Rectangle {
 
   /**
    * Called every frame from GameScene.update().
-   * Interpolates current position towards target.
+   * Interpolates current position towards target and advances the frame animation.
    */
   update() {
     this.x += (this.targetX - this.x) * 0.2;
     this.y += (this.targetY - this.y) * 0.2;
 
-    // Keep name label above the rectangle
-    this.nameText.setPosition(this.x, this.y - PLAYER_HEIGHT / 2 - 4);
+    // Keep name label above the sprite
+    this.nameText.setPosition(this.x, this.y - FULL_HEIGHT - 4);
 
     // Horizontal flip based on direction
-    this.scaleX = this.dir === 'left' ? -1 : 1;
+    this.setFlipX(this.dir === 'left');
+
+    const now = this.scene.time.now;
+    // State names are the game's own now (see STATES in Player.js). The
+    // frame a remote player is on is not synced, only the state, so each
+    // one shows a representative frame rather than its own cycle.
+    if (this._remoteState === 'windupSide' || this._remoteState === 'windupOver') {
+      // Winding up: the hammer drawn back, the first frames of the swing.
+      this._show(this._remoteState === 'windupOver' ? 'hammerOver' : 'hammerSide', 3);
+    } else if (this._remoteState === 'strikeSide' || this._remoteState === 'strikeOver') {
+      const pose = this._remoteState === 'strikeOver' ? 'hammerOver' : 'hammerSide';
+      this._show(pose, Math.floor(this._frameCount(pose) / 2));
+    } else if (this._remoteState === 'hat' || this._remoteState === 'hatIn'
+        || this._remoteState === 'hatOut') {
+      if (now - this._animTimer >= RUN_FRAME_MS) {
+        this._animTimer = now;
+        this._animFrame += 1;
+      }
+      this._show('helmetMove', this._animFrame);
+    } else if (this._remoteState === 'fall') {
+      this._show('fall');
+    } else if (this._remoteState === 'rise') {
+      this._show('run', 4);
+    } else if (this._remoteState === 'land') {
+      this._show('land');
+    } else if (this._remoteState === 'skid') {
+      this._show('skid');
+    } else if (this._remoteState === 'walk') {
+      if (now - this._animTimer >= RUN_FRAME_MS) {
+        this._animTimer = now;
+        this._animFrame += 1;
+      }
+      this._show('run', this._animFrame);
+    } else {
+      if (now - this._animTimer >= IDLE_FRAME_MS) {
+        this._animTimer = now;
+        this._animFrame += 1;
+      }
+      this._show('idle', this._animFrame);
+    }
+  }
+
+  /**
+   * Shows the given pose, cycling through its frames if it has several.
+   * @param {string} pose
+   * @param {number} [frame=0]
+   */
+  _frameCount(pose) {
+    const keys = this._frames[pose];
+    return keys && keys.length ? keys.length : 1;
+  }
+
+  _show(pose, frame = 0) {
+    const keys = this._frames[pose];
+    if (keys && keys.length) applyJackFrame(this, keys[frame % keys.length]);
   }
 
   /**
@@ -67,7 +132,7 @@ export default class RemotePlayer extends Phaser.GameObjects.Rectangle {
     if (x !== undefined) this.targetX = x;
     if (y !== undefined) this.targetY = y;
     if (dir !== undefined) this.dir = dir;
-    // state can be used later for animation
+    if (state !== undefined) this._remoteState = state;
   }
 
   /**

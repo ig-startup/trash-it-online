@@ -3,6 +3,9 @@ import { EVENTS } from '../../../shared/constants.mjs';
 
 const THROTTLE_MS = 50; // max 20 updates/s
 
+/** Events that fire many times a second and must never be logged. */
+const CHATTY_EVENTS = new Set([EVENTS.PLAYER_UPDATE]);
+
 /**
  * Singleton wrapper around socket.io-client.
  * Stores session state: playerId, roomCode, isHost, mode, playerName.
@@ -74,7 +77,12 @@ class SocketManager {
       console.error('[SocketManager] emit called before connect()');
       return;
     }
-    console.log(`[SocketManager] emit "${event}"`, data);
+    // Position updates go out 20 times a second. Logging each one, with
+    // its object, floods the console: with devtools open the tab slows to
+    // a crawl and then stops responding. Only the rare events are logged.
+    if (!CHATTY_EVENTS.has(event)) {
+      console.log(`[SocketManager] emit "${event}"`, data);
+    }
     this.socket.emit(event, data);
   }
 

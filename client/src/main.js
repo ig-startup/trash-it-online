@@ -20,13 +20,18 @@ class BootScene extends Phaser.Scene {
 
 const config = {
   type: Phaser.AUTO,
+  // Every texture here is 1997 pixel art; without this the browser
+  // smooths it and the brickwork turns to mush.
+  pixelArt: true,
   width: 800,
   height: 600,
   backgroundColor: '#1a1a2e',
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { y: 800 },
+      // The original's, converted from 0.28125 px/frame^2 — see
+      // GRAVITY in entities/Player.js.
+      gravity: { y: 1378 },
       debug: false,
     },
   },
@@ -34,5 +39,10 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
+
+// Exposed on purpose. The client is checked by driving a headless browser
+// (see the session notes), and reading the real scene beats inferring the
+// game's state from screenshots of the debug HUD.
+window.game = game;
 
 export default game;

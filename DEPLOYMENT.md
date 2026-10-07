@@ -3,10 +3,34 @@
 ## Current Status
 
 ✅ **Ready for deployment**
-- MVP complete with 25/25 tests passing
+- 34/34 tests passing, including an end-to-end suite that boots the real
+  `server/src/index.js` and drives two socket.io clients through a full
+  room lifecycle
 - Unified server: Node.js + Express + Socket.io
 - Server serves both WebSocket API and client static files
+- The deploy path (`npm run build && npm start` from the repo root, with
+  `NODE_ENV=production` set for **both** steps, as Railway does) was
+  verified on a clean copy of the tree — 2026-10-07
 - Atari permission confirmed for non-commercial use
+
+## How the build fits together
+
+Railway's nixpacks looks at the repository root, so the root `package.json`
+is what drives the deploy:
+
+| Command | What it does |
+|---|---|
+| `npm run build` | installs client deps, dev ones included → `vite build` → installs server prod deps |
+| `npm start` | `node server/src/index.js` — serves `client/dist/` and the socket API |
+
+`railway.json` points `startCommand` at `npm start` and sets
+`healthcheckPath` to `/health`.
+
+Railway's service variables are visible at build time too, so the build
+runs under `NODE_ENV=production` — and under it a plain `npm install`
+skips devDependencies, which is where `vite` lives. That is why the client
+install says `--include=dev`; without it the build stops at
+`vite: command not found`.
 
 ## Deployment to Railway
 
@@ -25,9 +49,11 @@
    - Add these variables in Railway dashboard:
      ```
      NODE_ENV=production
-     PORT=3000
-     CLIENT_URL=https://<your-project>.railway.app
      ```
+   - `PORT` is injected by Railway — do not set it yourself.
+   - `CLIENT_URL` is optional: the client is served from this same server, so
+     the browser talks same-origin and CORS never applies. Only set it if the
+     client is ever hosted on a different domain.
 
 4. **Deploy**
    - Railway auto-deploys on push to main
@@ -73,8 +99,9 @@ railway logs
 
 ### Client doesn't load
 - Check logs: `railway logs` or dashboard
-- Verify `client/dist/` is built (should see 357 KB gzip)
-- Check CORS: `CLIENT_URL` must match your Railway domain
+- Verify `client/dist/` is built (~411 KB gzip for the bundle plus the
+  original game's sprites)
+- If you set `CLIENT_URL`, it must match your Railway domain exactly
 
 ### Socket.io connection fails
 - Verify WebSocket is enabled (Railway supports it by default)
@@ -83,8 +110,16 @@ railway logs
 
 ### Build fails
 - Railway shows build logs — look for Node/npm errors
-- Most common: missing `npm run build` — already in `postinstall`
-- Check client dependencies: any `npm` errors locally?
+- Reproduce the exact deploy path locally on a clean copy:
+  ```bash
+  git clone . /tmp/deploy-check && cd /tmp/deploy-check
+  npm install && npm run build
+  NODE_ENV=production PORT=3222 npm start
+  curl localhost:3222/health
+  ```
+- If nixpacks does not detect Node at all, check that the root
+  `package.json` is committed — without it there is nothing to detect and
+  no dependency ever gets installed.
 
 ## After Successful Deploy
 
