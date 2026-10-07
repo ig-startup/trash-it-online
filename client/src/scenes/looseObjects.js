@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { COL } from './blockKinds';
 
 /**
  * The things Jack can pick up, carry and throw, and how they fly.
@@ -17,6 +18,11 @@ import Phaser from 'phaser';
  * bounce here is ours). In the air `vx` loses 2000 a tick and `vy` gains
  * 0x4800, which is also how the aim's arc is drawn (VA 0x15bcb).
  *
+ * What stops them is what stops any sprite (0x1f098 → the tile probes):
+ * sideways and overhead only a solid block, underneath a solid block or a
+ * platform it comes down onto from above — the same collision kinds as
+ * Jack's (see blockKinds.js). Scenery they pass through.
+ *
  * Everything is in the game's own units, px and px/tick, stepped at its
  * 60 Hz.
  */
@@ -33,13 +39,18 @@ const CARRIED_DEPTH = 5;
 export default class LooseObjects {
   /**
    * @param {Phaser.Scene} scene
-   * @param {() => Phaser.GameObjects.GameObject[]} solids  what objects land on
+   * @param {() => Phaser.GameObjects.GameObject[]} solids  what objects land
+   *   on; each may carry a collision kind as its `col` data (none is solid)
    * @param {number} floorY  below this an object is gone from the level
+   * @param {{falling?: Function, impact?: Function}} hooks  `falling(h)`
+   *   each tick it comes down, true when something took it out of the air;
+   *   `impact(h, {x, y, speed, side, dir})` when it strikes a block
    */
-  constructor(scene, solids, floorY) {
+  constructor(scene, solids, floorY, hooks = {}) {
     this._scene = scene;
     this._solids = solids;
     this._floorY = floorY;
+    this._hooks = hooks;
     /** @type {Set<{sprite: any, kind: string, vx: number, vy: number, flying: boolean, carried: boolean}>} */
     this._all = new Set();
     this._acc = 0;
@@ -47,9 +58,13 @@ export default class LooseObjects {
   }
 
   /** Registers a sprite that can be picked up. Returns its handle. */
-  add(sprite, kind) {
+  add(sprite, kind, anchored = false) {
     const h = {
       sprite, kind, vx: 0, vy: 0, flying: false, carried: false, depth: sprite.depth,
+      // Held where the level put it until someone moves it — the timmies
+      // are locked to their block (VA 0x33ef2's twin), not resting on it.
+      anchored,
+      inside: null,   // what has taken it in — a cannon — while it does
     };
     this._all.add(h);
     return h;
@@ -67,7 +82,7 @@ export default class LooseObjects {
    */
   find(x, y, jackBounds) {
     for (const h of this._all) {
-      if (h.carried || !h.sprite.active) continue;
+      if (h.carried || h.inside || !h.sprite.active) continue;
       const b = h.sprite.getBounds();
       if (b.contains(x, y) && Phaser.Geom.Intersects.RectangleToRectangle(b, jackBounds)) return h;
     }
@@ -75,6 +90,7 @@ export default class LooseObjects {
   }
 
   pick(h) {
+    h.anchored = false;
     h.carried = true;
     h.flying = false;
     h.sprite.setDepth(CARRIED_DEPTH);
@@ -118,10 +134,10 @@ export default class LooseObjects {
       this._acc -= tick;
       const solids = this._solidRects();
       for (const h of this._all) {
-        if (h.carried) continue;
+        if (h.carried || h.inside || h.anchored) continue;
         // These are physical sprites in the game: the level's placements
         // settle onto what is under them, and once that goes, they fall.
-        if (!h.flying && !this._solidAt(solids, h.sprite.x, h.sprite.y + 1)) {
+        if (!h.flying && !this._floorAt(solids, h.sprite.x, h.sprite.y + 1, h.sprite.y)) {
           h.flying = true;
         }
         if (h.flying) this._step(h, solids);
@@ -137,7 +153,13 @@ export default class LooseObjects {
     const half = s.displayHeight / 2;
 
     s.x += h.vx;
-    if (this._solidAt(solids, s.x, s.y - half)) {
+    const wall = this._wallAt(solids, s.x, s.y - half);
+    if (wall) {
+      if (this._hooks.impact) {
+        this._hooks.impact(h, {
+          x: s.x, y: s.y - half, speed: Math.abs(h.vx), side: true, dir: Math.sign(h.vx),
+        });
+      }
       s.x -= h.vx;
       h.vx = -h.vx / 4;
     }
@@ -145,10 +167,15 @@ export default class LooseObjects {
     else h.vx = 0;
 
     h.vy = Math.min(TERMINAL, h.vy + GRAVITY);
+    const from = s.y;
     s.y += h.vy;
+    if (h.vy > 0 && this._hooks.falling && this._hooks.falling(h)) return;
     if (h.vy > 0) {
-      const under = this._solidAt(solids, s.x, s.y);
+      const under = this._floorAt(solids, s.x, s.y, from);
       if (under) {
+        if (this._hooks.impact) {
+          this._hooks.impact(h, { x: s.x, y: under.top + 1, speed: h.vy, side: false, dir: 1 });
+        }
         s.y = under.top;
         if (h.vy < SETTLE) {
           h.vy = 0;
@@ -158,7 +185,7 @@ export default class LooseObjects {
           h.vy = -h.vy / 4;
         }
       }
-    } else if (h.vy < 0 && this._solidAt(solids, s.x, s.y - 2 * half)) {
+    } else if (h.vy < 0 && this._wallAt(solids, s.x, s.y - 2 * half)) {
       h.vy = 0;
     }
 
@@ -168,11 +195,24 @@ export default class LooseObjects {
   _solidRects() {
     return this._solids()
       .filter((o) => o.active && o.body)
-      .map((o) => new Phaser.Geom.Rectangle(o.body.x, o.body.y, o.body.width, o.body.height));
+      .map((o) => {
+        const r = new Phaser.Geom.Rectangle(o.body.x, o.body.y, o.body.width, o.body.height);
+        const col = o.getData ? o.getData('col') : undefined;
+        r.col = col === undefined || col === null ? COL.SOLID : col;
+        return r;
+      })
+      .filter((r) => r.col !== COL.NONE && r.col !== COL.LADDER);
   }
 
-  _solidAt(rects, x, y) {
-    return rects.find((r) => r.contains(x, y)) || null;
+  /** A solid block at a point: what stops it sideways and overhead. */
+  _wallAt(rects, x, y) {
+    return rects.find((r) => r.col === COL.SOLID && r.contains(x, y)) || null;
+  }
+
+  /** What it lands on: solid, or a platform it was above a tick ago. */
+  _floorAt(rects, x, y, from) {
+    return rects.find((r) => r.contains(x, y)
+      && (r.col === COL.SOLID || from <= r.top)) || null;
   }
 
   /** The dotted arc 0x15bcb draws once the aim has wound up. */

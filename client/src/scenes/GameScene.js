@@ -164,6 +164,7 @@ export default class GameScene extends Phaser.Scene {
       this._destructibles.add(rect);
       const col = d.col === undefined ? COL.SOLID : d.col;
       applyCollisionKind(rect.body, col);
+      rect.setData('col', col);
       const entry = {
         rect, id: d.id, hp: d.hp, solid: !!d.solid, col,
         width: d.width, height: d.height,
@@ -221,8 +222,23 @@ export default class GameScene extends Phaser.Scene {
     // before him, so he is drawn in front of what he pushes.
     this._cannons = hasProps(this) && PROP_ANIMS.cwhl
       ? new Cannons(this, level.cannons || [], (x, y) => this._blockAt(x, y),
-        level.ground ? level.ground.y : levelHeight)
+        level.ground ? level.ground.y : levelHeight,
+        (h, x, y, vx, vy) => {
+          h.inside = null;
+          this._loose.throw(h, x, y, vx, vy);
+        })
       : null;
+
+    // ── Cannonballs (.OB class 7) ─────────────────────────────────────────
+    // Things to pick up, like the dynamite — and what a cannon fires.
+    this._balls = [];
+    (level.balls || []).forEach((b) => {
+      if (!hasProps(this) || !PROP_ANIMS.ball) return;
+      const key = PROP_ANIMS.ball[b.big ? 1 : 0];
+      const sprite = this.add.image(b.x, b.y, key).setDepth(2);
+      applyPropFrame(sprite, key);
+      this._balls.push({ sprite, big: !!b.big });
+    });
     if (this._cannons) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._cannons.destroy());
 
     // ── Local player ─────────────────────────────────────────────────────────
@@ -248,11 +264,23 @@ export default class GameScene extends Phaser.Scene {
     // ── What can be picked up ─────────────────────────────────────────────
     this._loose = new LooseObjects(this,
       () => [...this._platforms.getChildren(), ...this._destructibles.getChildren()],
-      levelHeight + 120);
+      levelHeight + 120, {
+        // A ball coming down into a cannon's bowl is taken in (VA 0x20c15).
+        falling: (h) => {
+          if (h.kind !== 'ball' || !this._cannons || !this._cannons.tryLoad(h)) return false;
+          h.inside = true;
+          h.flying = false;
+          h.vx = 0;
+          h.vy = 0;
+          return true;
+        },
+        impact: (h, hit) => this._ballImpact(h, hit),
+      });
     this._dynamite.forEach((d) => {
       if (d.litBy === 'hammer') d.handle = this._loose.add(d.sprite, 'dynamite');
     });
-    this._timmies.forEach((t) => this._loose.add(t, 'timmy'));
+    this._timmies.forEach((t) => this._loose.add(t, 'timmy', true));
+    this._balls.forEach((b) => { this._loose.add(b.sprite, 'ball').big = b.big; });
     this._player.findPickup = (x, y) => this._loose.find(x, y, this._player.getBounds());
     this._player.findCrusher = () => {
       if (!this._collapse) return null;
@@ -710,6 +738,32 @@ export default class GameScene extends Phaser.Scene {
         // "overwritten block" rather than replacing one.
         if (!this._cellOwner.has(key)) this._cellOwner.set(key, entry.id);
       }
+    }
+  }
+
+  /**
+   * A cannonball striking a block (VA 0x1f36d from above, 0x1f28c from the
+   * side): only at 5 px/tick and over coming down, 3 sideways, and with the
+   * force of its weight doubled for every px/tick over 2 — halved coming
+   * down, where it goes into the block both ways. The big ball weighs
+   * 50000 to the small one's 5, and throws its rubble wider.
+   */
+  _ballImpact(h, { x, y, speed, side, dir }) {
+    if (h.kind !== 'ball') return;
+    const sp = Math.floor(speed);
+    if (sp < (side ? 3 : 5)) return;
+    const mass = h.big ? 50000 : 5;
+    const force = side ? mass * 2 ** (sp - 2) : (mass * 2 ** (sp - 2)) / 2;
+    const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+    const entry = id === undefined ? null : this._destructibleMap.get(id);
+    if (!entry) return;
+    const mask = mass > 40000 ? 0x7ffff : 0x3fff;
+    const blow = () => ({ tally: new Map(), visits: 0, mask });
+    if (side) {
+      this._applyForce(entry, force, 0, blow(), dir > 0 ? { down: true, up: false } : { down: false, up: true });
+    } else {
+      this._applyForce(entry, force, 0, blow(), { down: false, up: true });
+      this._applyForce(entry, force, 0, blow(), { down: true, up: false });
     }
   }
 

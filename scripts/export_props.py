@@ -55,7 +55,14 @@ PROPS = {
     # halves of its breech (10, and 9 shown while 10 is).
     "cwhl": ("CWHL.SPR", [0, 1, 2, 3]),
     "cfix": ("CFIX.SPR", [0]),
-    "cfir": ("CFIR.SPR", [0, 10, 9]),
+    # 11 is the breech's own frame once a ball is in (VA 0x20d5e).
+    "cfir": ("CFIR.SPR", [0, 10, 9, 11]),
+    # Firing, the barrel swells (1-6, the shot leaves on 6) and kicks
+    # (7-8); the spark runs down the fuse on BLAM.SPR 9-14 (VA 0x5feef).
+    "barrel": ("CFIR.SPR", list(range(9))),
+    "spark": ("BLAM.SPR", list(range(9, 15))),
+    # The cannonballs (.OB class 7): small, and the big one (VA 0x20b84).
+    "ball": ("CFIR.SPR", [12, 13]),
 }
 
 
