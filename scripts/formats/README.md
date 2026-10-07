@@ -912,10 +912,63 @@ player's control mode (`+0x166`) is 4 or more.
 | sideways windup | VA 0x2110d | button 0x80 (mode ≥ 4), or BUT2 (mode 2) |
 | overhead windup | VA 0x21185 | button 0x40 (mode ≥ 4), or BUT2 with a direction (mode 2) |
 
-The clone follows the mode-2 layout as far as two buttons allow: Z is
-BUT1 (the hammer; Up+Z the overhead strike), X or Space is BUT2 (the
-jump), and Up alone does nothing. The hoover keeps a key of its own, C,
-because BUT1 with UP held is already the overhead strike there.
+**Where the input comes from.** 0x6b79b gives each player a device
+(`+0x2a`) and a control mode (`+0x166`): the keyboard is device 1, mode
+2, read by 0x6bbef as exactly those six bits (LEFT excludes RIGHT, UP
+excludes DOWN); device 2 is the analogue joystick on port 0x201 (two
+axes, two buttons), also mode 2; the GrIP pads are mode 6, with four
+buttons 0x10-0x80 that 0x6bcec can remap. Demo playback is mode 6 too
+(0x17956). Nothing ever sets 0x40 or 0x80 from a keyboard — so on the
+keyboard every action is a combination of the six, and the raw `& 0x40`
+tests (picking up from standing, VA 0x22ad1, and from the air, 0x22e89)
+are pad-only.
+
+### The keyboard layout, state by state — **Confirmed**
+
+Read off every input test in the state code (`held` is `0x28bf36`,
+`pressed` is `0x28bf34`). The hammer is **a mode**, not a button: Jack
+starts empty-handed, BUT1 takes the hammer out of his hard hat and puts
+it back, and BUT2 is the jump without it and the swing with it.
+
+Empty-handed, standing (0x22892) or running (0x22275):
+
+| input | goes to |
+|---|---|
+| LEFT / RIGHT | run (cycle A, profile 1) |
+| BUT2 pressed | jump (0x22b91) |
+| BUT1 pressed | hammer out of the hat (0x22fa5, slot 11) → standing with it (0x23499) — or 0x263a7 (slot 42) when `+0x9a` is set; level option bit 1 forbids it |
+| UP held + BUT1 pressed | the hoover (0x24bb6 → 0x24e55); level option bit 4 forbids it |
+| DOWN pressed alone, standing | into the hard hat (0x24346); at the top of a ladder, down it (0x29b15) |
+| UP held, at a ladder | climb (0x25bda) |
+| DOWN held alone, **running** (arrow let go, still moving) | **pick up** (0x267e3, via 0x20ee0) |
+| UP held, running | push (0x2820b) |
+| UP held, standing | 0x28691: holds on to a sprite of category bit 1 that is moving towards him, taking it from whoever had it |
+
+With the hammer out (0x23499 standing, 0x236b9 walking — cycle B,
+profile 0, so slower):
+
+| input | goes to |
+|---|---|
+| BUT2 held | sideways windup (0x23a27) |
+| BUT2 held + LEFT/RIGHT | overhead windup (0x23f0f) — so walking with it, BUT2 always gives the overhead one |
+| BUT1 pressed | hammer back into the hat (0x2320a, slot 10) |
+| UP held + BUT1 pressed | the hoover (0x2a88c) |
+| DOWN alone | 0x27ff7: clears `+0x9a`, hides the hammer entity — lays it down? (not traced further); option bit 2 forbids it |
+
+In the hard hat (0x24727): UP pressed comes out (0x244c0); BUT2 pressed
+goes to 0x26539 (slot 43) or 0x2a199 (slot 69) depending on 0x60c25.
+
+With the hoover (0x24e55): LEFT/RIGHT walk with it (0x250d9); UP + BUT1
+puts it away (0x2ab7a); BUT1 alone goes to 0x25468 (slot 9); DOWN alone
+calls 0x28035, which spawns a sprite thrown upward at -2 px/tick —
+emptying the bag? (not traced). Option bit 8 forbids both.
+
+Carrying: see "Carrying and throwing" — DOWN puts down, UP aims, BUT1 or
+BUT2 throws. In the air: DOWN held + BUT2 pressed goes to 0x2b3ac (not
+traced).
+
+The level's option byte (0x98224) switches actions off: bit 1 the
+hammer, 2 the hammer's DOWN action, 4 the hoover, 8 the hoover's.
 
 ### Carrying and throwing — **Confirmed** (except where noted)
 
@@ -950,11 +1003,10 @@ object's.
 From standing with it, 0x20f1d decides: on the keyboard layout (mode 2)
 DOWN puts it down and UP takes aim; on a four-button pad (mode ≥ 4)
 button 0x40 aims, 0x40 with DOWN puts down. **Picking up** itself is
-raw button 0x40 from standing, running and skidding (VA 0x22ad1,
-0x227af, 0x225e1); what keeps the bend going is DOWN alone in mode 2
-(0x20ee0). How a keyboard player sets 0x40 has not been found — the
-clone picks up on Down when something is under the grab point, and
-ducks into the hat otherwise.
+raw button 0x40 from standing and skidding (VA 0x22ad1, 0x227af) —
+pad only — and, on the keyboard, DOWN held alone while running (0x225e1
+via 0x20ee0), which is also what keeps the bend going. See "The
+keyboard layout" below.
 
 **The throw.** While he aims, the frame index (`+0x10`) steps 3, 8, 13
 ticks in (`+0x58` growing by 5); at the last one the arc is drawn
