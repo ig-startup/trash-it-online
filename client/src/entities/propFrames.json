@@ -615,6 +615,222 @@
       "ax": 3,
       "ay": 3,
       "src": "BLAM.SPR:14"
+    },
+    "vac_00": {
+      "file": "sprites/props/vac_00.png",
+      "w": 45,
+      "h": 27,
+      "ax": -11,
+      "ay": 24,
+      "src": "VAC.SPR:0"
+    },
+    "vac_01": {
+      "file": "sprites/props/vac_01.png",
+      "w": 48,
+      "h": 28,
+      "ax": -6,
+      "ay": 24,
+      "src": "VAC.SPR:1"
+    },
+    "vac_02": {
+      "file": "sprites/props/vac_02.png",
+      "w": 48,
+      "h": 24,
+      "ax": 5,
+      "ay": 24,
+      "src": "VAC.SPR:2"
+    },
+    "vac_03": {
+      "file": "sprites/props/vac_03.png",
+      "w": 29,
+      "h": 19,
+      "ax": 22,
+      "ay": 25,
+      "src": "VAC.SPR:3"
+    },
+    "vac_04": {
+      "file": "sprites/props/vac_04.png",
+      "w": 21,
+      "h": 21,
+      "ax": 38,
+      "ay": 36,
+      "src": "VAC.SPR:4"
+    },
+    "vac_05": {
+      "file": "sprites/props/vac_05.png",
+      "w": 29,
+      "h": 20,
+      "ax": 30,
+      "ay": 39,
+      "src": "VAC.SPR:5"
+    },
+    "vac_06": {
+      "file": "sprites/props/vac_06.png",
+      "w": 36,
+      "h": 14,
+      "ax": 27,
+      "ay": 33,
+      "src": "VAC.SPR:6"
+    },
+    "vac_07": {
+      "file": "sprites/props/vac_07.png",
+      "w": 28,
+      "h": 11,
+      "ax": 22,
+      "ay": 30,
+      "src": "VAC.SPR:7"
+    },
+    "vac_08": {
+      "file": "sprites/props/vac_08.png",
+      "w": 19,
+      "h": 8,
+      "ax": 16,
+      "ay": 27,
+      "src": "VAC.SPR:8"
+    },
+    "vac_09": {
+      "file": "sprites/props/vac_09.png",
+      "w": 8,
+      "h": 6,
+      "ax": 7,
+      "ay": 25,
+      "src": "VAC.SPR:9"
+    },
+    "vac_10": {
+      "file": "sprites/props/vac_10.png",
+      "w": 41,
+      "h": 23,
+      "ax": -11,
+      "ay": 22,
+      "src": "VAC.SPR:10"
+    },
+    "vac_11": {
+      "file": "sprites/props/vac_11.png",
+      "w": 42,
+      "h": 23,
+      "ax": -10,
+      "ay": 22,
+      "src": "VAC.SPR:11"
+    },
+    "vac_12": {
+      "file": "sprites/props/vac_12.png",
+      "w": 42,
+      "h": 23,
+      "ax": -11,
+      "ay": 22,
+      "src": "VAC.SPR:12"
+    },
+    "vac_13": {
+      "file": "sprites/props/vac_13.png",
+      "w": 42,
+      "h": 23,
+      "ax": -11,
+      "ay": 22,
+      "src": "VAC.SPR:13"
+    },
+    "vac_14": {
+      "file": "sprites/props/vac_14.png",
+      "w": 41,
+      "h": 23,
+      "ax": -12,
+      "ay": 22,
+      "src": "VAC.SPR:14"
+    },
+    "vac_15": {
+      "file": "sprites/props/vac_15.png",
+      "w": 41,
+      "h": 24,
+      "ax": -13,
+      "ay": 23,
+      "src": "VAC.SPR:15"
+    },
+    "vac_16": {
+      "file": "sprites/props/vac_16.png",
+      "w": 40,
+      "h": 24,
+      "ax": -14,
+      "ay": 23,
+      "src": "VAC.SPR:16"
+    },
+    "vac_17": {
+      "file": "sprites/props/vac_17.png",
+      "w": 40,
+      "h": 24,
+      "ax": -15,
+      "ay": 23,
+      "src": "VAC.SPR:17"
+    },
+    "vac_18": {
+      "file": "sprites/props/vac_18.png",
+      "w": 40,
+      "h": 24,
+      "ax": -15,
+      "ay": 23,
+      "src": "VAC.SPR:18"
+    },
+    "vac_19": {
+      "file": "sprites/props/vac_19.png",
+      "w": 40,
+      "h": 24,
+      "ax": -15,
+      "ay": 23,
+      "src": "VAC.SPR:19"
+    },
+    "vac_20": {
+      "file": "sprites/props/vac_20.png",
+      "w": 40,
+      "h": 24,
+      "ax": -15,
+      "ay": 23,
+      "src": "VAC.SPR:20"
+    },
+    "vac_21": {
+      "file": "sprites/props/vac_21.png",
+      "w": 40,
+      "h": 24,
+      "ax": -15,
+      "ay": 23,
+      "src": "VAC.SPR:21"
+    },
+    "vac_22": {
+      "file": "sprites/props/vac_22.png",
+      "w": 40,
+      "h": 24,
+      "ax": -14,
+      "ay": 23,
+      "src": "VAC.SPR:22"
+    },
+    "vac_23": {
+      "file": "sprites/props/vac_23.png",
+      "w": 41,
+      "h": 24,
+      "ax": -13,
+      "ay": 23,
+      "src": "VAC.SPR:23"
+    },
+    "vac_24": {
+      "file": "sprites/props/vac_24.png",
+      "w": 41,
+      "h": 23,
+      "ax": -12,
+      "ay": 22,
+      "src": "VAC.SPR:24"
+    },
+    "vac_25": {
+      "file": "sprites/props/vac_25.png",
+      "w": 42,
+      "h": 23,
+      "ax": -11,
+      "ay": 22,
+      "src": "VAC.SPR:25"
+    },
+    "vac_26": {
+      "file": "sprites/props/vac_26.png",
+      "w": 38,
+      "h": 24,
+      "ax": -17,
+      "ay": 23,
+      "src": "VAC.SPR:26"
     }
   },
   "anims": {
@@ -704,6 +920,35 @@
       "blast_05",
       "blast_06",
       "blast_07"
+    ],
+    "vac": [
+      "vac_00",
+      "vac_01",
+      "vac_02",
+      "vac_03",
+      "vac_04",
+      "vac_05",
+      "vac_06",
+      "vac_07",
+      "vac_08",
+      "vac_09",
+      "vac_10",
+      "vac_11",
+      "vac_12",
+      "vac_13",
+      "vac_14",
+      "vac_15",
+      "vac_16",
+      "vac_17",
+      "vac_18",
+      "vac_19",
+      "vac_20",
+      "vac_21",
+      "vac_22",
+      "vac_23",
+      "vac_24",
+      "vac_25",
+      "vac_26"
     ]
   },
   "hammerBySlot": {
@@ -1388,6 +1633,122 @@
       52,
       51,
       50
+    ]
+  },
+  "hooverBySlot": {
+    "8": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      32777,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "9": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      16384,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "28": [
+      26
+    ],
+    "29": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25
+    ],
+    "70": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      32777,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "71": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      16384,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
     ]
   }
 }

@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import {
   ensureJackTextures, applyJackFrame, PLAYER_WIDTH, FULL_HEIGHT,
 } from './drawJack';
-import { PROP_ANIMS, PROP_FRAME_INFO, HAMMER_BY_SLOT, hasProps } from './props';
+import {
+  PROP_ANIMS, PROP_FRAME_INFO, HAMMER_BY_SLOT, HOOVER_BY_SLOT, hasProps,
+} from './props';
 import { JACK_FRAME_INFO, JACK_SCALE } from './jackSprites';
 import { MAX_CHARGE } from '../../../shared/constants.mjs';
 
@@ -351,6 +353,16 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this.hammer = scene.add.image(x, y, PROP_ANIMS.hammer[0]).setScale(JACK_SCALE);
       this.hammer.setVisible(false);
     }
+    // So is the hoover (VAC.SPR, VA 0x615ca): it follows him and shows the
+    // frame its own list names, hidden until the list switches it on.
+    this.vac = null;
+    this._vacKey = null;
+    this._vacHidden = true;
+    this._vacFrame = -1;
+    if (hasProps(scene) && PROP_ANIMS.vac) {
+      this.vac = scene.add.image(x, y, PROP_ANIMS.vac[0]).setScale(JACK_SCALE);
+      this.vac.setVisible(false);
+    }
 
     // Follow the body only after physics has moved it, so the art never
     // trails the camera by a frame.
@@ -375,6 +387,12 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.art.setFlipX(flip);
     Player._anchor(this.art, JACK_FRAME_INFO[this.art.texture.key + '|' + this.art.frame.name]
       || JACK_FRAME_INFO[this.art.texture.key], flip);
+
+    if (this.vac && this.vac.visible) {
+      this.vac.setPosition(this.x, this.y);
+      this.vac.setFlipX(flip);
+      Player._anchor(this.vac, PROP_FRAME_INFO[this._vacKey], flip);
+    }
 
     if (!this.hammer || !this.hammer.visible) return;
     this.hammer.setPosition(this.x, this.y);
@@ -402,6 +420,23 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   /** True while the hoover is out and able to suck. */
   get hooverOut() {
     return HOOVER_STATES.has(this.state);
+  }
+
+  /**
+   * Where the hoover sucks, or null when it is not working: from VAC
+   * frame 10 on (the frames it is held in), a 32 px box 40 px ahead of his
+   * feet and 8 up (VA 0x61769 → 0x61472). Its height is the same 32 the
+   * game passes for the width — read as such, not traced further.
+   */
+  get hooverBox() {
+    if (this._vacFrame < 10) return null;
+    const x = this._facingLeft ? this.x - 72 : this.x + 40;
+    return new Phaser.Geom.Rectangle(x, this.y - 8, 32, 32);
+  }
+
+  /** Where the nozzle is — what sucked things are drawn towards (VA 0x6151c, ±0x28). */
+  get nozzle() {
+    return { x: this.x + (this._facingLeft ? -40 : 40), y: this.y };
   }
 
   /** Where the carried object sits now: on his head, or at his feet while he bends for it. */
@@ -870,6 +905,23 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       }
       this.hammer.setVisible(word !== null && !this._hammerHidden);
     }
+    if (this.vac) {
+      // Slots without a hoover list put it away (VA 0x617c7); the rest
+      // show it, with the same sticky switches as the hammer's list.
+      const list = spec.slot !== undefined ? HOOVER_BY_SLOT[spec.slot] : null;
+      if (!list || !list.length) {
+        this._vacHidden = true;
+        this._vacFrame = -1;
+      } else {
+        const word = list[Math.min(this._animFrame, list.length - 1)];
+        if (word & HAMMER_HIDE) this._vacHidden = true;
+        if (word & HAMMER_SHOW) this._vacHidden = false;
+        this._vacFrame = this._vacHidden ? -1 : word & HAMMER_FRAME;
+        this._vacKey = PROP_ANIMS.vac[word & HAMMER_FRAME];
+        this.vac.setTexture(this._vacKey);
+      }
+      this.vac.setVisible(!this._vacHidden);
+    }
   }
 
   /** How many frames a pose has, 1 if it is missing. */
@@ -909,6 +961,10 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     if (this.art) {
       this.art.destroy();
       this.art = null;
+    }
+    if (this.vac) {
+      this.vac.destroy();
+      this.vac = null;
     }
     if (this.hammer) {
       this.hammer.destroy();

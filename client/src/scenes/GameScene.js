@@ -11,6 +11,7 @@ import { buildBackground } from '../entities/drawBackground';
 import { preloadRealJackFrames } from '../entities/jackSprites';
 import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/props';
 import LooseObjects from './looseObjects';
+import Rubble from './rubble';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
@@ -18,14 +19,11 @@ const FORCE_MAX_VISITS = 600; // guard: a blow decays fast, but not in one frame
 const TILE = 8;              // px — the original's collision-map cell
 /** Player states during which a swing connects (see STATES in Player.js). */
 const STRIKE_STATES = new Set(['strikeSide', 'strikeOver']);
-const RUBBLE_LIMIT = 120;    // pieces kept on screen before the oldest goes
-const RUBBLE_SPREAD = 90;    // px/s sideways, randomised as the game does
-const RUBBLE_LIFT = 260;     // px/s upward kick
+// The debris masks a blow throws rubble with: the sledge v1's record
+// +0x34 / +0x38 for the hammer, 0x3ffff for the blast (VA 0x1f8c5).
+const HAMMER_RUBBLE_MASK = 4095;
+const BLAST_RUBBLE_MASK = 0x3ffff;
 const TIMMY_FRAME_MS = 120;  // timmy walk-cycle rate
-const HOOVER_HEIGHT = 20;    // px above his feet the nozzle sits
-const HOOVER_REACH = 110;    // px the suction reaches — ours, not the game's
-const HOOVER_SWALLOW = 16;   // px at which a timmy is taken
-const HOOVER_PULL = 3.2;     // px per tick a caught timmy is drawn in
 // Dynamite, all from the original (see "Dynamite" in scripts/formats/README.md).
 // The fuse: 35 ticks of the lit stick hopping, 25 of the flame, then ten
 // steps of eleven ticks counting down (VA 0x1d4ec → 0x1d584 → 0x1d60b).
@@ -185,8 +183,9 @@ export default class GameScene extends Phaser.Scene {
     // ── Timmies ───────────────────────────────────────────────────────────
     // The most common object in the game: about 2000 records across the
     // archive, from three classes that all spawn TIMMY.SPR. They are
-    // drawn and counted here; collecting them is the hoover's job and
-    // the hoover is not built, so nothing picks them up yet.
+    // drawn here and can be carried; the hoover does not take them — it
+    // reads only the rubble list (VA 0x61472). Collecting them is the
+    // timmy bin's business, not built.
     this._timmies = [];
     (level.timmies || []).forEach((t) => {
       if (!hasProps(this)) return;
@@ -302,9 +301,9 @@ export default class GameScene extends Phaser.Scene {
       color: '#555555',
     }).setScrollFactor(0);
 
-    /** Timmies hoovered up. The game keeps this tally too. */
-    this._timmyCount = 0;
-    this._timmyText = this.add.text(16, 100, `ТИММИ ${this._timmyCount}`, {
+    /** Rubble hoovered up, as the game counts it: area / 16 a piece. */
+    this._rubbleTaken = 0;
+    this._rubbleText = this.add.text(16, 124, `МУСОР ${this._rubbleTaken}`, {
       fontSize: '16px',
       fill: '#ffcc33',
       stroke: '#000000',
@@ -319,8 +318,9 @@ export default class GameScene extends Phaser.Scene {
     // ── Throttle timestamp ────────────────────────────────────────────────────
     this._lastUpdateSent = 0;
 
-    /** Debris from smashed blocks, oldest first. */
-    this._rubble = [];
+    /** What smashed blocks become: see-through rubble the hoover clears. */
+    this._rubble = new Rubble(this, level.ground ? level.ground.y : levelHeight);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._rubble.destroy());
 
     // ── Remote players ────────────────────────────────────────────────────────
     this.remotePlayers = new Map();
@@ -352,7 +352,11 @@ export default class GameScene extends Phaser.Scene {
       but2Pressed,
     }, delta);
 
-    if (this._player.hooverOut) this._suckTimmies();
+    const taken = this._rubble.update(delta, this._player.hooverBox, this._player.nozzle);
+    if (taken) {
+      this._rubbleTaken += taken;
+      this._rubbleText.setText(`МУСОР ${this._rubbleTaken}`);
+    }
 
     // ── Hammer interactions ───────────────────────────────────────────────────
     // Blocks take the blow once, on the frame it lands (the player's
@@ -546,7 +550,8 @@ export default class GameScene extends Phaser.Scene {
       const cy = Math.floor((Math.round(y) + sy) / 8) * 8 + 4;
       const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(cx, cy));
       if (!hit) return;
-      this._applyForce(hit, BLAST_FORCE, 0, undefined, { down: true, up: true });
+      this._applyForce(hit, BLAST_FORCE, 0,
+        { tally: new Map(), visits: 0, mask: BLAST_RUBBLE_MASK }, { down: true, up: true });
       left -= 1;
     }));
 
@@ -608,7 +613,7 @@ export default class GameScene extends Phaser.Scene {
     blow.tally.set(entry.id, (blow.tally.get(entry.id) || 0) + force);
 
     if (entry.hp <= 0) {
-      this._throwRubble(entry);
+      this._rubble.add(entry.rect, blow.mask || HAMMER_RUBBLE_MASK);
       this._forgetBlock(entry);
     } else if (entry.rect.setFillStyle) {
       entry.rect.setFillStyle(WORLD_COLORS.rubbleDark); // plain rectangle
@@ -685,61 +690,6 @@ export default class GameScene extends Phaser.Scene {
       if (id !== undefined) out.push(id);
     }
     return out;
-  }
-
-  _throwRubble(entry) {
-    if (this._rubble.length >= RUBBLE_LIMIT) {
-      const oldest = this._rubble.shift();
-      if (oldest && oldest.active) oldest.destroy();
-    }
-    const src = entry.rect;
-    const piece = src.texture && src.frame
-      ? this.add.image(src.x, src.y, src.texture.key, src.frame.name)
-      : this.add.rectangle(src.x, src.y, entry.width, entry.height,
-        WORLD_COLORS.rubbleBrown);
-    piece.setDepth(1);   // in front of the blocks, behind the HUD
-    this.physics.add.existing(piece);
-    piece.body.setVelocity(
-      Phaser.Math.Between(-RUBBLE_SPREAD, RUBBLE_SPREAD),
-      Phaser.Math.Between(-RUBBLE_LIFT, -RUBBLE_LIFT / 3),
-    );
-    piece.body.setCollideWorldBounds(false);
-    this.physics.add.collider(piece, this._platforms);
-    this.physics.add.collider(piece, this._destructibles);
-    this._rubble.push(piece);
-  }
-
-  /**
-   * The hoover pulls nearby timmies in and swallows them.
-   *
-   * The game's own reach and pull strength are not decoded — the sucker
-   * is its own object class, 154 of them across 72 levels — so the
-   * numbers here are ours. What is the game's is that the hoover is what
-   * collects timmies at all, and that they are counted: the level state
-   * keeps a timmy tally alongside rubble and the clock.
-   */
-  _suckTimmies() {
-    if (!this._timmies.length) return;
-    const jx = this._player.x;
-    const jy = this._player.y - HOOVER_HEIGHT;
-    for (let i = this._timmies.length - 1; i >= 0; i -= 1) {
-      const t = this._timmies[i];
-      if (!t.active) { this._timmies.splice(i, 1); continue; }
-      if (this._loose.isBusy(t)) continue;
-      const dx = jx - t.x;
-      const dy = jy - t.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist > HOOVER_REACH) continue;
-      if (dist < HOOVER_SWALLOW) {
-        t.destroy();
-        this._timmies.splice(i, 1);
-        this._timmyCount += 1;
-        if (this._timmyText) this._timmyText.setText(`ТИММИ ${this._timmyCount}`);
-        continue;
-      }
-      t.x += (dx / dist) * HOOVER_PULL;
-      t.y += (dy / dist) * HOOVER_PULL;
-    }
   }
 
   _checkHammerBell() {
@@ -958,7 +908,10 @@ export default class GameScene extends Phaser.Scene {
     // An object was destroyed on the server side
     sm.on(EVENTS.OBJECT_DESTROYED, ({ objectId } = {}) => {
       const entry = this._destructibleMap.get(objectId);
-      if (entry && entry.rect.active) this._forgetBlock(entry);
+      if (entry && entry.rect.active) {
+        this._rubble.add(entry.rect, HAMMER_RUBBLE_MASK);
+        this._forgetBlock(entry);
+      }
     });
   }
 }

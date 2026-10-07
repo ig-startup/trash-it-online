@@ -28,6 +28,12 @@ export const PROP_FRAME_INFO = Object.fromEntries(
  */
 export const HAMMER_BY_SLOT = manifest.hammerBySlot || {};
 
+/**
+ * The same for the hoover, VAC.SPR (the game's list at VA 0xa47c4): slots
+ * 70 and 71 bring it out of the hat and put it back, 28 and 29 hold it.
+ */
+export const HOOVER_BY_SLOT = manifest.hooverBySlot || {};
+
 /** @param {Phaser.Scene} scene */
 export function preloadProps(scene) {
   Object.entries(manifest.frames).forEach(([name, info]) => {

@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.join(REPO, "scripts", "formats"))
 import pal
 import spr
 import _png
-from anims import hammer_lists
+from anims import hammer_lists, hoover_lists
 
 ORIG = os.path.join(REPO, "Trash-it-original")
 OUT_PNG = os.path.join(REPO, "client", "public", "sprites", "props")
@@ -46,6 +46,9 @@ PROPS = {
     # thing in the game. Its own sheet carries the stick and the blast.
     "dyna": ("DYNA.SPR", [0]),          # the stick; the sheet has only four
     "blast": ("BLAM.SPR", [0, 2, 4, 6, 8, 10, 12, 14]),  # it expands
+    # The hoover is its own sprite too, drawn from a list per slot like the
+    # hammer (`hooverBySlot`): 9 → 0 unfolds it, 10-26 are it held.
+    "vac": ("VAC.SPR", list(range(27))),       # index = VAC frame number
 }
 
 
@@ -76,6 +79,8 @@ def main(level_name="0A"):
 
     lists = hammer_lists(os.path.join(ORIG, "G.EXE"), raw=True)
     manifest["hammerBySlot"] = {str(k): v for k, v in sorted(lists.items())}
+    vac = hoover_lists(os.path.join(ORIG, "G.EXE"))
+    manifest["hooverBySlot"] = {str(k): v for k, v in sorted(vac.items())}
 
     with open(OUT_JSON, "w") as fh:
         json.dump(manifest, fh, indent=2)
