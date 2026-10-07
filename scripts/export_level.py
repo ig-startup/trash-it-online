@@ -50,6 +50,8 @@ GROUND_OVERHANG = 240  # how far the floor runs past each side edge
 TIMMY_CLASSES = (14, 17, 32)
 #: Class 15 places a stick of dynamite.
 DYNAMITE_CLASS = 15
+#: Class 6 places a cannon (VA 0x5f69a).
+CANNON_CLASS = 6
 TIME_LIMIT = 240
 PAD = 1  # transparent gutter between packed shapes
 
@@ -216,6 +218,18 @@ def export(name):
                 for x, y in [struct.unpack_from("<hh", payload, 0)]
                 if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
 
+    # Cannons. Class 6: the record's x, y is the wheel's (VA 0x5f6c1), the
+    # word at +14 which way it faces (1 left, 2 right — VA 0x5f802) and the
+    # word at +18 what it stands on: 2 wheels, which roll when pushed, or
+    # 1 a fixed carriage (VA 0x5f82b). They are dropped in mid-air and
+    # settle on whatever is under them.
+    cannons = [{"x": x, "y": y + HEADROOM,
+                "facing": "left" if struct.unpack_from("<h", payload, 14)[0] == 1 else "right",
+                "wheels": bool(struct.unpack_from("<h", payload, 18)[0] & 2)}
+               for cid, _off, payload in placed if cid == CANNON_CLASS
+               for x, y in [struct.unpack_from("<hh", payload, 0)]
+               if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
+
     rung = ob.bells(placed)
     if rung:
         bx, by, _subtype = rung[0]
@@ -239,6 +253,7 @@ def export(name):
         "spawnPoints": spawn_pts,
         "timmies": timmies,
         "dynamite": dynamite,
+        "cannons": cannons,
         # The bottom edge of a level is solid ground in the original. It is
         # not made of objects — in 0B all 179 are destructible and nothing
         # sits under the start at all — but every level's authored start is

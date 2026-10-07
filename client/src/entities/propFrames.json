@@ -831,6 +831,70 @@
       "ax": -17,
       "ay": 23,
       "src": "VAC.SPR:26"
+    },
+    "cwhl_00": {
+      "file": "sprites/props/cwhl_00.png",
+      "w": 23,
+      "h": 20,
+      "ax": 7,
+      "ay": 18,
+      "src": "CWHL.SPR:0"
+    },
+    "cwhl_01": {
+      "file": "sprites/props/cwhl_01.png",
+      "w": 23,
+      "h": 20,
+      "ax": 7,
+      "ay": 18,
+      "src": "CWHL.SPR:1"
+    },
+    "cwhl_02": {
+      "file": "sprites/props/cwhl_02.png",
+      "w": 23,
+      "h": 20,
+      "ax": 7,
+      "ay": 18,
+      "src": "CWHL.SPR:2"
+    },
+    "cwhl_03": {
+      "file": "sprites/props/cwhl_03.png",
+      "w": 23,
+      "h": 20,
+      "ax": 7,
+      "ay": 18,
+      "src": "CWHL.SPR:3"
+    },
+    "cfix": {
+      "file": "sprites/props/cfix.png",
+      "w": 48,
+      "h": 24,
+      "ax": 26,
+      "ay": 22,
+      "src": "CFIX.SPR:0"
+    },
+    "cfir_00": {
+      "file": "sprites/props/cfir_00.png",
+      "w": 45,
+      "h": 32,
+      "ax": 24,
+      "ay": 36,
+      "src": "CFIR.SPR:0"
+    },
+    "cfir_01": {
+      "file": "sprites/props/cfir_01.png",
+      "w": 27,
+      "h": 10,
+      "ax": 32,
+      "ay": 5,
+      "src": "CFIR.SPR:10"
+    },
+    "cfir_02": {
+      "file": "sprites/props/cfir_02.png",
+      "w": 27,
+      "h": 5,
+      "ax": 32,
+      "ay": 7,
+      "src": "CFIR.SPR:9"
     }
   },
   "anims": {
@@ -949,6 +1013,20 @@
       "vac_24",
       "vac_25",
       "vac_26"
+    ],
+    "cwhl": [
+      "cwhl_00",
+      "cwhl_01",
+      "cwhl_02",
+      "cwhl_03"
+    ],
+    "cfix": [
+      "cfix"
+    ],
+    "cfir": [
+      "cfir_00",
+      "cfir_01",
+      "cfir_02"
     ]
   },
   "hammerBySlot": {

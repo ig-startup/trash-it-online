@@ -89,6 +89,11 @@ export default class RemotePlayer extends Phaser.GameObjects.Image {
     } else if (this._remoteState === 'climb') {
       // The climb's frame is his height, not a clock (VA 0x25de3).
       this._show('climb', (Math.floor(this.y) >> 1) & 15);
+    } else if (this._remoteState === 'push') {
+      // Pushing steps with his x too (VA 0x2839a).
+      this._show('push', (Math.floor(this.x) >> 3) & 15);
+    } else if (this._remoteState === 'pushStand') {
+      this._show('pushStand');
     } else if (this._remoteState === 'topOut' || this._remoteState === 'stepOn') {
       this._show('topOut', 6);
     } else if (this._remoteState === 'fall') {

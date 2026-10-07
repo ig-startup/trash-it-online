@@ -49,6 +49,13 @@ PROPS = {
     # The hoover is its own sprite too, drawn from a list per slot like the
     # hammer (`hooverBySlot`): 9 → 0 unfolds it, 10-26 are it held.
     "vac": ("VAC.SPR", list(range(27))),       # index = VAC frame number
+    # The cannon (.OB class 6, VA 0x5f69a) is four sprites on one spot: the
+    # wheel it rolls on (CWHL, four turns) or a fixed carriage (CFIX), and
+    # three parts of CFIR — the barrel with its fuse (frame 0) and the two
+    # halves of its breech (10, and 9 shown while 10 is).
+    "cwhl": ("CWHL.SPR", [0, 1, 2, 3]),
+    "cfix": ("CFIX.SPR", [0]),
+    "cfir": ("CFIR.SPR", [0, 10, 9]),
 }
 
 

@@ -91,6 +91,10 @@ ANIMS = {
     # backwards, stepping off the top onto the ladder (61).
     "climb": list(range(175, 191)),      # slot 33
     "topOut": list(range(289, 301)),     # slots 60 / 61
+    # Pushing: arms out, leaning in (slot 38, the frame picked by his x),
+    # and the same stance standing still (slot 52, 0x28691).
+    "push": list(range(207, 223)),       # slot 38
+    "pushStand": [245],                  # slot 52
 }
 
 #: Where the held-button strike starts inside `hammerSide` (frame 47).

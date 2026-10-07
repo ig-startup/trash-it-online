@@ -58,6 +58,8 @@ const PROFILES = {
   run: { top: perS(350000), accel: perS2(12000), turn: perS2(12000) },
   // profile 0 — the windups and strikes, the hat, the hoover
   slow: { top: perS(100000), accel: perS2(4000), turn: perS2(8000) },
+  // profile 4 — pushing
+  push: { top: perS(200000), accel: perS2(8000), turn: perS2(10000) },
 };
 const EASE_INTO_TOP = 1 / 32;      // the original's `>> 5` above the cap
 const FRICTION = perS2(2000);      // every tick, keys or not (VA 0x22d31)
@@ -199,7 +201,21 @@ const STATES = {
   climb: { slot: 33, anim: 'climb', ms: Infinity, hold: true, ladder: true },
   topOut: { slot: 60, anim: 'topOut', ms: Infinity, hold: true, ladder: true },
   stepOn: { slot: 61, anim: 'topOut', ms: Infinity, hold: true, ladder: true },
+
+  // Pushing. Up held on the run goes into 0x2820b (slot 38): arms out,
+  // leaning in, his frame picked by his x; slowing to a stop there, or Up
+  // held standing, is 0x28691 (slot 52), the same stance still. Both take
+  // hold of what can be pushed — see `pushing`.
+  push: { slot: 38, anim: 'push', ms: Infinity, hold: true, push: true, profile: 'push' },
+  pushStand: { slot: 52, anim: 'pushStand', ms: 400, loop: true, push: true, profile: 'push' },
 };
+
+/**
+ * Pushing (0x2820b): pushing back the other way faster than this skids
+ * him (0x2bf20, 2.75 px/tick); with no direction he brakes by the skid's
+ * 5000 a tick until under 10000, then stands in the stance (0x283da).
+ */
+const PUSH_SKID = perS(0x2bf20);
 
 /**
  * Ladders (see "Ladders" in scripts/formats/README.md). He climbs at 2
@@ -764,11 +780,22 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     // ── Up at a ladder climbs it (0x22a99, 0x22598, 0x22e16) ──────────────
-    if (!this._armed && cursors.up.isDown && this.ladder
+    if (!this._armed && !spec.push && cursors.up.isDown && this.ladder
         && (onGround || this._regrab <= 0)
         && Math.abs(body.velocity.x) < LADDER.grabSpeed
         && this.ladder.at(this.x, this.y)) {
       this._grabLadder(now);
+      return;
+    }
+
+    // ── Up held anywhere else on the ground: the pushing stance ───────────
+    if (spec.push) {
+      this._pushTick(cursors, body, dt, now, onGround, but2Pressed);
+      return;
+    }
+    if (!this._armed && onGround && cursors.up.isDown
+        && (this.state === 'walk' || this.state === 'stand')) {
+      this._enter(this.state === 'walk' ? 'push' : 'pushStand', now);
       return;
     }
 
@@ -1050,6 +1077,53 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       }
     }
     this._climbFrame();
+  }
+
+  /** True while he is in the stance that takes hold of what can be pushed. */
+  get pushing() {
+    return !!(STATES[this.state] && STATES[this.state].push);
+  }
+
+  /** One tick of pushing (0x2820b) or standing in the stance (0x28691). */
+  _pushTick(cursors, body, dt, now, onGround, but2Pressed) {
+    const across = cursors.left.isDown || cursors.right.isDown;
+    if (!onGround) {
+      this._enter('fall', now);
+      return;
+    }
+    if (!cursors.up.isDown) {
+      this._enter(across ? 'walk' : 'stand', now);
+      return;
+    }
+    if (but2Pressed) {
+      this._jump(now);
+      return;
+    }
+    if (this.state === 'pushStand') {
+      body.setVelocityX(0);
+      if (across) this._enter('push', now);
+      return;
+    }
+    const vx = body.velocity.x;
+    if (across) {
+      const dir = cursors.left.isDown ? -1 : 1;
+      if (Math.sign(vx) === -dir && Math.abs(vx) > PUSH_SKID) {
+        this._skidVx = vx;
+        this._enter('skid', now);
+        return;
+      }
+      this._steer(cursors, body, dt, PROFILES.push);
+    } else if (Math.abs(vx) < SKID_STOP) {
+      body.setVelocityX(0);
+      this._enter('pushStand', now);
+      return;
+    } else {
+      body.setVelocityX(vx - Math.sign(vx) * SKID_BRAKE * dt);
+    }
+    // His frame is where he is: (x >> 3) & 15, run backwards facing left.
+    const f = (Math.floor(this.x) >> 3) & 15;
+    this._animFrame = this._facingLeft ? 15 - f : f;
+    this._showFrame(STATES.push);
   }
 
   /** The jump (0x22b91): -4.5 px/tick, more while BUT2 stays down. */

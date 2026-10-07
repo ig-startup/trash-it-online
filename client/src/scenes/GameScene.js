@@ -13,6 +13,7 @@ import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/
 import LooseObjects from './looseObjects';
 import Rubble from './rubble';
 import Collapse from './collapse';
+import Cannons from './cannons';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -215,6 +216,15 @@ export default class GameScene extends Phaser.Scene {
       this._dynamite.push({ sprite: stick, lit: 0, litBy: d.lit_by || 'touch' });
     });
 
+    // ── Cannons ───────────────────────────────────────────────────────────
+    // On wheels they are what his pushing stance takes hold of. Made
+    // before him, so he is drawn in front of what he pushes.
+    this._cannons = hasProps(this) && PROP_ANIMS.cwhl
+      ? new Cannons(this, level.cannons || [], (x, y) => this._blockAt(x, y),
+        level.ground ? level.ground.y : levelHeight)
+      : null;
+    if (this._cannons) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._cannons.destroy());
+
     // ── Local player ─────────────────────────────────────────────────────────
     const myPlayerData = this._players.find((p) => p.id === this._myPlayerId)
       || this._players[0]
@@ -369,6 +379,9 @@ export default class GameScene extends Phaser.Scene {
     // we looked.
     const { JustDown } = Phaser.Input.Keyboard;
     const but2Pressed = JustDown(this._but2Key) || JustDown(this._cursors.space);
+    // The speed physics moved him at this frame, before he sets the next
+    // one: what a cannon he pushes moves at too, or it runs a frame ahead.
+    this._movedVx = this._player.body.velocity.x;
     this._player.update(this._cursors, {
       but1: JustDown(this._but1Key),
       but2: but2Pressed || this._but2Key.isDown || this._cursors.space.isDown,
@@ -392,6 +405,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this._tickDynamite(time);
+    if (this._cannons) this._tickCannons(delta);
 
     // A stick that goes off in his hands is gone from them.
     const held = this._player.carried;
@@ -510,11 +524,34 @@ export default class GameScene extends Phaser.Scene {
     // Only the overhead blow reaches sprites, and of the dynamite only the
     // kind a hammer lights listens for it.
     if (!overhead) return;
+    if (this._cannons) this._cannons.hit(reach);
     this._dynamite.forEach((d) => {
       if (d.lit || d.litBy !== 'hammer' || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {
         d.lit = this.time.now + FUSE_MS;
       }
+    });
+  }
+
+  /**
+   * Pushing (VA 0x28771 → 0x27f96): in the stance, he takes hold of a
+   * cannon on wheels his box overlaps, and while it still does it rolls at
+   * his speed. Out of the stance, or apart, it rolls on by itself.
+   */
+  _tickCannons(delta) {
+    const pl = this._player;
+    const bounds = pl.getBounds();
+    if (pl.pushing && !this._cannons.all.some((c) => c.heldBy === pl)) {
+      const c = this._cannons.find(bounds, pl.facingLeft);
+      if (c) c.heldBy = pl;
+    }
+    this._cannons.update(delta, (c) => {
+      if (c.heldBy !== pl) return null;
+      if (!pl.pushing || !this._cannons.touches(c, pl.getBounds())) {
+        c.heldBy = null;
+        return null;
+      }
+      return this._movedVx / 60;
     });
   }
 
