@@ -238,11 +238,89 @@ def cmd_strings(code, decomp_path):
             lines.append("0x%x  f  %s  ; logs \"%s(\"" % (addr, ail[0], ail[0]))
         elif texts and name.startswith("FUN_"):
             hints.append("0x%06x  %s" % (addr, " | ".join(repr(t)[1:-1] for t in texts[:4])))
+    lib = {int(l.split()[0], 16): l.split()[2] for l in lines if l.startswith("0x")}
+    helpers = module_helpers(code, decomp_path, exclude=lib)
+    lines += ["", "# Helpers: called only from one module's code, named after it."]
+    lines += ["0x%x  f  %s  ; only called from %s code" % (a, n, m)
+              for a, (n, m) in sorted(helpers.items())]
     with open(FROM_STRINGS, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
-    print("%d library names -> %s" % (len(lines) - 4, FROM_STRINGS))
+    print("%d library names, %d module helpers -> %s"
+          % (len(lib), len(helpers), FROM_STRINGS))
     print("\nunnamed functions and the strings they use:")
     print("\n".join(hints))
+
+
+#: Name prefixes that say what a function does, not what it belongs to.
+NOT_MODULES = {"state", "fun", "tpl", "probe", "sprite", "random", "group",
+               "blit", "load", "spawn", "set", "play", "tile", "debug", "fatal",
+               "kill", "apply", "queue", "start", "request", "event", "read",
+               "open", "dos", "dpmi", "key", "draw", "count", "point", "boxes",
+               "frames", "entity", "follow", "roll", "launch", "blow", "damage",
+               "remove", "clear", "collect", "pile", "support", "structure",
+               "structural", "build", "stamp", "print", "report", "measure",
+               "wait", "main", "logic", "level", "parse", "g2", "spr", "pit",
+               "run", "scn", "sde", "copy", "initialise", "accelerate", "release",
+               "aim", "hammer", "overhead", "process", "choose", "terminate",
+               "generic", "lock", "add", "panel", "scene", "record", "grip",
+               "bcd", "place", "bell", "ob", "assign"}
+#: Two spellings of one module: the sprite file and the hand name.
+SAME_MODULE = {"jacks": "jack", "clock": "clok", "dyna": "dyna"}
+
+
+def module_of(name):
+    """The object or subsystem a name belongs to, or None."""
+    m = re.match(r"ob_class_(\d+)", name)
+    if m:
+        return "ob%s" % m.group(1)
+    if name.startswith("AIL_") or name.startswith("ail_"):
+        return "ail"
+    head = name.split("_")[0].lower()
+    head = SAME_MODULE.get(head, head)
+    return None if head in NOT_MODULES or not head.isalpha() else head
+
+
+def call_graph(code, bodies, names):
+    """{callee: set(callers)} over the decompiled functions."""
+    def nm(a):
+        # The symbol sources only: the dump carries whatever names the last
+        # run applied, this step's own output among them.
+        return names[a][1] if a in names and names[a][0] == "f" else "FUN_%x" % a
+    by_name = {nm(a): a for a in bodies}
+    by_name.update({n: a for a, (n, _b) in bodies.items()})
+    callers = {}
+    for a, (_n, b) in bodies.items():
+        for m in re.finditer(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", b):
+            t = by_name.get(m.group(1))
+            if t is not None and t != a:
+                callers.setdefault(t, set()).add(a)
+    return callers, nm
+
+
+def module_helpers(code, decomp_path, exclude=None):
+    """Unnamed functions every caller of which belongs to one module —
+    named `<module>_sub_<addr>`, repeated until nothing changes."""
+    bodies = decomp_bodies(decomp_path)
+    # Not merged(): that would read this step's own previous output.
+    names = Derive(code).all()
+    names.update(load_hand())
+    for a, n in (exclude or {}).items():
+        names[a] = ("f", n, "")
+    callers, nm = call_graph(code, bodies, names)
+    found = {}
+    changed = True
+    while changed:
+        changed = False
+        for a in sorted(bodies):
+            if not nm(a).startswith("FUN_") or a in found:
+                continue
+            mods = {module_of(nm(c)) for c in callers.get(a, ())}
+            if len(mods) == 1 and None not in mods:
+                mod = mods.pop()
+                found[a] = ("%s_sub_%x" % (mod, a), mod)
+                names[a] = ("f", found[a][0], "")
+                changed = True
+    return found
 
 
 def cmd_table(code):

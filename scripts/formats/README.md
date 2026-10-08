@@ -865,8 +865,8 @@ Pushing the other way brakes by the profile's turn rate instead and, once
 step every fourth tick and hold on the last. Running into a wall during
 it bounces him: `vx = -vx / 4` (VA 0x227ea).
 
-**The tick is the display's vertical retrace.** The main loop (VA 0x2c654
-→ 0x2cb6e) waits for retrace (port 0x3da), then runs the logic frame
+**The tick is the display's vertical retrace.** `game_main` (VA 0x2c52c) loops
+on 0x2cb6e, which waits for retrace (port 0x3da), then runs the logic frame
 (VA 0x2cbb9) once — or, if the machine has fallen behind, `elapsed_ms /
 13` times, clamped to 1..4 and only changed when two measurements agree
 (VA 0x10ad0; the millisecond clock is the PIT read at VA 0x76f26). Both
@@ -1427,19 +1427,36 @@ sections they name.
 ### Reading `G.EXE` in Ghidra
 
 Ghidra has no DOS/4GW LE loader, so the image goes in flat
-(`export_flat.py`), seeded with the function entry points
-(`disasm.py … entries`, plus the 47 class constructors) and dumped as one
-C file (`scripts/ghidra/`). That yields 1214 functions, and the
-addresses in it are the ones quoted throughout these notes:
+(`export_flat.py`), seeded with the function entry points and named from
+the symbol map, and is dumped as one C file. One script does all of it,
+in about two minutes:
 
-    python3 scripts/formats/export_flat.py Trash-it-original/G.EXE flat.bin
-    python3 scripts/formats/disasm.py Trash-it-original/G.EXE entries > entries.txt
-    analyzeHeadless <proj-dir> trashit -import flat.bin \
-        -processor x86:LE:32:default \
-        -loader BinaryLoader -loader-baseAddr 0x10000 \
-        -scriptPath scripts/ghidra \
-        -preScript MarkFunctions.java entries.txt \
-        -postScript DumpDecomp.java decomp.c
+    scripts/ghidra/run.sh <work dir>        # -> <work dir>/decomp.c
+
+**The symbol map** (`scripts/ghidra/`) is what makes the dump readable:
+`jack_fly_to_flag(...)` and `current_player` rather than `FUN_0002a2fe`
+and `DAT_0028bf2c`. Three sources, in order of precedence:
+
+- `symbols.txt` — by hand: everything these notes establish, one line a
+  symbol with its address, kind (`f` function, `d` data), name and a
+  one-line meaning; a guess says so with "?".
+- `symbols_lib.txt` — generated from a dump by `symbols.py strings`:
+  the Miles Sound System wrappers, each named after the `AIL_…(` call it
+  logs, and **module helpers** — a function every caller of which belongs
+  to one object or subsystem is `<module>_sub_<addr>`: whose it is is
+  certain, what it does is still to be read.
+- derived from the binary each time by `symbols.py`: the 47 class
+  constructors from the registry (`ob_class_<id>_<sprite>`), every object
+  template by the sprite it draws (`tpl_<sprite>_<addr>`) and the state
+  it starts in (`<sprite>_tick_<addr>`), and every routine installed with
+  `set_state` or stored into an entity's `+0x10` (`state_<addr>`).
+
+`symbols.py coverage decomp.c` counts what has a name and lists the rest,
+most called first — the order to read them in. The game's own code is
+0x10000-0x6cfff; above that are the linked libraries (Miles, the Watcom
+C runtime). Many of the game's error messages name the function they are
+in (`"BUG in 'record_pad_entry'"`), and `symbols.py strings` lists those
+too.
 
 One gotcha that costs a run: **no path given to `analyzeHeadless` may
 contain a directory whose name starts with a dot** — it refuses with

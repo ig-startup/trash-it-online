@@ -23,7 +23,6 @@
 0x10ad0  f  measure_frame_rate             ; elapsed_ms / 13 → logic steps per frame, clamped 1..4
 0x10be9  f  read_debug_dump                ; reads a written debug dump back into a 64 KB buffer
 0x2c496  f  parse_level_name               ; "USAGE: TRASHIT LevelName" → section, number
-0x2c654  f  main_loop                      ; waits for retrace, runs the logic frame
 0x2cb6e  f  wait_retrace_and_tick          ; port 0x3da, then logic_frame once or elapsed/13 times
 0x2cbb9  f  logic_frame                    ; one 60 Hz tick of the game
 0x2cce9  f  level_load_objects             ; .WAM/.G2/.OBT → block entities and the tile map
@@ -369,7 +368,7 @@
 0x1e788  f  process_obj_on_something       ; "BUG1/BUG2: in 'process_obj_on_something()'" — what Jack holds or stands on
 0x1e7d5  f  remove_obj_from_something      ; "BUG2: in 'remove_obj_from_something()'" — lets go of what he holds
 0x2c34e  f  choose_camera                  ; "BUG: Tried 'choose_camera( %d )'"
-0x2c52c  f  read_config                    ; "cfg.cd_drive %c"
+0x2c52c  f  game_main                      ; set-up, start_game, then wait_retrace_and_tick until quit, level_finish, exit_game
 0x2c87d  f  open_file_or_die               ; "Couldn't open file '%s'"
 0x2e8f5  f  report_frame_rate              ; "Average frame rate: %i.%i fpm", "Illegal time!"
 0x2fd75  f  timmy_create                   ; "timmy has no block to lock to"
@@ -386,7 +385,7 @@
 # ── read off their bodies ─────────────────────────────────────────────────
 0x15de2  f  play_sound                     ; play_sound(id in eax); counts plays at 0xcea9c
 0x2d50d  f  debug_printf                   ; compiled out: returns at once
-0x2e114  f  fatal_error                    ; formats the message, shuts everything down, exits
+0x2e114  f  exit_game                      ; formats a message, shuts everything down, exits — the normal way out and the fatal one
 0x2eee1  f  kill_entity                    ; flags it (+0x40 |= 2) and queues it on 0x3f1d40 for removal
 0x2f9ce  f  random_next                    ; next of 256 table values (0xa38a2) into 0x3f2080
 0x6a15c  f  key_down                       ; byte table 0xa4990 by scancode, bit 0
@@ -422,3 +421,17 @@
 0x2fb39  f  skid_dust                      ; fast and bit 0x10: a puff every 4 ticks, with a sound
 0x28bfa0 d  shake_request
 0x287d84 d  hit_queue
+
+# ── the frame around a level ──────────────────────────────────────────────
+0x2ca01  f  game_init                      ; buffers, input devices, player_count from TRASHIT.DAT, font
+0x2ca9a  f  start_game                     ; resets counters, random_bits = 0x12345678 — the same every game — load_level
+0x10167  f  level_finish                   ; stops the music; a won level (state 3, or 0x11 with +0x24 = 0) gets the end sequence
+0x1007c  f  pause_game                     ; ? loops until 0xb5ba8 is set, option bit 0x2000000 on, volumes 0x78 for 0x80
+0x6b90f  f  poll_input                     ; read_joypad for each player not under demo playback
+0x14fe4  f  audio_update                   ; ? when the volume settings change, re-applies them
+0x1cf6d  f  run_task_list                  ; ? 32 slots: flag bit 0, routine at +4
+0x2d1b5  f  objects_tick                   ; ? blocks in the camera view run their routine; moving ones are listed at 0x40bf78
+0x60e82  f  moving_objects_tick            ; ? runs the routine at +0x28 of each listed object; empties the rubble list
+0x20409  f  level_sequence_step            ; ? table 0x9ff42 by step 0x28b95c, the step advancing when 0x28b960 runs out
+0x28bf44 d  camera_view                    ; ? x0, y0, x1, y1 of what is on screen
+0x40bf78 d  moving_objects
