@@ -1,0 +1,424 @@
+# Names for G.EXE, by hand.
+#
+# One symbol a line:   <address>  <kind>  <name>  ; what it is
+#
+#   kind f  a function, or a state routine (an entity's per-tick code,
+#           installed with set_state) — Ghidra gets a function there
+#   kind d  data: a global, a table, an object template
+#
+# Addresses are virtual addresses in the mapped LE image, the same ones
+# scripts/formats/README.md quotes. Everything here was read off the code;
+# a name that is only a guess says so in its comment ("?").
+#
+# symbols.py adds names it can derive from the binary itself — class
+# constructors from the registry, templates by their sprite, states by
+# their template — and a name here wins over a derived one.
+#
+#   python3 scripts/ghidra/symbols.py table      merged list for Ghidra
+#   python3 scripts/ghidra/symbols.py coverage decomp.c
+
+# ── start-up, levels, the main loop ───────────────────────────────────────
+0x1074b  f  load_level                     ; load_level(section, number); logs "section %d level %d"
+0x10a46  f  level_file_name                ; name = "0123…Z"[number] + "JHCSLIATMJHCSLIATMBKDX"[section]
+0x10ad0  f  measure_frame_rate             ; elapsed_ms / 13 → logic steps per frame, clamped 1..4
+0x10be9  f  read_debug_dump                ; reads a written debug dump back into a 64 KB buffer
+0x2c496  f  parse_level_name               ; "USAGE: TRASHIT LevelName" → section, number
+0x2c654  f  main_loop                      ; waits for retrace, runs the logic frame
+0x2cb6e  f  wait_retrace_and_tick          ; port 0x3da, then logic_frame once or elapsed/13 times
+0x2cbb9  f  logic_frame                    ; one 60 Hz tick of the game
+0x2cce9  f  level_load_objects             ; .WAM/.G2/.OBT → block entities and the tile map
+0x2df1b  f  g2_record_walker               ; walks the .G2 shape library
+0x2df37  f  load_file                      ; reads a whole file into memory
+0x2e8e1  f  load_obt                       ; .OBT → 2000-byte table at 0x40cbf8
+0x6028f  f  load_col                       ; .COL → 0x3f20c4, 6 bytes an object
+0x6a380  f  load_spr                       ; sprite sheet loader
+0x6a4d5  f  load_pal_range                 ; copies indices first..last of a .PAL into the live palette
+0x6a596  f  spr_frame_setup                ; a frame's scanlines, file + 8 + offset
+0x76f26  f  pit_milliseconds               ; millisecond clock read off the PIT
+0x1e5c8  f  run_ob_stream                  ; interprets a level's .OB: id → constructor from the registry
+0x18255  f  sde_unpack_header              ; .SDE header → background/parallax globals
+
+# ── drawing ───────────────────────────────────────────────────────────────
+0x18acc  f  scn_texture_mapper             ; affine scanline mapper, 80×4 pixels a row
+0x38be8  f  blit_rle                       ; the one scanline blitter for .SPR and .G2 (opaque)
+0x34ed8  f  blit_rle_blend                 ; variant: dst = blend[src*256 + dst]; clips to 320×200
+0x35c9c  f  blit_rle_v2                    ; variant, writes pixels differently
+0x3680c  f  blit_rle_v3                    ; variant, writes pixels differently
+0x3737c  f  blit_rle_v4                    ; variant, writes pixels differently
+0x37f94  f  blit_rle_v5                    ; variant, writes pixels differently
+
+# ── input ─────────────────────────────────────────────────────────────────
+0x6b79b  f  assign_input_devices           ; device (+0x2a) and control mode (+0x166) per player
+0x6bbef  f  read_keyboard_player           ; the six keys → bits 1..0x20
+0x6bcec  f  remap_pad_buttons              ; GrIP pads, four buttons 0x10-0x80
+
+# ── entities, sprites, templates ──────────────────────────────────────────
+0x2ed96  f  spawn_from_template            ; new sprite entity from a 28-byte template
+0x2edbc  f  spawn_child_from_template      ; same, attached to an entity (edx)
+0x21d30  f  set_state                      ; set_state(entity eax, routine edx)
+0x2e371  f  spr_frame_ptr                  ; indexes a sheet off file + 8
+0x2e3bb  f  spr_frame_ptr_2                ; same, second form
+0x2ef85  f  frames_overlap                 ; two entities' frames overlap?
+0x2dcb3  f  point_in_frame                 ; a point inside an entity's frame?
+0x2ddd6  f  boxes_overlap                  ; an entity's box overlaps another's?
+0x2dfc7  f  point_in_hotspot               ; point against a hotspot box, x mirrored facing left
+0x2f0ab  f  sprite_search                  ; walks the sprite list by category mask (template +0x10)
+0x2f156  f  sprite_search_box              ; sprites in a box, class mask 4; up to 32 get hit
+0x2f1d7  f  hammer_overhead_box            ; the overhead strike's box, mirrored facing left
+0x2f36b  f  sprite_search_events           ; search with an event list, runs the outcome
+0x1f098  f  sprite_physics                 ; gravity, walls (vx = -vx/4), landing — shared by loose sprites
+0x1f206  f  sprite_land_probe              ; lands on kinds & 0x66: solid, platform
+0x1f28c  f  sprite_strikes_block_x         ; a moving sprite hitting a block: force mass << (speed - 2)
+0x1f36d  f  sprite_strikes_block_y         ; the same on the other axis
+0x22d31  f  entity_step                    ; the shared move: 16.16 velocity, friction
+0x27f96  f  follow_holder_vx               ; a linked sprite copies its holder's vx
+0x5fd1e  f  roll_friction                  ; gravity 0x4800, friction 2000, zero below 10000
+
+# ── the tile map and collision ────────────────────────────────────────────
+0x69e6a  f  tile_at                        ; live map lookup, 0 off the map
+0x60301  f  tile_at_live                   ; the same lookup, used by the probes (0x40f330)
+0x6034a  f  tile_at_provisional            ; the provisional map 0x40f334
+0x69fdf  f  tile_at_falling                ; reads the provisional map, where falling groups are stamped
+0x69eb3  f  build_row_table                ; row[i] = i * stride
+0x69de9  f  stamp_object_tiles             ; writes an object's number into its cells
+0x60393  f  probe_wall_right               ; moving right: a solid cell ahead?
+0x60496  f  probe_wall_left                ; moving left: a solid cell ahead?
+0x6040a  f  probe_solid_side               ; kind 1 stops sideways
+0x60513  f  probe_solid_side_2             ; kind 1 stops sideways, other form
+0x60666  f  probe_overhead                 ; kind 3, overhead only (in no level)
+0x606eb  f  probe_floor_ladder             ; floor under a climber, & 6
+0x607c1  f  probe_platform_top             ; kind 2: feet over its top
+0x60833  f  probe_floor                    ; what is under an entity: bit per kind found
+0x608bc  f  probe_all_kind                 ; every cell across the width is kind cl?
+0x60920  f  probe_ladder                   ; row 31 px over the feet, x ± 4, all kind 4/5
+0x609bc  f  probe_level_bottom             ; y ≥ level height lands on the bottom edge
+0x60a00  f  probe_crusher                  ; a solid block over Jack in the falling map
+0x60c25  f  probe_headroom                 ; room to stand up out of the hat?
+
+# ── blocks: damage, destruction, collapse ─────────────────────────────────
+0x689e6  f  damage_down                    ; force into a block and down through what it rests on
+0x68a91  f  damage_up                      ; the mirror: up through what rests on it
+0x68724  f  remove_object_data             ; a block destroyed: tiles cleared, turned to rubble
+0x68980  f  clear_object_tiles             ; clears a block's cells from the map
+0x68b2d  f  group_landed                   ; a falling group lands: impact, damage, rebuild
+0x690d6  f  group_fall_step                ; rigid fall, vy += 10000, cap 4 px/tick
+0x691e9  f  group_contact_test             ; group against group, via the provisional map
+0x69386  f  group_stamp                    ; stamp a group into the provisional map
+0x694ad  f  group_unstamp                  ; and take it out again
+0x69660  f  collect_loose_groups           ; second flood: loose blocks into groups
+0x698c2  f  collect_group_members          ; through their contacts
+0x69850  f  pile_mass                      ; sum of masses up a pile → impact force
+0x69b27  f  count_neighbours               ; per object, touching above and below
+0x69b88  f  support_flood                  ; flood up from the bottom row
+0x69c07  f  support_flood_step             ; +0x5c from above, +0x5e from below
+0x69f04  f  structure_pass                 ; every fifth frame, if the dirty flag says so
+0x2d285  f  draw_block                     ; a block, opaque (blit_rle)
+0x2d381  f  draw_rubble                    ; rubble, see-through (blit_rle_blend)
+0x60f60  f  rubble_state                   ; flying, then resting on the bottom
+0x6109e  f  rubble_fly_to_point            ; second mode, towards a point (0x41044e); not traced
+0x61205  f  rubble_sink                    ; count out: sinks a pixel a tick and is gone
+0x6125c  f  spawn_dust                     ; DUST.SPR puff
+0x1f784  f  spawn_dust_variant             ; dust puff cycling eight variants
+0x61327  f  count_hoovered                 ; area / 16 added to the rubble count
+0x61472  f  hoover_suck_box                ; 32 px box 40 ahead: catches rubble
+0x61518  f  rubble_being_sucked            ; towards the nozzle, shrinking
+
+# ── Jack: animation, player set-up ────────────────────────────────────────
+0x21c26  f  play_anim                      ; slot → frame list, movement profile, hammer list
+0x21337  f  initialise_a_player            ; per-player struct, flag entity, hoover
+0x216c0  f  initialise_a_players_hammer    ; copies the chosen hammer record
+0x218a0  f  copy_input_word                ; player +0x24/+0x28 → 0x28bf36 held / 0x28bf34 pressed
+0x21aef  f  jack_tick                      ; Jack's routine every tick
+0x20890  f  hammer_entity_tick             ; stands on Jack, shows SPA frame from the slot's list
+0x20905  f  hammer_list_switches           ; 0x4000 hide / 0x8000 show
+0x20e9f  f  jack_try_jump                  ; BUT2 pressed → jump
+0x20ee0  f  jack_try_pickup_running        ; DOWN alone while running
+0x20f1d  f  jack_holding_choice            ; standing with something: put down / aim
+0x20fe1  f  aim_button_test                ; ends the aim
+0x2110d  f  windup_side_held               ; the sideways windup while the key stays down
+0x21185  f  windup_over_held               ; the overhead windup while held
+0x21a70  f  squash_handler                 ; hat → hat pop, else flattened
+0x21d51  f  jack_take_hold                 ; frames overlap and grab point inside: link both ways
+0x221b9  f  release_thrown                 ; the object leaves Jack's hands
+
+# ── Jack: states (set_state routines) ─────────────────────────────────────
+0x22892  f  jack_stand                     ; slot 1 — the hub
+0x22275  f  jack_run                       ; slot 0, cycle A
+0x236b9  f  jack_walk                      ; slot 3, cycle B
+0x2266d  f  jack_skid                      ; slot 2
+0x22b91  f  jack_jump                      ; slot 5
+0x25813  f  jack_in_air                    ; slot 31, air control 0x2582d-0x25909
+0x25a3e  f  jack_land                      ; slot 32
+0x256e9  f  jack_stand_hub2                ; slot 29 — the other hub
+0x25dfc  f  jack_long_fall                 ; slot 34
+0x26167  f  jack_long_fall_2               ; slot 35
+0x29828  f  jack_hard_landing              ; slot 58
+0x22fa5  f  jack_hammer_out                ; slot 11, out of the hat
+0x23499  f  jack_stand_hammer              ; slot 4, standing with the hammer
+0x2320a  f  jack_hammer_away               ; slot 10, back into the hat
+0x263a7  f  jack_hammer_out_alt            ; slot 42, when +0x9a is set
+0x23a27  f  jack_windup_side               ; slot 6, charges while held
+0x23f0f  f  jack_windup_over               ; overhead windup
+0x24174  f  jack_swing_over                ; slot 7, overhead swing (slots 24-27)
+0x23cef  f  jack_strike                    ; slot 15 + charge; the blow at its impact frame
+0x24346  f  jack_duck_into_hat             ; slot 12
+0x24727  f  jack_in_hat                    ; slot 22
+0x2498a  f  jack_in_hat_moving             ; slot 23
+0x244c0  f  jack_out_of_hat                ; slot 13
+0x26539  f  jack_hat_jump                  ; slot 43
+0x24bb6  f  jack_hoover_start              ; → hoover held
+0x2a88c  f  jack_hoover_draw               ; slot 70: hoover out
+0x24e55  f  jack_hoover_held               ; slot 28
+0x250d9  f  jack_hoover_walk               ; slot 29
+0x2ab7a  f  jack_hoover_put_away           ; slot 71
+0x25468  f  jack_hoover_button             ; slot 9; not traced
+0x28035  f  jack_throw_up_bag              ; spawns a sprite thrown up at -2 px/tick; "emptying the bag?"
+0x27ff7  f  jack_lay_down_hammer           ; clears +0x9a, hides the hammer — "lays it down?"
+0x25bda  f  jack_climb                     ; slot 33, frame = height
+0x299b6  f  jack_top_out                   ; slot 60
+0x29b15  f  jack_step_down_ladder          ; slot 61
+0x267e3  f  jack_bend_pickup               ; slot 44
+0x26971  f  jack_pickup_search             ; slot 50, searches while held
+0x26c6a  f  jack_lift                      ; slot 39
+0x26e2c  f  jack_lift_2                    ; slot 51
+0x26fe0  f  jack_hold_overhead             ; slot 40
+0x270e1  f  jack_walk_holding              ; slot 37
+0x27a94  f  jack_air_holding               ; slot 48
+0x27356  f  jack_put_down                  ; slot 45
+0x2767d  f  jack_aim                       ; slot 47
+0x27954  f  jack_throw                     ; slot 41
+0x2820b  f  jack_push                      ; slot 38
+0x28691  f  jack_push_stance               ; standing, holding on to a rolling cannon
+0x29072  f  jack_air_roll                  ; slot 55
+0x2b3ac  f  jack_air_down_but2             ; in the air, DOWN + BUT2; not traced
+0x29c92  f  jack_pinned                    ; under a block, squashed
+0x29e16  f  jack_pinned_in_hat             ; the same in the hat
+0x29f7a  f  jack_flattened                 ; slot 65, the pancake
+0x2a199  f  jack_knocked_out               ; slot 69, thrown up; after 150 ticks → fly to flag
+0x2a2fe  f  jack_fly_to_flag               ; slot 64, damped spring to the flag
+0x2a4d8  f  jack_state_2a4d8               ; plays slot 0x42, stands after 28 frames; not traced
+
+# ── hammers and blows ─────────────────────────────────────────────────────
+0x1f83d  f  hammer_blow                    ; strike → blow box
+0x1f8c5  f  blow_at                        ; blow at a point with force and extents
+0x1f905  f  blow_walk_cells                ; cell by cell: damage_up / damage_down
+0x1fcd3  f  blow_box                       ; the blow's box from the hammer record
+0x1fd5a  f  hammer_trail_template          ; hammer +0x5c.. into template 0x9fef6
+0x1fd94  f  overhead_hits_sprites          ; the overhead strike hits sprites, not blocks
+0x15bcb  f  draw_aim_arc                   ; the throw's arc, 68 points
+0x15ccd  f  aim_tick                       ; reach and lift indexes while aiming
+
+# ── objects ───────────────────────────────────────────────────────────────
+0x1ae49  f  ob_rules_record                ; class 16: the level's option switches
+0x1f499  f  ob_flag_common                 ; classes 2-5: player eax's flag at x, y - 10
+0x1f52a  f  ob_start_common                ; classes 9-12: player eax's start at x, y + 20
+0x2f72c  f  ob_timmy_bin_common            ; classes 18-21: player eax's timmy bin
+0x2f623  f  place_street_posts             ; PANEL.SPR posts at both street ends
+0x33e79  f  bell_subtype_dispatch          ; 1, 2, 4, 8, 16
+0x33f58  f  bell_locked_tick               ; waits for its block to die
+0x34114  f  bell_touch_tick                ; touched → +0x162 on the player, level over
+0x11edd  f  clock_hit                      ; CLOK.SPR: bursts into twelve pieces
+0x5f3c0  f  sign_swing                     ; DIS.SPR: amplitude force >> 5, 3..32
+0x14935  f  creature_hit_state             ; an unnamed creature, sound 0x84
+0x19b9d  f  bcd_add_score                  ; packed-BCD adder, in fives
+# dynamite
+0x1d405  f  dyna_hammer_state              ; lit by the overhead strike
+0x1d4ec  f  dyna_lit_hop                   ; 35 ticks hopping
+0x1d584  f  dyna_flame                     ; 25 ticks
+0x1d60b  f  dyna_countdown                 ; ten steps of eleven ticks, then the blast
+0x1d7bb  f  dyna_touch_state               ; lit by Jack touching it
+0x1d7e1  f  dyna_touched_outcome           ; Jack's event outcome 5
+0x1d8d1  f  blast_light_neighbours         ; 70 px either way, force 0x4001
+0x20b84  f  dyna_other                     ; template 0xa011c — DIS sign's dynamite / cannonball
+# sucker
+0x19058  f  sucker_base_state
+0x193cb  f  sucker_cup_state
+0x19105  f  sucker_armed
+0x19264  f  sucker_hop
+0x19347  f  sucker_reset
+0x1947e  f  sucker_catch_outcome           ; something falling onto the cup
+0x1951a  f  held_by_sucker                 ; anything else's state while held
+0x1ce2b  f  sucker_cup_offsets             ; cup offset tables, a step a tick
+# cannon
+0x5f8b0  f  cannon_wheel_state
+0x5f964  f  cannon_fire                    ; barrel frames, the shot on 6
+0x6010e  f  launch_at_45                   ; the ball out at 45° with the power's speed
+0x20c26  f  ball_search_barrel             ; a ball coming down looks for a bowl
+0x20e13  f  ball_into_bowl_outcome         ; the bowl hotspot test
+# teleporter
+0x34890  f  telly_pad_state
+0x34a26  f  telly_beam_state
+0x34b5b  f  telly_send                     ; in the air, not carrying, target open
+0x34bcb  f  telly_receive                  ; squeeze, move, unsqueeze
+0x34cda  f  telly_beam_shrink
+0x34d3e  f  telly_pad_physics              ; → sprite_physics, box ± 10
+
+# ── collapse pass helpers named in the notes (role not pinned down) ───────
+0x135fc  f  structural_pass_a              ; ? listed with the structural pass
+0x162c7  f  structural_pass_b              ; ?
+0x2bfda  f  structural_pass_c              ; ?
+0x1c821  f  structural_pass_d              ; ?
+
+# ── data: globals ─────────────────────────────────────────────────────────
+0x98224  d  level_options                  ; option bits set by the rules record
+0x98226  d  level_options_2
+0x9385c  d  rules_flag_9385c               ; set by rules +0x32
+0x28b924 d  ob_stream_ptr                  ; the .OB stream pointer
+0x28b928 d  flag_positions                 ; per player: i16 x, y - 10
+0x28b938 d  start_positions                ; per player: i16 x, y + 20
+0x28b948 d  flag_entities                  ; per player: the FLAG.SPR entity
+0x28b97c d  players                        ; four 360-byte player structs
+0x28bf2c d  current_player                 ; pointer to the one being run
+0x28bf34 d  input_pressed                  ; this tick's newly pressed bits
+0x28bf36 d  input_held                     ; held bits
+0x317ca8 d  level_state_ptr                ; TRASHIT.DAT record: section, number, counters
+0x3187bc d  random_bits                    ; ? read as random bits by the knocked-out state
+0x3187e4 d  player_count                   ; ? starts and flags are only placed for index < this
+0x3187ee d  frame_counter
+0x3f165a d  street_left                    ; -256
+0x3f165c d  street_right                   ; width + 256
+0x3f166a d  count_static_objects           ; diagnostics
+0x3f166c d  count_destructible_objects     ; diagnostics
+0x3f1670 d  sprite_hit_list
+0x3f20a4 d  telly_table                    ; teleporters by id, < 8
+0x3f20c4 d  col_table                      ; .COL, 6 bytes an object
+0x3f3390 d  rubble_list
+0x3f4022 d  rubble_count
+0x3f5928 d  row_offsets                    ; tile map rows
+0x3f6178 d  objects                        ; block entities, 112 bytes, 1-based
+0x40cbf8 d  obt_table
+0x40f330 d  tile_map_live
+0x40f334 d  tile_map_provisional
+0x41044c d  level_bottom                   ; rows × 8 — the street's floor
+0x41044e d  rubble_mode
+0x410454 d  structure_pass_timer           ; every fifth frame
+0x41045a d  level_object_total
+0x410464 d  destroyed_percent
+0x410466 d  level_half_width
+0x410474 d  structure_dirty
+0x410480 d  level_rows
+0x410482 d  level_height_px
+0x410484 d  level_width_px
+0x41048a d  tile_row_stride
+0x410490 d  destroyed_count
+0x595cc8 d  last_spawned                   ; the entity spawn_from_template made
+0x257634 d  background_buffer
+0xbd4e4  d  blend_table                    ; 256×256, see-through rubble
+0x984c4  d  sde_shift
+
+# ── data: tables ──────────────────────────────────────────────────────────
+0x992c4  d  class_registry                 ; 47 × (u16 id, pad, constructor)
+0x9984c  d  sprite_table                   ; 102-byte records: file name, palette range at +100
+0x912c9  d  key_names                      ; LEFT RIGHT UP DOWN BUT1 BUT2
+0x90e0c  d  str_event_list_no_outcome
+0xa11d2  d  anim_slots                     ; 79 slot pointers into JACKS.SPR frame lists
+0xa10d4  d  anim_profile_index
+0xa1172  d  anim_profiles                  ; 12 bytes: top speed, accel, turn
+0x9ff88  d  hammer_lists_by_slot
+0xa47c4  d  hoover_lists_by_slot
+0xa10b0  d  hammer_list_shoulder
+0xa130e  d  top_out_steps
+0xa1e04  d  hammer_catalogue               ; 104-byte records
+0xa2d0c  d  hammer_record_ptrs
+0xa2f48  d  jack_event_outcomes            ; by event type
+0xa0264  d  ladder_probe_box               ; 4, 30
+0xa0288  d  grab_point                     ; 11 ahead, 5 up
+0x93eb0  d  throw_reach_vx                 ; 32 steps, 0.5 … 3.0 px/tick
+0x93f30  d  throw_lift_vy                  ; 8 steps, 0.5 … 4.0 px/tick
+0xa3622  d  timmy_bin_stages
+0xa4970  d  impact_rubble_masks
+0x9fef6  d  hammer_trail_template
+0x96e18  d  sucker_wobble
+0x96e44  d  sucker_catch_events
+0x96e54  d  sucker_sink
+0x96e64  d  sucker_hop_timer
+0x96e90  d  sucker_hop_cup
+0x96ee4  d  sucker_spring
+0x98d3c  d  dyna_hop_x
+0x98d6a  d  dyna_hop_y
+0x98db2  d  dyna_flame_steps
+0xa0154  d  ball_rocking
+0xa0250  d  ball_events
+0xa4518  d  barrel_bowl_hotspot
+0xa4522  d  fuse_points                    ; 29
+0xa44e0  d  shot_powers
+0xa41c8  d  telly_box
+0xa41cc  d  beam_grow_h
+0xa41f6  d  beam_grow_w
+0xa421e  d  beam_shrink_h
+0xa4262  d  beam_shrink_w
+
+# ── named by their own messages ("BUG in …", "Couldn't …") ───────────────
+0x10a62  f  print_level_counters           ; "timmies %d rubble %d timer %d"
+0x132ba  f  spike_git_create               ; "spike git has no block to lock to"
+0x134d7  f  bomb_git_create                ; "Bomb git has no block to lock to"
+0x13634  f  start_ufo                      ; "Couldn't start a UFO!"
+0x15d4d  f  load_sound_bank                ; "Couldn't load sound bank"
+0x15f2a  f  terminate_visible_effect       ; "could not terminate visible effect"
+0x16cc7  f  audio_init                     ; "AIL_active_flag is false in 'audio_init()'"; loads <level>.WVL / .XMI
+0x17429  f  generic_thing_create           ; "generic thing has no block to lock to"
+0x177da  f  record_pad_entry               ; demo recording: "BUG in 'record_pad_entry'"
+0x179eb  f  open_level_file                ; "LEVELS\%s", "Couldn't open '%s' for read"
+0x17f7e  f  scene_sprite_add               ; "Reached MAX_SCENE_SPRITES!" (40)
+0x1800d  f  scene_sprite_delete            ; "No SCENE_SPRITES to delete!"
+0x1807d  f  spawn_scene_sprites            ; "Couldn't 'spawn_SCENE_SPRITE()'"
+0x18584  f  grip_detect                    ; "Found GRIP"
+0x185e5  f  grip_load_library              ; GRIP.GLL
+0x197e8  f  panel_icon_alloc               ; "out of panel icons"
+0x1b304  f  generic_pickup_create          ; "couldn't spawn pickup", "generic pickup (gp)"
+0x1e788  f  process_obj_on_something       ; "BUG1/BUG2: in 'process_obj_on_something()'" — what Jack holds or stands on
+0x1e7d5  f  remove_obj_from_something      ; "BUG2: in 'remove_obj_from_something()'" — lets go of what he holds
+0x2c34e  f  choose_camera                  ; "BUG: Tried 'choose_camera( %d )'"
+0x2c52c  f  read_config                    ; "cfg.cd_drive %c"
+0x2c87d  f  open_file_or_die               ; "Couldn't open file '%s'"
+0x2e8f5  f  report_frame_rate              ; "Average frame rate: %i.%i fpm", "Illegal time!"
+0x2fd75  f  timmy_create                   ; "timmy has no block to lock to"
+0x2fe70  f  king_timmy_create              ; "King timmy has no block to lock to"
+0x3053f  f  spawn_timmy                    ; "Couldn't 'spawn a timmy()'!"
+0x347f4  f  telly_register                 ; "teleport id exceeds limit"
+0x5f1f7  f  lock_to_block                  ; "No block to lock to??" — class 8's
+0x697d7  f  group_slot_alloc               ; "don cannot find collective slot"
+0x6a29b  f  load_sprite_file               ; "%s\%s", "Need '%ld' more bytes of sprite_mem"
+0x6b65f  f  read_joypad                    ; "Joypad has been touched"
+0x6c731  f  load_char_font                 ; CHAR.SPR
+0x6cd6e  f  add_iac_object                 ; "num_active_iac_objects too big [in add_iac_object()]"
+
+# ── read off their bodies ─────────────────────────────────────────────────
+0x15de2  f  play_sound                     ; play_sound(id in eax); counts plays at 0xcea9c
+0x2d50d  f  debug_printf                   ; compiled out: returns at once
+0x2e114  f  fatal_error                    ; formats the message, shuts everything down, exits
+0x2eee1  f  kill_entity                    ; flags it (+0x40 |= 2) and queues it on 0x3f1d40 for removal
+0x2f9ce  f  random_next                    ; next of 256 table values (0xa38a2) into 0x3f2080
+0x6a15c  f  key_down                       ; byte table 0xa4990 by scancode, bit 0
+0x30462  f  sprite_set_anim                ; the sprite at 0x3f2084: anim tables 0xa4030 / 0xa406a / 0xa40be
+0x33820  f  event_list_for_type            ; outcome list for an event type (0x35, 0x3f, 0x5b …)
+0x3f1d40 d  kill_queue
+0x3f2068 d  kill_queue_count
+0x3f2080 d  random_value
+0x3f2084 d  current_sprite
+0xa4990  d  key_table                      ; by scancode
+0xa38a2  d  random_table
+
+# ── library glue (Miles Sound System debug log, DOS, DPMI) ─────────────────
+0x76a70  f  ail_log_timestamp              ; "[%.02u:%.02u:%.02u.%.03u] "
+0x76da0  f  ail_log_result_hex             ; "Result = 0x%X"
+0x76df0  f  ail_log_result_dec             ; "Result = %d"
+0x76e40  f  ail_log_string                 ; strlen + dos_write to the log file
+0x777c9  f  ail_log_suppressed             ; ? returns 0xa50fa; logging happens only when it is 0
+0x77a5b  f  dos_write                      ; int 21h write, in chunks under 64 KB
+0x7a350  f  ail_mem_free_lock              ; unlock the block's range, then free it
+0x7a100  f  dpmi_unlock_range              ; (address, length) → dpmi_unlock_region
+0x7a120  f  dpmi_lock_range                ; (address, length) → dpmi_lock_region
+0x7a140  f  dpmi_unlock_region             ; (first, last)
+0x7a1e0  f  dpmi_lock_region               ; (first, last)
+0x2c911  f  random_step                    ; shift-register step of random_bits
+0x2fa90  f  random_magnitude               ; |random_next >> cl|
+0x2fa6d  f  random_signed                  ; random_next >> cl, sign from bit 0
+0x2c323  f  request_shake                  ; ? keeps the largest value asked for this frame (0x28bfa0)
+0x20db1  f  apply_friction                 ; vx toward 0 by 2000, or 8000 with +0x40 bit 0x10; zero under 10000
+0x1e053  f  start_effect                   ; ? effect table 0x991d3 (5 dwords each), count 0x28b922
+0x1d9d6  f  queue_hit                      ; ? 32-slot list at 0x287d84: entity, value, ebx
+0x196db  f  panel_script_run               ; ? runs a command list: 1 → 0x19931, 2 → panel_icon_alloc …
+0x2fb39  f  skid_dust                      ; fast and bit 0x10: a puff every 4 ticks, with a sound
+0x28bfa0 d  shake_request
+0x287d84 d  hit_queue
