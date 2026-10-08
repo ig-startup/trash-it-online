@@ -46,7 +46,10 @@ SHARED_ORDER = os.path.join(REPO, "shared", "levels.json")
 # Room above the tallest structure so a player can stand on the roof — the
 # original's own coordinates start the top band at y=8.
 HEADROOM = 64
-GROUND_OVERHANG = 240  # how far the floor runs past each side edge
+#: How far the street runs past each side edge of the map. G.EXE sets its
+#: ends at load, (-256) & ~7 and (width + 0x107) & ~7 (VA 0x2cf19), and
+#: stands a PANEL.SPR post on each (VA 0x2f623).
+STREET = 256
 #: Every class whose template spawns a TIMMY.SPR.
 TIMMY_CLASSES = (14, 17, 32)
 #: Class 15 places a stick of dynamite.
@@ -175,12 +178,12 @@ def export(name):
     # happened to be highest and stood the players in a neat row.
     placed = ob.parse(open(os.path.join(LEVELS, name + ".OB"), "rb").read())
 
-    # Some authored coordinates sit off the left edge — 75 of 255 starts
-    # and 17 of 135 bells across the archive, always in x, never in y.
-    # Why is not understood (see scripts/formats/README.md), so clamp
-    # rather than pretend: a start off the map has no floor under it.
+    # Many authored positions are off the map — 75 of 255 starts and 17
+    # of 135 bells, always in x. They are on the street: the floor is the
+    # level's bottom edge at any x (VA 0x609bc), and it runs STREET past
+    # either side. Players walk in from it, and some bells stand on it.
     def clamp_x(x, width=8):
-        return max(0, min(x, lv["width"] - width))
+        return max(-STREET, min(x, lv["width"] + STREET - width))
 
     found = ob.spawns(placed)
     if found:
@@ -288,12 +291,10 @@ def export(name):
         # which only works if Jack is standing on it. Without this the
         # players simply fall out of the level.
         #
-        # It reaches past both side edges because some authored positions
-        # are off the left edge (see the clamp above): whatever the reason
-        # for that, they still need a floor.
-        "ground": {"x": -GROUND_OVERHANG,
+        # It reaches past both side edges, as far as the street goes.
+        "ground": {"x": -STREET,
                    "y": (lv["tiles_h"] + HEADROOM // 8) * 8,
-                   "width": lv["width"] + GROUND_OVERHANG * 2,
+                   "width": lv["width"] + STREET * 2,
                    "height": 32},
         "platforms": [],
         "destructibles": destructibles,

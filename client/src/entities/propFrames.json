@@ -1143,6 +1143,14 @@
       "ax": 15,
       "ay": 72,
       "src": "TELLY.SPR:10"
+    },
+    "post": {
+      "file": "sprites/props/post.png",
+      "w": 42,
+      "h": 44,
+      "ax": 0,
+      "ay": 43,
+      "src": "PANEL.SPR:16"
     }
   },
   "anims": {
@@ -1316,6 +1324,9 @@
       "telly_08",
       "telly_09",
       "telly_10"
+    ],
+    "post": [
+      "post"
     ]
   },
   "hammerBySlot": {

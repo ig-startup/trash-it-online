@@ -26,6 +26,8 @@ const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
 const FORCE_MAX_VISITS = 600; // guard: a blow decays fast, but not in one frame
 const TILE = 8;              // px — the original's collision-map cell
+const VIEW_WIDTH = 320;      // px of the level on screen at once, as in the original
+const VIEW_HEIGHT = 200;
 /** Player states during which a swing connects (see STATES in Player.js). */
 const STRIKE_STATES = new Set(['strikeSide', 'strikeOver']);
 // The debris masks a blow throws rubble with: the sledge v1's record
@@ -113,6 +115,10 @@ export default class GameScene extends Phaser.Scene {
     const level = this._level;
     const levelWidth = level.widthTiles * level.tileSize;
     const levelHeight = level.heightTiles * level.tileSize;
+    // The street the map stands in: the floor runs past both side edges,
+    // and players start and bells stand on it (see export_level.STREET).
+    const streetLeft = level.ground ? level.ground.x : 0;
+    const streetRight = level.ground ? level.ground.x + level.ground.width : levelWidth;
 
     // ── Background ────────────────────────────────────────────────────────────
     if (level.background && this.textures.exists(this._bgKey(level))) {
@@ -121,8 +127,9 @@ export default class GameScene extends Phaser.Scene {
       // the `.SCN` screen is cropped off by the exporter, because tiling
       // it laid a grey band across the level every 200 pixels.
       const src = this.textures.get(this._bgKey(level)).getSourceImage();
+      const x0 = Math.floor(streetLeft / src.width) * src.width;
       for (let y = 0; y < levelHeight; y += src.height) {
-        for (let x = 0; x < levelWidth; x += src.width) {
+        for (let x = x0; x < streetRight; x += src.width) {
           this.add.image(x, y, this._bgKey(level)).setOrigin(0, 0).setDepth(-10);
         }
       }
@@ -152,6 +159,22 @@ export default class GameScene extends Phaser.Scene {
       ).setVisible(false);
       this.physics.add.existing(floor, true);
       this._platforms.add(floor);
+
+      // A post closes each end of the street (VA 0x2f623), the right one
+      // mirrored, and nobody walks past it.
+      if (hasProps(this) && PROP_ANIMS.post) {
+        [[streetLeft, false], [streetRight, true]].forEach(([x, flip]) => {
+          const post = this.add.image(x, g.y, PROP_ANIMS.post[0]).setDepth(-5);
+          applyPropFrame(post, PROP_ANIMS.post[0]);
+          post.setFlipX(flip);
+        });
+      }
+      [streetLeft - 16, streetRight].forEach((x) => {
+        const wall = this.add.rectangle(x + 8, levelHeight / 2, 16, levelHeight * 2)
+          .setVisible(false);
+        this.physics.add.existing(wall, true);
+        this._platforms.add(wall);
+      });
     }
 
     // ── Destructibles (rubble, original palette) ────────────────────────────────
@@ -349,62 +372,87 @@ export default class GameScene extends Phaser.Scene {
     this._but2Key = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
 
     // ── Camera ────────────────────────────────────────────────────────────────
-    this.cameras.main.setBounds(0, 0, levelWidth, levelHeight);
-    this.cameras.main.startFollow(this._player, true, 0.1, 0.1);
+    // The original's screen is 320x240 "mode X" with the play field clipped
+    // to its top 200 lines (the sprite blitter, VA 0x34ed8, stops at x 0x140 and y 200);
+    // the rest is the panel. So the world camera shows exactly 320x200 of
+    // the level, scaled to the canvas width, and the HUD gets the strip
+    // below it, on a camera of its own that does not zoom.
+    const zoom = this.scale.width / VIEW_WIDTH;
+    this.cameras.main
+      .setViewport(0, 0, this.scale.width, VIEW_HEIGHT * zoom)
+      .setZoom(zoom)
+      .setBounds(streetLeft, 0, streetRight - streetLeft, levelHeight)
+      .startFollow(this._player, true, 0.1, 0.1);
+    this._uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height)
+      .setName('hud');
+    // World objects, those made so far and every one made later, stay off
+    // the HUD camera; _hud() moves an object to it.
+    this._uiCam.ignore(this.children.list);
+    this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, (obj) => {
+      this._uiCam.ignore(obj);
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE);
+    });
 
     // ── HUD ───────────────────────────────────────────────────────────────────
+    const panelTop = VIEW_HEIGHT * zoom;
+    const panelH = this.scale.height - panelTop;
+    this._hud(this.add.rectangle(this.scale.width / 2, panelTop + panelH / 2,
+      this.scale.width, panelH, 0x111122));
 
-    // Timer — centered at top
-    this.timerText = this.add.text(400, 16, '3:00', {
+    // Timer — centered in the panel
+    this.timerText = this._hud(this.add.text(400, panelTop + 10, '3:00', {
       fontSize: '32px',
       fill: '#ffffff',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(10);
+    }).setOrigin(0.5, 0).setDepth(10));
 
-    // Mode label — top right
+    // Mode label — panel right
     const modeLabel = this._mode === 'race' ? 'ГОНКА' : 'КООП';
-    this._modeLabelText = this.add.text(784, 16, modeLabel, {
+    this._modeLabelText = this._hud(this.add.text(784, panelTop + 10, modeLabel, {
       fontSize: '20px',
       fill: '#ffff00',
-    }).setOrigin(1, 0).setScrollFactor(0).setDepth(10);
+    }).setOrigin(1, 0).setDepth(10));
 
-    // Player list — top left (colored icon + name per player)
+    // Player list — panel left (colored icon + name per player)
     this._playerListObjects = [];
     const playersData = this._players || [];
     playersData.forEach((p, idx) => {
-      const yPos = 16 + idx * 28;
+      const yPos = panelTop + 6 + idx * 22;
       const colorHex = parseInt((p.color || '#ffffff').replace('#', ''), 16);
-      const icon = this.add.rectangle(16, yPos + 8, 16, 16, colorHex)
-        .setScrollFactor(0).setDepth(10);
-      const nameLabel = this.add.text(30, yPos, p.name || p.id, {
+      const icon = this._hud(this.add.rectangle(16, yPos + 8, 14, 14, colorHex)
+        .setDepth(10));
+      const nameLabel = this._hud(this.add.text(30, yPos, p.name || p.id, {
         fontSize: '14px',
         fill: '#ffffff',
         stroke: '#000000',
         strokeThickness: 2,
-      }).setScrollFactor(0).setDepth(10);
+      }).setDepth(10));
       this._playerListObjects.push(icon, nameLabel);
     });
 
-    // Small room/mode debug line — top left below player list
-    this._modeText = this.add.text(10, 10, `${this._mode === 'race' ? 'ГОНКА' : 'КООП'} | ${this._roomCode}`, {
-      fontSize: '11px',
-      color: '#555555',
-    }).setScrollFactor(0);
+    // Small room/mode debug line — panel bottom right
+    this._modeText = this._hud(this.add.text(784, this.scale.height - 4,
+      `${this._mode === 'race' ? 'ГОНКА' : 'КООП'} | ${this._roomCode}`, {
+        fontSize: '11px',
+        color: '#555555',
+      }).setOrigin(1, 1));
 
     /** Rubble hoovered up, as the game counts it: area / 16 a piece. */
     this._rubbleTaken = 0;
-    this._rubbleText = this.add.text(16, 124, `МУСОР ${this._rubbleTaken}`, {
+    this._rubbleText = this._hud(this.add.text(784, panelTop + 40, `МУСОР ${this._rubbleTaken}`, {
       fontSize: '16px',
       fill: '#ffcc33',
       stroke: '#000000',
       strokeThickness: 3,
-    }).setScrollFactor(0).setDepth(10);
+    }).setOrigin(1, 0).setDepth(10));
 
-    this._debugText = this.add.text(10, 28, '', {
+    this._debugText = this._hud(this.add.text(220, this.scale.height - 4, '', {
       fontSize: '11px',
       color: '#556655',
-    }).setScrollFactor(0);
+    }).setOrigin(0, 1));
 
     // ── Throttle timestamp ────────────────────────────────────────────────────
     this._lastUpdateSent = 0;
@@ -522,6 +570,18 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Put a game object on the HUD camera instead of the world one.
+   * @template T
+   * @param {T} obj
+   * @returns {T}
+   */
+  _hud(obj) {
+    this.cameras.main.ignore(obj);
+    obj.cameraFilter &= ~this._uiCam.id;
+    return obj;
+  }
 
   /**
    * The cells a blow lands in, in the order the original visits them
@@ -959,30 +1019,29 @@ export default class GameScene extends Phaser.Scene {
    *   server's `game_started` gets there first; this is the offline path.
    */
   showResultOverlay(title, subtitle, options = {}) {
-    const { width, height } = this.cameras.main;
+    const { width, height } = this.scale;
     const cx = width / 2;
     const cy = height / 2;
 
     // Semi-transparent black background
-    this.add.rectangle(cx, cy, width, height, 0x000000, 0.75)
-      .setScrollFactor(0)
-      .setDepth(100);
+    this._hud(this.add.rectangle(cx, cy, width, height, 0x000000, 0.75)
+      .setDepth(100));
 
     // Title text
-    this.add.text(cx, cy - 60, title, {
+    this._hud(this.add.text(cx, cy - 60, title, {
       fontSize: '48px',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+    }).setOrigin(0.5).setDepth(101));
 
     // Subtitle text
-    this.add.text(cx, cy, subtitle, {
+    this._hud(this.add.text(cx, cy, subtitle, {
       fontSize: '24px',
       color: '#cccccc',
       stroke: '#000000',
       strokeThickness: 2,
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+    }).setOrigin(0.5).setDepth(101));
 
     // Countdown text
     const { nextLevel } = options;
@@ -990,10 +1049,10 @@ export default class GameScene extends Phaser.Scene {
       ? `Следующий уровень через ${n}...`
       : `Возврат в меню через ${n}...`);
     let countdown = 3;
-    const countdownText = this.add.text(cx, cy + 60, label(countdown), {
+    const countdownText = this._hud(this.add.text(cx, cy + 60, label(countdown), {
       fontSize: '18px',
       color: '#aaaaaa',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+    }).setOrigin(0.5).setDepth(101));
 
     const timer = this.time.addEvent({
       delay: 1000,
