@@ -1,7 +1,7 @@
 'use strict';
 
 const GameRoom = require('../src/GameRoom');
-const { EVENTS } = require('../../shared/constants');
+const { EVENTS, HAMMER_FORCE } = require('../../shared/constants');
 
 // Sample level data matching tech-spec format
 const LEVEL_DATA = {
@@ -159,5 +159,34 @@ describe('GameRoom', () => {
     jest.advanceTimersByTime(5000);
     const emitCountAfterAdvance = io._room.emit.mock.calls.length;
     expect(emitCountAfterAdvance).toBe(emitCountAfterEnd);
+  });
+
+  // -----------------------------------------------------------------------
+  // The original's own hit points, on a level that has tough blocks: 0C.
+  // -----------------------------------------------------------------------
+  describe('with a real level', () => {
+    const LEVEL_0C = require('../../client/public/levels/level_0C.json');
+    const destroyedIds = () => io._emitted
+      .filter((e) => e.event === EVENTS.OBJECT_DESTROYED)
+      .map((e) => e.data.objectId);
+
+    test('an unbreakable block is not even tracked', () => {
+      const hard = LEVEL_0C.destructibles.find((o) => o.solid);
+      room.startGame(LEVEL_0C);
+      room.handleObjectHit('player-1', hard.id, 1e9);
+      expect(destroyedIds()).not.toContain(hard.id);
+    });
+
+    test('a fully charged sledge only dents a tough block', () => {
+      // The starting hammer is weak against these: 0C's blocks are 1000+
+      // hit points and a full charge is 75. Breaking takes many blows.
+      const tough = LEVEL_0C.destructibles
+        .find((o) => !o.solid && o.hp > HAMMER_FORCE);
+      room.startGame(LEVEL_0C);
+      room.handleObjectHit('player-1', tough.id, HAMMER_FORCE);
+      expect(destroyedIds()).not.toContain(tough.id);
+      room.handleObjectHit('player-1', tough.id, tough.hp);
+      expect(destroyedIds()).toContain(tough.id);
+    });
   });
 });

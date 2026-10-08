@@ -137,37 +137,20 @@ describe('room lifecycle over the real server', () => {
     expect(echoed).toBe(false);
   });
 
-  // The first block in a level is often one the original marks unbreakable,
-  // so pick one the room actually tracks.
-  const SOFT = require('../../client/public/levels/level_0C.json')
+  // The room starts the first level in the play order; hit one of the
+  // blocks it actually tracks.
+  const FIRST = require('../../shared/levels.json').order[0];
+  const SOFT = require(`../../client/public/levels/${FIRST}.json`)
     .destructibles.find((o) => !o.solid);
   const SOFT_BLOCK = SOFT.id;
 
-  test('an unbreakable block is not even tracked', async () => {
-    let destroyed = false;
-    guest.once('object_destroyed', () => { destroyed = true; });
-    host.emit('object_hit', { objectId: 'o0', force: HAMMER_FORCE });
-    await new Promise((r) => setTimeout(r, 300));
-    expect(destroyed).toBe(false);
-  });
-
   test('a blow too weak to matter leaves the block standing', async () => {
-    // Blocks carry the original's own hit points now, in the thousands, so
-    // a nominal hit does nothing. This is the half of the model that is
-    // easy to break by accident.
+    // Blocks carry the original's own hit points, so a nominal hit does
+    // nothing. This is the half of the model that is easy to break by
+    // accident.
     let destroyed = false;
     guest.once('object_destroyed', () => { destroyed = true; });
     host.emit('object_hit', { objectId: SOFT_BLOCK, force: 1 });
-    await new Promise((r) => setTimeout(r, 300));
-    expect(destroyed).toBe(false);
-  });
-
-  test('a fully charged sledge only dents it', async () => {
-    // The starting hammer is weak against these: 0C's blocks are 1000+ hit
-    // points and a full charge is 75. Breaking takes many blows.
-    let destroyed = false;
-    guest.once('object_destroyed', () => { destroyed = true; });
-    host.emit('object_hit', { objectId: SOFT_BLOCK, force: HAMMER_FORCE });
     await new Promise((r) => setTimeout(r, 300));
     expect(destroyed).toBe(false);
   });

@@ -62,16 +62,9 @@ TIME_LIMIT = 240
 MIN_OBJECTS = 10
 PAD = 1  # transparent gutter between packed shapes
 
-# A spread of the game's levels: small and sprawling, low and tall.
-# Which levels to export, and in what order they are played. The
-# original's own order is not known — the front end (F.EXE) picks levels
-# by section and password, and that has not been decoded — so this is
-# ours, arranged by how well a level opens rather than alphabetically.
-#
-# 0C leads because its authored start is on solid ground mid-level and
-# its bell sits on a real block a decent walk away; 0A used to lead and
-# is one of the worst, starting the players clamped against the left
-# edge with the bell a thousand pixels off.
+# The batch exported when no level is named: a spread of the game's
+# levels, small and sprawling, low and tall. It is not the play order —
+# play_order() is.
 DEFAULT_BATCH = ["0C", "0D", "2H", "0B", "0A", "0H", "0J", "0K", "0S",
                  "1A", "3I", "4A"]
 
@@ -317,6 +310,27 @@ def export(name):
     return "level_%s" % name
 
 
+#: Level name -> number and section, as G.EXE builds it (VA 0x10a46):
+#: name = NUMBERS[number] + SECTIONS[section]. Sections 9-17 repeat 0-8.
+NUMBERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+SECTIONS = "JHCSLIATMJHCSLIATMBKDX"
+
+
+def play_order(ids):
+    """Sort level ids the way the original plays them: section by section
+    in the order the game numbers them (J, H, C, S, L, I, A, T, M, B, K, D),
+    and within a section by number — so the first level is 0J, the one a
+    new game's TRASHIT.DAT starts from. Ids that are not original levels
+    go last, as they came."""
+    def key(i, lid):
+        name = lid[len("level_"):] if lid.startswith("level_") else lid
+        if len(name) == 2 and name[0] in NUMBERS and name[1] in SECTIONS:
+            return (0, SECTIONS.index(name[1]), NUMBERS.index(name[0]), i)
+        return (1, 0, 0, i)
+    return [lid for _, lid in sorted((key(i, lid), lid)
+                                     for i, lid in enumerate(ids))]
+
+
 def write_index(ids):
     """Write the play order.
 
@@ -331,7 +345,7 @@ def write_index(ids):
 def main(argv):
     if argv and argv[0] == "--all":
         # The T* and U* files are test levels: the only twelve without a
-        # bell. The default batch leads, as the play order already has it.
+        # bell.
         every = sorted({os.path.splitext(f)[0] for f in os.listdir(LEVELS)
                         if f.upper().endswith(".WAM")})
         # Twelve more (CC, CH, … DS) hold a single object on a 288x160
@@ -339,8 +353,7 @@ def main(argv):
         def playable(n):
             wam = open(os.path.join(LEVELS, n + ".WAM"), "rb").read()
             return struct.unpack_from("<H", wam, 4)[0] >= MIN_OBJECTS
-        names = DEFAULT_BATCH + [n for n in every if n not in DEFAULT_BATCH
-                                 and n[0] not in "TU" and playable(n)]
+        names = [n for n in every if n[0] not in "TU" and playable(n)]
     else:
         names = argv or DEFAULT_BATCH
 
@@ -360,11 +373,7 @@ def main(argv):
             lid = f[:-5]
             if lid not in ids:
                 ids.append(lid)
-    # Keep the batch order: it is the play order, not an alphabet.
-    seen = []
-    for lid in ids:
-        if lid not in seen:
-            seen.append(lid)
+    seen = play_order(list(dict.fromkeys(ids)))
     write_index(seen)
     print("%d levels in the play order -> %s" % (len(seen), SHARED_ORDER))
 

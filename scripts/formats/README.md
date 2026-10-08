@@ -1395,6 +1395,9 @@ section's levels is the same from 0 to 9.
 table's own first section is J, and the shipped `TRASHIT.DAT` holds 0 and
 0 at +0x20/+0x22, the state a new game starts from.
 
+The clone plays them in that order — section by section as numbered,
+numbers ascending within one (`play_order()` in `export_level.py`).
+
 Not traced: how `F.EXE` moves on. It keeps a history of played levels in
 the record (`+0x158 + 4 * +0x10a`, the pair as one dword) and the furthest
 reached at `+0x104`, copied into `+0x20` before a level is run (VA
