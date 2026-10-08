@@ -435,3 +435,37 @@
 0x20409  f  level_sequence_step            ; ? table 0x9ff42 by step 0x28b95c, the step advancing when 0x28b960 runs out
 0x28bf44 d  camera_view                    ; ? x0, y0, x1, y1 of what is on screen
 0x40bf78 d  moving_objects
+0x60595  f  probe_move_y                   ; the rows between y and y + vy across the box: kind bits met
+0x60a90  f  probe_floor_at                 ; would the entity stand at (ebx, y + 1)? via probe_move_y
+0x2ea50  f  resolve_path_cd                ; ? tries a file, then again on cfg.cd_drive (0x28bfb5)
+0x1fe47  f  spawn_at                       ; template at (cx, dx); bx = 0 faces it left
+0x1cff9  f  lowest_bit                     ; index of the lowest set bit of ax, 0..15
+0x1da48  f  hit_queue_add                  ; ? a type-8 entry in the 32-slot list at 0x287d84
+0x2dbc4  f  entity_frame_rect              ; x, y, w, h of the current frame, mirrored facing left
+0x2eff8  f  rects_overlap
+0x2def3  f  probe_box_from_frame           ; ? width from the argument, height from the current frame → 0xa026c
+0x1618f  f  sound_voice_alloc              ; a free voice of the 0x68-byte table at 0xce1a4, else the next round-robin
+0x16298  f  sound_voice_start              ; ? sets a voice running a sound script
+0x618d6  f  wait_any_key                   ; scancodes 1..0x66
+0x2be4e  f  camera_set_target              ; x clamped to 320..0x27ff, y to level_bottom - 50, plus the shake
+0x1d84b  f  table_lookup_linear            ; piecewise-linear lookup in a (key, value) table
+0x1d18b  f  unsquash_step                  ; negative +0x50 / +0x52 one back toward 0
+0x1e16e  f  effects_tick                   ; the 300 effect slots at 0x2880d4 that start_effect fills
+0x2880d4 d  effects
+0x28b922 d  effect_count
+0xce1a4  d  sound_voices
+0xcea98  d  sound_voice_count
+0x28bfb5 d  cfg_cd_drive
+0x165f9  f  sound_voice_stop               ; AIL_stop_sample, runs the voice's end callback
+0x16101  f  play_sound_ex                  ; ? play_sound with a data pointer, ebx and a level (+0x2c, twice at +0x2e)
+0x15fe5  f  play_sound_2                   ; ? a voice, then a random_step of its own
+0x16c5c  f  random_step_2                  ; the sound module's copy of random_step
+0x16477  f  sound_voice_set_rate           ; AIL_set_sample_playback_rate
+0x6ad80  f  draw_entity                    ; ? blitter set-up from +0xcc/+0xce (screen) and +0xd0 (frame), blit_rle
+0x6ae1e  f  draw_entity_blend              ; ? the same through blit_rle_blend
+0x6aebc  f  draw_entity_resized            ; ? the same with the +0x50 / +0x52 size offsets
+0x6b400  f  draw_sprite_layers             ; ? sprite lists from 0x3f down, through the draw_entity family
+0x6b533  f  draw_sprite_layers_2           ; ? its twin
+0x6caf0  f  entity_alloc                   ; from the free list at 0x594d04
+0x2eda0  f  sprite_list_add                ; ? onto the list at 0x3f16f4, flags 0x40000008
+0x2edd3  f  spawn_bare                     ; ? template in 0x3f2064, entity_alloc, sprite_list_add

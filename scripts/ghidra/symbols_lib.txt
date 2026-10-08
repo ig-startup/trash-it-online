@@ -101,6 +101,47 @@
 0x769a0  f  AIL_shutdown  ; logs "AIL_shutdown("
 0x78940  f  AIL_startup  ; logs "AIL_startup("
 
+# Empty: a bare return — debug hooks compiled out.
+0x10acf  f  empty_10acf  ; does nothing
+0x1190b  f  empty_1190b  ; does nothing
+0x11a42  f  empty_11a42  ; does nothing
+0x163d3  f  empty_163d3  ; does nothing
+0x17a46  f  empty_17a46  ; does nothing
+0x18ac9  f  empty_18ac9  ; does nothing
+0x1bbc2  f  empty_1bbc2  ; does nothing
+0x1cc1e  f  empty_1cc1e  ; does nothing
+0x1e1c4  f  empty_1e1c4  ; does nothing
+0x1f624  f  empty_1f624  ; does nothing
+0x20006  f  empty_20006  ; does nothing
+0x2be4d  f  empty_2be4d  ; does nothing
+0x2c6ff  f  empty_2c6ff  ; does nothing
+0x2c877  f  empty_2c877  ; does nothing
+0x2de9d  f  empty_2de9d  ; does nothing
+0x2e264  f  empty_2e264  ; does nothing
+0x2ecbd  f  empty_2ecbd  ; does nothing
+0x2f622  f  empty_2f622  ; does nothing
+0x310eb  f  empty_310eb  ; does nothing
+0x34b54  f  empty_34b54  ; does nothing
+0x611ff  f  empty_611ff  ; does nothing
+0x6b0aa  f  empty_6b0aa  ; does nothing
+0x6c29f  f  empty_6c29f  ; does nothing
+0x6c2b3  f  empty_6c2b3  ; does nothing
+0x6c2cb  f  empty_6c2cb  ; does nothing
+0x6c2ec  f  empty_6c2ec  ; does nothing
+0x6c311  f  empty_6c311  ; does nothing
+0x6c688  f  empty_6c688  ; does nothing
+0x6c69c  f  empty_6c69c  ; does nothing
+0x6c6b4  f  empty_6c6b4  ; does nothing
+0x6c6ca  f  empty_6c6ca  ; does nothing
+0x6c6e4  f  empty_6c6e4  ; does nothing
+0x6c92c  f  empty_6c92c  ; does nothing
+0x6d45f  f  empty_6d45f  ; does nothing
+0x77688  f  empty_77688  ; does nothing
+0x795de  f  empty_795de  ; does nothing
+0x79c2c  f  empty_79c2c  ; does nothing
+0x79dce  f  empty_79dce  ; does nothing
+0x84808  f  empty_84808  ; does nothing
+
 # Helpers: called only from one module's code, named after it.
 0x10010  f  pause_sub_10010  ; only called from pause code
 0x11539  f  crawl_sub_11539  ; only called from crawl code
@@ -137,6 +178,7 @@
 0x1ce73  f  dyna_sub_1ce73  ; only called from dyna code
 0x1ceeb  f  clok_sub_1ceeb  ; only called from clok code
 0x1d986  f  dyna_sub_1d986  ; only called from dyna code
+0x1e123  f  effects_sub_1e123  ; only called from effects code
 0x1e895  f  lead_sub_1e895  ; only called from lead code
 0x1ea81  f  lead_sub_1ea81  ; only called from lead code
 0x1eb85  f  ob0_sub_1eb85  ; only called from ob0 code
@@ -165,9 +207,7 @@
 0x25bac  f  jack_sub_25bac  ; only called from jack code
 0x2b315  f  jack_sub_2b315  ; only called from jack code
 0x2be06  f  jack_sub_2be06  ; only called from jack code
-0x2be4d  f  game_sub_2be4d  ; only called from game code
 0x2c68e  f  game_sub_2c68e  ; only called from game code
-0x2c6ff  f  exit_sub_2c6ff  ; only called from exit code
 0x2c700  f  game_sub_2c700  ; only called from game code
 0x2cc90  f  pause_sub_2cc90  ; only called from pause code
 0x2d8eb  f  game_sub_2d8eb  ; only called from game code
@@ -188,14 +228,12 @@
 0x3000d  f  fub_sub_3000d  ; only called from fub code
 0x306de  f  fub_sub_306de  ; only called from fub code
 0x308b2  f  fub_sub_308b2  ; only called from fub code
-0x310eb  f  timmy_sub_310eb  ; only called from timmy code
 0x313cc  f  fub_sub_313cc  ; only called from fub code
 0x32413  f  timmy_sub_32413  ; only called from timmy code
 0x332ef  f  timmy_sub_332ef  ; only called from timmy code
 0x33861  f  jack_sub_33861  ; only called from jack code
 0x3392b  f  fub_sub_3392b  ; only called from fub code
 0x34590  f  jack_sub_34590  ; only called from jack code
-0x34b54  f  telly_sub_34b54  ; only called from telly code
 0x34c7d  f  telly_sub_34c7d  ; only called from telly code
 0x34cad  f  telly_sub_34cad  ; only called from telly code
 0x34da6  f  telly_sub_34da6  ; only called from telly code
@@ -204,7 +242,6 @@
 0x5f82b  f  ob6_sub_5f82b  ; only called from ob6 code
 0x5fe42  f  cfir_sub_5fe42  ; only called from cfir code
 0x5ffb0  f  blam_sub_5ffb0  ; only called from blam code
-0x611ff  f  rubble_sub_611ff  ; only called from rubble code
 0x6137f  f  rubble_sub_6137f  ; only called from rubble code
 0x6a134  f  game_sub_6a134  ; only called from game code
 0x6a204  f  game_sub_6a204  ; only called from game code
@@ -214,6 +251,7 @@
 0x6d466  f  exit_sub_6d466  ; only called from exit code
 0x6d559  f  pause_sub_6d559  ; only called from pause code
 0x6d583  f  pause_sub_6d583  ; only called from pause code
+0x6d5ad  f  resolve_sub_6d5ad  ; only called from resolve code
 0x76e70  f  ail_sub_76e70  ; only called from ail code
 0x76fbc  f  ail_sub_76fbc  ; only called from ail code
 0x7717d  f  ail_sub_7717d  ; only called from ail code
@@ -253,6 +291,7 @@
 0x79682  f  game_sub_79682  ; only called from game code
 0x79c4b  f  exit_sub_79c4b  ; only called from exit code
 0x79d6f  f  game_sub_79d6f  ; only called from game code
+0x79e66  f  resolve_sub_79e66  ; only called from resolve code
 0x79f90  f  ail_sub_79f90  ; only called from ail code
 0x7a490  f  ail_sub_7a490  ; only called from ail code
 0x7a530  f  ail_sub_7a530  ; only called from ail code

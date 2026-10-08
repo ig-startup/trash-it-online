@@ -238,6 +238,13 @@ def cmd_strings(code, decomp_path):
             lines.append("0x%x  f  %s  ; logs \"%s(\"" % (addr, ail[0], ail[0]))
         elif texts and name.startswith("FUN_"):
             hints.append("0x%06x  %s" % (addr, " | ".join(repr(t)[1:-1] for t in texts[:4])))
+    # Functions that do nothing: hooks compiled out of the release build.
+    hand_and_lib = set(hand) | {int(l.split()[0], 16) for l in lines if l.startswith("0x")}
+    lines += ["", "# Empty: a bare return — debug hooks compiled out."]
+    for addr, (name, body) in sorted(decomp_bodies(decomp_path).items()):
+        if addr not in hand_and_lib and re.fullmatch(
+                r"\s*(/\*.*?\*/\s*)*\S[^{]*\{\s*return;\s*\}\s*", body, re.S):
+            lines.append("0x%x  f  empty_%x  ; does nothing" % (addr, addr))
     lib = {int(l.split()[0], 16): l.split()[2] for l in lines if l.startswith("0x")}
     helpers = module_helpers(code, decomp_path, exclude=lib)
     lines += ["", "# Helpers: called only from one module's code, named after it."]
