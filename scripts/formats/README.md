@@ -344,13 +344,30 @@ for almost every shipped level, and the elaborate locking variant is the
 exception that no level actually ships. Subtypes 2 and 8 are still
 unread.
 
-### Start positions still do not all fit
+### Off the map: the street, the posts and the flags — **Confirmed**
 
-Of 255 player starts, 75 fall outside the `.WAM` bounds, several with a
-small negative x (-19, -29, -130), and 17 of 135 bells are outside too.
-It is not an off-screen margin: the bounds the tile lookup checks are the
-level size exactly (`DAT_00410484 = width_in_tiles << 3`). Unexplained,
-and the reason this is not yet wired into the client's level export.
+Of 255 player starts, 75 fall outside the `.WAM` bounds (-19, -98, -130, …,
+and in 4M and 5M past the right edge), and 17 of 135 bells do too. They
+are not mistakes: **the level stands in a street.** The floor is the
+level's bottom edge at any x — when an entity's y reaches the level height
+(`[0x41044c]`, rows × 8) it lands there (VA 0x609bc), whatever the tile
+map says — and every off-map start sits 3 to 33 px above it. At load
+(VA 0x2cf19) the street's ends are set to `(-256) & ~7` and
+`(width + 0x107) & ~7`, i.e. 256 px past each side, and a PANEL.SPR post
+is stood on each at the bottom edge (VA 0x2f623; frame 16, the right one
+mirrored). So players walk in from the street, and some bells are out on
+it.
+
+Class 2 (FLAG.SPR, in every level) is not decoration either: it is the
+player's **flag**, where he comes back to. Its constructor (VA 0x1f499;
+0x1f4fe… for players 2-4) stores `x, y - 10` per player at VA 0x28b928 and
+a bobbing flag entity per player at 0x28b948 (templates 0xa34ec…, one
+colour each). When Jack is knocked out (state 0x2a199, slot 69: thrown up
+with a random sideways kick), after 150 ticks he goes to state 0x2a2fe
+(slot 64) and flies to his flag on a damped spring — `v += (flag - pos) >>
+6`, then `v -= v >> 3`, capped at 16 px/tick — and once he is within
+1/64 px of it and slower than 1/16 px/tick he is set down on it (VA 0x2a4a8) and stands again. The
+flags are usually just off the map too, next to the starts.
 
 ## Game logic
 
