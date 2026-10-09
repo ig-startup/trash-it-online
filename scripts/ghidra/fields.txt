@@ -14,12 +14,14 @@
 
 sprite 00 sprite* partner        ; what it carries / what carries it: jack[0] = obj, obj[0] = jack (README "Carrying and throwing")
 sprite 10 code    state          ; the behaviour routine; set_state writes it (README "Jack's state machine")
+sprite 14 ptr     template       ; the template it was spawned from (spawn_from_template, VA 0x2ed96)
 sprite 24 fix     x              ; 16.16 x; the shared step adds vx to it (VA 0x22d31)
 sprite 26 s16     x_px           ; integer part of x
 sprite 28 fix     y              ; 16.16 y
 sprite 2a s16     y_px           ; integer part of y
 sprite 30 fix     vx             ; x += vx each tick (VA 0x22d31)
 sprite 34 fix     vy             ; += 0x4800 a tick while airborne (VA 0x22d31)
+sprite 3c u16     sprite_id      ; template word 0: its sprite-table index (0x35 TIMMY, 0x3f KTIMMY, 0x5b TOMMY, 0 JACKS)
 sprite 40 u8      flags          ; bit 2 faces left (entity_frame_rect), 0x20 holding, 0x80 hit from above
 sprite 41 u8      link_flags     ; 2 carrying, 4 carried, 0x20/0x40 riding links (README "Carrying", "The sucker")
 sprite 44 s16     frame          ; index into the sprite sheet at +0xc8 (entity_frame_rect)

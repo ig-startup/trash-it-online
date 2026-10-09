@@ -437,10 +437,10 @@ DECL = re.compile(r"^\s+([A-Za-z_][\w ]*?)\s*(\*+)?\s*(\w+);", re.M)
 REGVAR = re.compile(r"^(?:in|unaff)_E([A-D]X|SI|DI|BP)$")
 COPY = re.compile(r"\b(\w+) = \(?(?:\w+ \*?\)?)?\s*(\w+);")
 #: *(T *)(V + k), *(T *)((int)V + k), *(T *)V
-ACCESS = re.compile(r"\*\((\w+) \*\)(?:\((\(int\))?(\w+) \+ (0x[0-9a-f]+|\d+)\)|(\w+)\b(?! *[\[(+]))")
+ACCESS = re.compile(r"\*\((\w+) (\*+)\)(?:\((\(int\))?(\w+) \+ (0x[0-9a-f]+|\d+)\)|(\w+)\b(?! *[\[(+]))")
 INDEX = re.compile(r"\b(\w+)\[(0x[0-9a-f]+|\d+)\]")
 #: *(T *)(&DAT_003f61xx + i * 0x70), and + b where b is already a byte offset
-OBJ_ACCESS = re.compile(r"\*\((\w+) \*\)\(&DAT_00([0-9a-f]{6}) \+ ((?:\(\w+\))?\w+)( \* 0x70)?\)")
+OBJ_ACCESS = re.compile(r"\*\((\w+ ?\*?) \*\)\(&DAT_00([0-9a-f]{6}) \+ ((?:\(\w+\))?\w+)( \* 0x70)?\)")
 
 
 def _pointee(decls, var):
@@ -516,8 +516,8 @@ def rewrite(fields, machine, va, body, stats, scales=None, votes=None):
         return hits.pop()[1]
 
     def sub_access(m):
-        ctype, cast, var, k, bare = m.groups()
-        size = CTYPE_SIZE.get(ctype)
+        ctype, stars, cast, var, k, bare = m.groups()
+        size = 4 if len(stars) > 1 else CTYPE_SIZE.get(ctype)
         if size is None:
             return m.group(0)
         if bare:
@@ -538,7 +538,7 @@ def rewrite(fields, machine, va, body, stats, scales=None, votes=None):
     def sub_obj(m):
         ctype, addr, idx, scaled = m.groups()
         off = int(addr, 16) - OBJECTS
-        size = CTYPE_SIZE.get(ctype)
+        size = 4 if ctype.endswith("*") else CTYPE_SIZE.get(ctype)
         if not 0 <= off < OBJECT_SIZE or size is None:
             return m.group(0)
         for fsize, _ct, name, _m in fields.get("object", {}).get(off, []):

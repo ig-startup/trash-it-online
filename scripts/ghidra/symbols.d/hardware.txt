@@ -1,0 +1,4 @@
+# Video and input at the port level — names from the I/O they do.
+0x61be1  f  wait_vretrace                  ; port 0x3da: waits out the retrace in progress, then for the next
+0x68626  f  vga_set_palette                ; port 0x3c8 the first index, then 3 bytes a colour to 0x3c9
+0x6c6ea  f  joystick_time_axis             ; game port: fires the one-shots (out 0xff) and counts until the axis bit drops

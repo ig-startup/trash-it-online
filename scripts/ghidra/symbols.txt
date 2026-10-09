@@ -218,7 +218,6 @@
 0x34114  f  bell_touch_tick                ; touched → +0x162 on the player, level over
 0x11edd  f  clock_hit                      ; CLOK.SPR: bursts into twelve pieces
 0x5f3c0  f  sign_swing                     ; DIS.SPR: amplitude force >> 5, 3..32
-0x14935  f  creature_hit_state             ; an unnamed creature, sound 0x84
 0x19b9d  f  bcd_add_score                  ; packed-BCD adder, in fives
 # dynamite
 0x1d405  f  dyna_hammer_state              ; lit by the overhead strike
