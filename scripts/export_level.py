@@ -61,6 +61,7 @@ BALL_CLASS = 7
 SUCKER_CLASS = 22
 #: Class 27 places a teleporter pad (TELLY.SPR).
 TELLY_CLASS = 27
+UFO_CLASS = 31
 TIME_LIMIT = 240
 MIN_OBJECTS = 10
 PAD = 1  # transparent gutter between packed shapes
@@ -116,6 +117,63 @@ def build_atlas(shapes, palette, out_dir, image_name="shapes.png"):
     with open(os.path.join(out_dir, "shapes.json"), "w") as fh:
         json.dump(atlas, fh)
     return aw, ah
+
+
+# ── UFO control (.OB class 31, VA 0x13079 → 0x1315c) ───────────────────────
+# A preset row, then each field of the record that is set overrides one
+# value through its own table — all read from G.EXE. See "The UFO" in
+# scripts/formats/README.md.
+_UFO_TABLES = None
+
+
+def _ufo_tables():
+    global _UFO_TABLES
+    if _UFO_TABLES is None:
+        from le_loader import LE
+        le = LE(os.path.join(ORIG, "G.EXE"))
+
+        def words(va, n):
+            return list(struct.unpack("<%dh" % n, le.va_read(va, 2 * n)))
+        _UFO_TABLES = {
+            "presets": [words(0x93b58 + 16 * i, 8) for i in range(8)],
+            "max": words(0x93ae0, 16), "land": words(0x93b08, 8),
+            "respawn": words(0x93b18, 8), "drop": words(0x93b28, 8),
+            "abduct": words(0x93b38, 8), "zap": words(0x93b48, 8),
+        }
+    return _UFO_TABLES
+
+
+def _lowest_bit(v):
+    """VA 0x1cff9: the index of the lowest set bit — the editor's radio
+    buttons store a one-bit mask; 0 (no choice) reads as index 0."""
+    v &= 0xffff
+    return (v & -v).bit_length() - 1 if v else 0
+
+
+def ufo_params(payload):
+    """The values the game leaves in 0xcd518-0xcd528 and 0x287c5a, in ticks."""
+    t = _ufo_tables()
+    w = struct.unpack_from("<23h", payload, 0)
+    start, respawn, most, mix, land, drop, abduct, zap = \
+        t["presets"][_lowest_bit(w[7])]                     # +0x0e
+    i = _lowest_bit(w[9])                                   # +0x12
+    if i:
+        respawn = t["respawn"][i]
+    if t["max"][_lowest_bit(w[11])]:                        # +0x16
+        most = t["max"][_lowest_bit(w[11])]
+    if _lowest_bit(w[13]):                                  # +0x1a
+        mix = _lowest_bit(w[13])
+    def pick(table, word, default):                        # +0x1e … +0x2a
+        i = _lowest_bit(word)
+        return t[table][i] if i else default
+    land = pick("land", w[15], land)
+    drop = pick("drop", w[17], drop)
+    abduct = pick("abduct", w[19], abduct)
+    zap = pick("zap", w[21], zap)
+    if w[22]:                                               # +0x2c
+        start = w[22]
+    return {"start": start, "respawn": respawn, "max": most, "mix": mix,
+            "land": land, "drop": drop, "abduct": abduct, "zap": zap}
 
 
 def export(name):
@@ -257,6 +315,11 @@ def export(name):
                for x, y in [(w[0], w[1])]
                if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
 
+    # The UFO. The record's x, y go unused: each starts 100 px above a
+    # random Jack (VA 0x13634). One record per level sets them all up.
+    ufo = next((ufo_params(payload) for cid, _off, payload in placed
+                if cid == UFO_CLASS), None)
+
     rung = ob.bells(placed)
     if rung:
         bx, by, _subtype = rung[0]
@@ -284,6 +347,7 @@ def export(name):
         "balls": balls,
         "suckers": suckers,
         "tellies": tellies,
+        "ufo": ufo,
         # The bottom edge of a level is solid ground in the original. It is
         # not made of objects — in 0B all 179 are destructible and nothing
         # sits under the start at all — but every level's authored start is

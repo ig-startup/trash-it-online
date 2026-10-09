@@ -18,6 +18,7 @@ import Collapse from './collapse';
 import Cannons from './cannons';
 import Suckers from './suckers';
 import Tellies from './tellies';
+import Ufos from './ufos';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -357,6 +358,33 @@ export default class GameScene extends Phaser.Scene {
     this._player.on('throw', ({ handle, x, y, vx, vy }) => this._loose.throw(handle, x, y, vx, vy));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._loose.destroy());
 
+    // ── UFOs ──────────────────────────────────────────────────────────────
+    // .OB class 31, in 36 levels: they abduct timmies, knock Jack flying,
+    // and land — when one can be hit from above. See ufos.js.
+    this._ufos = hasProps(this) && PROP_ANIMS.ufo && level.ufo
+      ? new Ufos(this, level.ufo, {
+        bounds: { left: 0, right: levelWidth, top: 0, bottom },
+        blockAt,
+        groundY: bottom,
+        jacks: () => [this._player],
+        timmies: () => this._timmies,
+        loose: this._loose,
+        giveTimmy: (x, y, vx, vy) => {
+          const sprite = this.add.image(x, y, PROP_ANIMS.timmy[0]).setDepth(2);
+          applyPropFrame(sprite, PROP_ANIMS.timmy[0]);
+          sprite.setData('phase', Math.random() * 1000);
+          this._timmies.push(sprite);
+          this._loose.throw(this._loose.add(sprite, 'timmy'), x, y, vx, vy);
+        },
+        explode: (x, y) => {
+          this.cameras.main.shake(300, 0.01);
+          this._blast(x, y, this.time.now);
+        },
+        knock: (pl, vx, vy) => pl.knockedBack(vx, vy),
+      })
+      : null;
+    if (this._ufos) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._ufos.destroy());
+
     // Colliders
     this.physics.add.collider(this._player, this._platforms);
     this.physics.add.collider(this._player, this._destructibles);
@@ -528,6 +556,8 @@ export default class GameScene extends Phaser.Scene {
         (pl, x, y, vy) => pl.thrownUp(x, y, vy));
     }
 
+    if (this._ufos) this._ufos.update(delta);
+
     // A stick that goes off in his hands is gone from them.
     const held = this._player.carried;
     if (held && !held.sprite.active) this._player.dropCarried();
@@ -659,6 +689,7 @@ export default class GameScene extends Phaser.Scene {
     if (!overhead) return;
     if (this._cannons) this._cannons.hit(reach);
     if (this._suckers) this._suckers.hit(reach);
+    if (this._ufos) this._ufos.hit(reach);
     this._dynamite.forEach((d) => {
       if (d.lit || d.litBy !== 'hammer' || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {

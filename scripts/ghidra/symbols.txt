@@ -252,7 +252,7 @@
 0x34d3e  f  telly_pad_physics              ; → sprite_physics, box ± 10
 
 # ── collapse pass helpers named in the notes (role not pinned down) ───────
-0x135fc  f  structural_pass_a              ; ? listed with the structural pass
+0x135fc  f  ufo_respawn_tick               ; first call of the frame: while fewer than the most fly, a new UFO every `respawn` ticks
 0x162c7  f  structural_pass_b              ; ?
 0x2bfda  f  structural_pass_c              ; ?
 0x1c821  f  structural_pass_d              ; ?

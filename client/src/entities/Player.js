@@ -1132,6 +1132,22 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._enter('rise', this.scene.time.now);
   }
 
+  /**
+   * Knocked flying, at (vx, vy) px/tick (VA 0x1264b — a UFO's bolt): what
+   * he holds drops. The original tumbles him through slot 73; here he
+   * falls.
+   */
+  knockedBack(vx, vy) {
+    if (this.state === 'caught') return;
+    if (this.carried) {
+      this.emit('putdown', { handle: this.carried, ...this._feetAhead() });
+      this.carried = null;
+    }
+    this.body.setVelocity(vx * ORIGINAL_HZ, vy * ORIGINAL_HZ);
+    this._jumpBoost = 0;
+    this._enter('fall', this.scene.time.now);
+  }
+
   /** True while he is in the stance that takes hold of what can be pushed. */
   get pushing() {
     return !!(STATES[this.state] && STATES[this.state].push);

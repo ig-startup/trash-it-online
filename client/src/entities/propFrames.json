@@ -1144,6 +1144,262 @@
       "ay": 72,
       "src": "TELLY.SPR:10"
     },
+    "ufo_00": {
+      "file": "sprites/props/ufo_00.png",
+      "w": 55,
+      "h": 31,
+      "ax": 31,
+      "ay": 23,
+      "src": "UFO.SPR:0"
+    },
+    "ufo_01": {
+      "file": "sprites/props/ufo_01.png",
+      "w": 56,
+      "h": 29,
+      "ax": 31,
+      "ay": 22,
+      "src": "UFO.SPR:1"
+    },
+    "ufo_02": {
+      "file": "sprites/props/ufo_02.png",
+      "w": 59,
+      "h": 27,
+      "ax": 31,
+      "ay": 22,
+      "src": "UFO.SPR:2"
+    },
+    "ufo_03": {
+      "file": "sprites/props/ufo_03.png",
+      "w": 61,
+      "h": 25,
+      "ax": 31,
+      "ay": 23,
+      "src": "UFO.SPR:3"
+    },
+    "ufo_04": {
+      "file": "sprites/props/ufo_04.png",
+      "w": 63,
+      "h": 23,
+      "ax": 31,
+      "ay": 23,
+      "src": "UFO.SPR:4"
+    },
+    "ufo_05": {
+      "file": "sprites/props/ufo_05.png",
+      "w": 61,
+      "h": 25,
+      "ax": 28,
+      "ay": 23,
+      "src": "UFO.SPR:5"
+    },
+    "ufo_06": {
+      "file": "sprites/props/ufo_06.png",
+      "w": 57,
+      "h": 29,
+      "ax": 24,
+      "ay": 22,
+      "src": "UFO.SPR:6"
+    },
+    "ufo_07": {
+      "file": "sprites/props/ufo_07.png",
+      "w": 54,
+      "h": 32,
+      "ax": 21,
+      "ay": 22,
+      "src": "UFO.SPR:7"
+    },
+    "ufo_08": {
+      "file": "sprites/props/ufo_08.png",
+      "w": 53,
+      "h": 34,
+      "ax": 20,
+      "ay": 23,
+      "src": "UFO.SPR:8"
+    },
+    "ufo_09": {
+      "file": "sprites/props/ufo_09.png",
+      "w": 59,
+      "h": 23,
+      "ax": 29,
+      "ay": 20,
+      "src": "UFO.SPR:9"
+    },
+    "ufo_10": {
+      "file": "sprites/props/ufo_10.png",
+      "w": 60,
+      "h": 27,
+      "ax": 30,
+      "ay": 21,
+      "src": "UFO.SPR:10"
+    },
+    "ufo_11": {
+      "file": "sprites/props/ufo_11.png",
+      "w": 61,
+      "h": 30,
+      "ax": 30,
+      "ay": 21,
+      "src": "UFO.SPR:11"
+    },
+    "ufo_12": {
+      "file": "sprites/props/ufo_12.png",
+      "w": 61,
+      "h": 30,
+      "ax": 30,
+      "ay": 21,
+      "src": "UFO.SPR:12"
+    },
+    "ufo_13": {
+      "file": "sprites/props/ufo_13.png",
+      "w": 61,
+      "h": 28,
+      "ax": 30,
+      "ay": 22,
+      "src": "UFO.SPR:13"
+    },
+    "ufo_14": {
+      "file": "sprites/props/ufo_14.png",
+      "w": 61,
+      "h": 25,
+      "ax": 30,
+      "ay": 22,
+      "src": "UFO.SPR:14"
+    },
+    "ufo_15": {
+      "file": "sprites/props/ufo_15.png",
+      "w": 61,
+      "h": 24,
+      "ax": 30,
+      "ay": 23,
+      "src": "UFO.SPR:15"
+    },
+    "ufo_16": {
+      "file": "sprites/props/ufo_16.png",
+      "w": 61,
+      "h": 23,
+      "ax": 30,
+      "ay": 22,
+      "src": "UFO.SPR:16"
+    },
+    "ufo_17": {
+      "file": "sprites/props/ufo_17.png",
+      "w": 63,
+      "h": 24,
+      "ax": 31,
+      "ay": 23,
+      "src": "UFO.SPR:17"
+    },
+    "ufo_18": {
+      "file": "sprites/props/ufo_18.png",
+      "w": 63,
+      "h": 25,
+      "ax": 31,
+      "ay": 23,
+      "src": "UFO.SPR:18"
+    },
+    "ufo_19": {
+      "file": "sprites/props/ufo_19.png",
+      "w": 65,
+      "h": 26,
+      "ax": 32,
+      "ay": 23,
+      "src": "UFO.SPR:19"
+    },
+    "ufo_20": {
+      "file": "sprites/props/ufo_20.png",
+      "w": 67,
+      "h": 27,
+      "ax": 33,
+      "ay": 24,
+      "src": "UFO.SPR:20"
+    },
+    "ufo_21": {
+      "file": "sprites/props/ufo_21.png",
+      "w": 69,
+      "h": 28,
+      "ax": 34,
+      "ay": 24,
+      "src": "UFO.SPR:21"
+    },
+    "ufo_22": {
+      "file": "sprites/props/ufo_22.png",
+      "w": 69,
+      "h": 29,
+      "ax": 34,
+      "ay": 25,
+      "src": "UFO.SPR:22"
+    },
+    "ufo_23": {
+      "file": "sprites/props/ufo_23.png",
+      "w": 49,
+      "h": 18,
+      "ax": 24,
+      "ay": 15,
+      "src": "UFO.SPR:23"
+    },
+    "ufo_24": {
+      "file": "sprites/props/ufo_24.png",
+      "w": 61,
+      "h": 16,
+      "ax": 30,
+      "ay": 14,
+      "src": "UFO.SPR:24"
+    },
+    "ufo_25": {
+      "file": "sprites/props/ufo_25.png",
+      "w": 11,
+      "h": 7,
+      "ax": 5,
+      "ay": 10,
+      "src": "UFO.SPR:25"
+    },
+    "ufo_26": {
+      "file": "sprites/props/ufo_26.png",
+      "w": 11,
+      "h": 7,
+      "ax": 5,
+      "ay": 9,
+      "src": "UFO.SPR:26"
+    },
+    "ufo_27": {
+      "file": "sprites/props/ufo_27.png",
+      "w": 9,
+      "h": 11,
+      "ax": 4,
+      "ay": 11,
+      "src": "UFO.SPR:27"
+    },
+    "ufo_28": {
+      "file": "sprites/props/ufo_28.png",
+      "w": 5,
+      "h": 11,
+      "ax": 3,
+      "ay": 11,
+      "src": "UFO.SPR:28"
+    },
+    "ufo_29": {
+      "file": "sprites/props/ufo_29.png",
+      "w": 14,
+      "h": 16,
+      "ax": 8,
+      "ay": 14,
+      "src": "UFO.SPR:29"
+    },
+    "ufo_30": {
+      "file": "sprites/props/ufo_30.png",
+      "w": 21,
+      "h": 8,
+      "ax": 10,
+      "ay": 8,
+      "src": "UFO.SPR:30"
+    },
+    "ufo_31": {
+      "file": "sprites/props/ufo_31.png",
+      "w": 15,
+      "h": 32,
+      "ax": 7,
+      "ay": 28,
+      "src": "UFO.SPR:31"
+    },
     "post": {
       "file": "sprites/props/post.png",
       "w": 42,
@@ -1324,6 +1580,40 @@
       "telly_08",
       "telly_09",
       "telly_10"
+    ],
+    "ufo": [
+      "ufo_00",
+      "ufo_01",
+      "ufo_02",
+      "ufo_03",
+      "ufo_04",
+      "ufo_05",
+      "ufo_06",
+      "ufo_07",
+      "ufo_08",
+      "ufo_09",
+      "ufo_10",
+      "ufo_11",
+      "ufo_12",
+      "ufo_13",
+      "ufo_14",
+      "ufo_15",
+      "ufo_16",
+      "ufo_17",
+      "ufo_18",
+      "ufo_19",
+      "ufo_20",
+      "ufo_21",
+      "ufo_22",
+      "ufo_23",
+      "ufo_24",
+      "ufo_25",
+      "ufo_26",
+      "ufo_27",
+      "ufo_28",
+      "ufo_29",
+      "ufo_30",
+      "ufo_31"
     ],
     "post": [
       "post"

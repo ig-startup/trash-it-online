@@ -69,6 +69,10 @@ PROPS = {
     # The teleporter (.OB class 27, VA 0x347c1): the pad opening and
     # closing (0-9) and the beam that rises over it while it is on (10).
     "telly": ("TELLY.SPR", list(range(11))),
+    # The UFO (.OB class 31, VA 0x13079): 0-8 leaning with its speed (4
+    # level), 9-17 legs coming out, 18-22 rocking on them, 23 a ring of the
+    # tractor beam, 24 the wreck, 25-30 chips, 31 the bolt it zaps Jack with.
+    "ufo": ("UFO.SPR", list(range(32))),
     # The post at each end of the street (VA 0x2f623): PANEL.SPR, a sheet
     # of odds and ends, frame 16 (+0x44 = 0x10); the right one mirrored.
     "post": ("PANEL.SPR", [16]),
