@@ -446,6 +446,7 @@
 0x2def3  f  probe_box_from_frame           ; ? width from the argument, height from the current frame → 0xa026c
 0x1618f  f  sound_voice_alloc              ; a free voice of the 0x68-byte table at 0xce1a4, else the next round-robin
 0x16298  f  sound_voice_start              ; ? sets a voice running a sound script
+0x1631c  f  sound_script_run               ; a voice's script: calls [op*4 + 0x9641c] until a handler yields
 0x618d6  f  wait_any_key                   ; scancodes 1..0x66
 0x2be4e  f  camera_set_target              ; x clamped to 320..0x27ff, y to level_bottom - 50, plus the shake
 0x1d84b  f  table_lookup_linear            ; piecewise-linear lookup in a (key, value) table
@@ -455,6 +456,10 @@
 0x28b922 d  effect_count
 0xce1a4  d  sound_voices
 0xcea98  d  sound_voice_count
+0x95f9c  d  sound_scripts                  ; 154 pointers to sound scripts; a sound id indexes it (sound.py scripts)
+0x96204  d  sound_sample_loops             ; per SBANK sample: (s32 start, s32 end) loop bytes, 67 entries
+0xce7bc  d  sound_bank_samples             ; pointers into the loaded SBANK.0, one per sample
+0x9641c  d  sound_script_ops               ; the 21 opcode handlers of the sound-script interpreter
 0x28bfb5 d  cfg_cd_drive
 0x165f9  f  sound_voice_stop               ; AIL_stop_sample, runs the voice's end callback
 0x16101  f  play_sound_ex                  ; ? play_sound with a data pointer, ebx and a level (+0x2c, twice at +0x2e)

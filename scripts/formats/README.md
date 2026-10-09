@@ -369,6 +369,44 @@ with a random sideways kick), after 150 ticks he goes to state 0x2a2fe
 1/64 px of it and slower than 1/16 px/tick he is set down on it (VA 0x2a4a8) and stands again. The
 flags are usually just off the map too, next to the starts.
 
+## `.PAK` — RNC ProPack — **Confirmed**
+
+Ten files in `FSPR/`, all RNC method 2 (F.EXE logs `"failed to
+'unpropack()' RNC buffer"`). `pak.py` unpacks every one and each matches
+the CRC-16 in its header, so the decode is byte-exact.
+
+- `LVSPAT1..9.PAK` — 640×480 bytes, but not a picture: 255 draws the
+  paths of level-select screen N, and single pixels 1..N (13 to 32 a
+  screen, 201 in all) number points along them. 201 against 147 levels —
+  not one point per level; what they mean is F.EXE's to tell.
+- `WARNING.PAK` — a 20-byte header (16 bits per pixel, 2 bytes, …, u16
+  width 640, u16 height 256) and 640×256 **RGB555** — the anti-piracy
+  screen. Read as 8-bit, it looks like two interleaved half-images.
+
+## Sound — `SBANK.0`, `.WVL`, `.XMI`, the scripts — **Confirmed**
+
+All Miles Sound System 3.x; `sound.py` reads all four.
+
+- `SFX/SBANK.0` (67 samples, the game) and `FSFX/SBANK.0` (60, the front
+  end): a 0x800-byte directory of `{u32 offset, u32 size}`, ended by a
+  size with a zero low word (the game's own test). Each entry is a whole
+  RIFF WAVE, 11025 Hz, 8- or 16-bit mono; some still carry their
+  authoring names (`EXPLOS1.AIF`) and 1996 dates.
+- `SFX/0A.WVL` — a Miles wave library: 32-byte `WAVE_ENTRY` records
+  (bank, patch, root key, offset, size, format, flags, rate), 8 patches
+  of 2–4 s at 22050 Hz. The music is phrases, not notes — which is why a
+  six-minute XMI has 152 notes.
+- `SFX/0?.XMI` — one per section letter, `FORM XDIR / CAT XMID`, three
+  sequences each (they differ). XMIDI runs at a fixed 120 Hz; `sound.py
+  export` writes them as `.mid` at that clock.
+- The **sound scripts** live in G.EXE, not a file: 154 pointers at VA
+  0x95f9c, a sound id indexes them; then the per-sample loop table at
+  0x96204 (67 × `(start, end)`), right behind it. A script is a priority
+  then ops — `play sample @rate+rnd&mask`, `wait`, pan/pitch moves, `end`
+  — run by the interpreter at 0x1631c through 21 handlers at 0x9641c.
+  The sound ids quoted in these notes (0x58, 0x59, 0x37 …) are indexes
+  into it: `sound.py scripts G.EXE` names the sample each one plays.
+
 ## Game logic
 
 ### The tile → object map — **Confirmed**
@@ -1494,6 +1532,8 @@ same blitter, positioned by the frame's own origin.
 | `pal.py` `scn.py` `g2.py` `spr.py` `obt.py` | per-format decoders |
 | `level.py` | assembles a whole level from `.WAM` + `.I` + `.OBT` + `.G2` |
 | `export_sprites.py` | dumps a `.SPR` to PNG frames with alpha, origin in the filename |
+| `pak.py` | RNC ProPack unpacker for `FSPR/*.PAK`, with CRC check and PNG render |
+| `sound.py` | sample banks → `.wav`, `.XMI` → `.mid`, and the sound scripts from `G.EXE` |
 | `demo_render.py` | runs all of the above and writes PNG proofs |
 
 ## Still open
@@ -1501,8 +1541,9 @@ same blitter, positioned by the frame's own origin.
 - `.SDE` field meanings; the `.SCN` 3072-byte lead-in (it holds image
   indices, not a palette — it reuses the layers' own colours); the `.I`
   second u16.
-- `.WVL` / `.XMI` audio (XMIDI is a documented format; `.WVL` is not
-  examined at all).
+- Sound scripts 29–32 are a lone `skip` (op 14) whose five words the
+  interpreter ignores — something else must read them; and the meaning
+  of the level-select points in `LVSPAT`.
 - What sets the swing's starting frame — the operating range of the force
   ramp (see the collapse section; the formula itself is confirmed).
 - What the individual bits of the level's option byte (0x98224, and a
