@@ -1,7 +1,8 @@
 #!/bin/sh
 # Decompile G.EXE with every name we have, into one greppable C file.
 #
-#   scripts/ghidra/run.sh <work dir>      # writes <work dir>/decomp.c
+#   scripts/ghidra/run.sh <work dir>      # writes <work dir>/decomp.c, and
+#                                         # decomp_fields.c with field names
 #
 # Needs Ghidra and a JDK (see scripts/formats/README.md, "Reading G.EXE in
 # Ghidra"); GHIDRA and JAVA_HOME default to where they were installed here.
@@ -35,3 +36,5 @@ python3 "$REPO/scripts/ghidra/symbols.py" table > "$WORK/symbols.tsv"
 
 grep -E "MarkFunctions:|ApplySymbols:|DumpDecomp:" "$WORK/ghidra.log"
 python3 "$REPO/scripts/ghidra/symbols.py" coverage "$WORK/decomp.c" 0
+python3 "$REPO/scripts/ghidra/fields.py" "$WORK/decomp.c" > "$WORK/decomp_fields.c"
+python3 "$REPO/scripts/ghidra/fields.py" --stats "$WORK/decomp.c"

@@ -1496,6 +1496,28 @@ C runtime). Many of the game's error messages name the function they are
 in (`"BUG in 'record_pad_entry'"`), and `symbols.py strings` lists those
 too.
 
+**Field names.** The C reaches every structure through raw offsets —
+`*(int *)(in_EAX + 0x30)`. `fields.py` rewrites the ones it can prove
+into names from `scripts/ghidra/fields.txt` (`in_EAX->vx`), and `run.sh`
+writes that as `decomp_fields.c` next to `decomp.c`. It knows what a
+pointer is from the machine code, not from names: state routines get
+their sprite in EAX (and set_state's are Jack's), `current_player` and
+`last_spawned` are what they say, Jack's `+0x54` is his player, and a
+register keeps its kind until something writes it — Watcom saves every
+register but EAX, and each callee is checked for what it really clobbers.
+Every rewrite is then checked against the instructions: the function must
+really touch that offset, at that size, through that kind of pointer.
+Two things it has to get right that cost a wrong answer otherwise:
+
+- the decompiler types a global afresh in each function, so
+  `current_player + 2` is byte 8 in `play_anim` (an `int *`) and byte 2
+  elsewhere; the scale is settled per function from its unambiguous uses;
+- offsets can be decimal — the sprite sheet pointer is `in_EAX + 200`.
+
+Over the dump: about 2200 accesses named, 72 left alone because the code
+did not confirm them. Blocks reached through a computed pointer are not
+followed yet — only direct `objects[i]` / `&DAT_003f61xx + b` forms are.
+
 One gotcha that costs a run: **no path given to `analyzeHeadless` may
 contain a directory whose name starts with a dot** — it refuses with
 *"Path element starting with '.' is not permitted"*, so a project under
