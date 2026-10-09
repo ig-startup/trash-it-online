@@ -1,1 +1,4 @@
 # Small helpers named by what their body plainly does.
+0x12b18  f  at_least_magnitude             ; *v keeps its sign but is pushed out to at least n (≤ 0 counts as negative)
+0x19c09  f  bcd_sub                        ; packed BCD, 8 digits, a - b with borrow; the score's counterpart to the adder
+0x1cf3d  f  slot32_add                     ; first free of 32 eight-byte slots (bit 0 = used), stores eax at +4; -1 if full
