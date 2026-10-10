@@ -20,6 +20,7 @@ import Suckers from './suckers';
 import Tellies from './tellies';
 import Ufos from './ufos';
 import Seesaws from './seesaws';
+import Gits from './gits';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -36,7 +37,6 @@ const STRIKE_STATES = new Set(['strikeSide', 'strikeOver']);
 // +0x34 / +0x38 for the hammer, 0x3ffff for the blast (VA 0x1f8c5).
 const HAMMER_RUBBLE_MASK = 4095;
 const BLAST_RUBBLE_MASK = 0x3ffff;
-const TIMMY_FRAME_MS = 120;  // timmy walk-cycle rate
 // Dynamite, all from the original (see "Dynamite" in scripts/formats/README.md).
 // The fuse: 35 ticks of the lit stick hopping, 25 of the flame, then ten
 // steps of eleven ticks counting down (VA 0x1d4ec → 0x1d584 → 0x1d60b).
@@ -232,21 +232,6 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.existing(this._bellGraphics, true);
     this._bellHit = false;
 
-    // ── Timmies ───────────────────────────────────────────────────────────
-    // The most common object in the game: about 2000 records across the
-    // archive, from three classes that all spawn TIMMY.SPR. They are
-    // drawn here and can be carried; the hoover does not take them — it
-    // reads only the rubble list (VA 0x61472). Collecting them is the
-    // timmy bin's business, not built.
-    this._timmies = [];
-    (level.timmies || []).forEach((t) => {
-      if (!hasProps(this)) return;
-      const sprite = this.add.image(t.x, t.y, PROP_ANIMS.timmy[0]).setDepth(2);
-      applyPropFrame(sprite, PROP_ANIMS.timmy[0]);
-      sprite.setData('phase', Math.random() * 1000);
-      this._timmies.push(sprite);
-    });
-
     // ── Dynamite ──────────────────────────────────────────────────────────
     // 202 placements across 42 levels, of two kinds: 63 that a hammer
     // lights — the overhead strike, which is the blow that reaches sprites
@@ -334,7 +319,6 @@ export default class GameScene extends Phaser.Scene {
     this._dynamite.forEach((d) => {
       if (d.litBy === 'hammer') d.handle = this._loose.add(d.sprite, 'dynamite');
     });
-    this._timmies.forEach((t) => this._loose.add(t, 'timmy', true));
     this._balls.forEach((b) => { this._loose.add(b.sprite, 'ball').big = b.big; });
     this._suckers = hasProps(this) && PROP_ANIMS.sucker
       ? new Suckers(this, level.suckers || [], this._loose)
@@ -381,6 +365,34 @@ export default class GameScene extends Phaser.Scene {
     this._player.on('throw', ({ handle, x, y, vx, vy }) => this._loose.throw(handle, x, y, vx, vy));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._loose.destroy());
 
+    // ── Gits: timmies, king timmies, spike gits ──────────────────────────
+    // The most common things in the game. Placed timmies sit locked to
+    // their block until it dies, then walk; the hoover takes them, and
+    // they count. See gits.js.
+    this._gits = hasProps(this) && PROP_ANIMS.timmy
+      ? new Gits(this, level, {
+        blockAt,
+        blockIdAt: (x, y) => {
+          const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+          return id === undefined ? null : id;
+        },
+        blockAlive: (id) => {
+          const e = this._destructibleMap.get(id);
+          return !!(e && e.rect.active);
+        },
+        markerAt: (x, y) => {
+          const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+          const e = id === undefined ? null : this._destructibleMap.get(id);
+          return e && e.rect.active ? e.marker || 0 : 0;
+        },
+        groundY: bottom,
+        width: levelWidth,
+        loose: this._loose,
+        shake: () => this.cameras.main.shake(120, 0.006),
+      })
+      : null;
+    if (this._gits) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._gits.destroy());
+
     // ── UFOs ──────────────────────────────────────────────────────────────
     // .OB class 31, in 36 levels: they abduct timmies, knock Jack flying,
     // and land — when one can be hit from above. See ufos.js.
@@ -390,15 +402,9 @@ export default class GameScene extends Phaser.Scene {
         blockAt,
         groundY: bottom,
         jacks: () => [this._player],
-        timmies: () => this._timmies,
+        timmies: () => (this._gits ? this._gits.timmies() : []),
         loose: this._loose,
-        giveTimmy: (x, y, vx, vy) => {
-          const sprite = this.add.image(x, y, PROP_ANIMS.timmy[0]).setDepth(2);
-          applyPropFrame(sprite, PROP_ANIMS.timmy[0]);
-          sprite.setData('phase', Math.random() * 1000);
-          this._timmies.push(sprite);
-          this._loose.throw(this._loose.add(sprite, 'timmy'), x, y, vx, vy);
-        },
+        giveTimmy: (x, y, vx, vy) => { if (this._gits) this._gits.spawnFree(x, y, vx, vy); },
         explode: (x, y) => {
           this.cameras.main.shake(300, 0.01);
           this._blast(x, y, this.time.now);
@@ -499,6 +505,13 @@ export default class GameScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 3,
     }).setOrigin(1, 0).setDepth(10));
+    /** Timmies hoovered up (the player's +0x64, VA 0x1a036). */
+    this._timmyText = this._hud(this.add.text(784, panelTop + 60, 'ТИММИ 0', {
+      fontSize: '16px',
+      fill: '#ffcc33',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(1, 0).setDepth(10));
 
     this._debugText = this._hud(this.add.text(220, this.scale.height - 4, '', {
       fontSize: '11px',
@@ -580,24 +593,16 @@ export default class GameScene extends Phaser.Scene {
     }
 
     if (this._ufos) this._ufos.update(delta);
+    if (this._gits) {
+      const got = this._gits.update(delta, this._player.hooverBox, this._player.nozzle);
+      if (got) this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
+    }
     if (this._seesaws) this._seesaws.update(this._player, this._seesawHooks);
 
     // A stick that goes off in his hands is gone from them.
     const held = this._player.carried;
     if (held && !held.sprite.active) this._player.dropCarried();
     this._loose.update(delta, this._player.carried ? this._player.carryPoint : null, this._player.aim);
-
-    // Timmies mill about on the spot; each keeps its own phase so they
-    // do not step in unison.
-    if (this._timmies.length) {
-      const frames = PROP_ANIMS.timmy;
-      this._timmies.forEach((t) => {
-        if (!t.active) return;
-        const i = Math.floor((time + t.getData('phase')) / TIMMY_FRAME_MS)
-          % frames.length;
-        applyPropFrame(t, frames[i]);
-      });
-    }
 
     // ── Throttled player update (for future socket send) ──────────────────────
     if (time - this._lastUpdateSent >= PLAYER_UPDATE_INTERVAL) {
@@ -715,6 +720,7 @@ export default class GameScene extends Phaser.Scene {
     if (this._suckers) this._suckers.hit(reach);
     if (this._ufos) this._ufos.hit(reach);
     if (this._seesaws) this._seesaws.hit(reach, this._seesawHooks);
+    if (this._gits) this._gits.hit(reach);
     this._dynamite.forEach((d) => {
       if (d.lit || d.litBy !== 'hammer' || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {

@@ -544,6 +544,862 @@
       "ay": 20,
       "src": "TIMMY.SPR:5"
     },
+    "timmy_06": {
+      "file": "sprites/props/timmy_06.png",
+      "w": 21,
+      "h": 18,
+      "ax": 11,
+      "ay": 19,
+      "src": "TIMMY.SPR:6"
+    },
+    "timmy_07": {
+      "file": "sprites/props/timmy_07.png",
+      "w": 20,
+      "h": 19,
+      "ax": 11,
+      "ay": 19,
+      "src": "TIMMY.SPR:7"
+    },
+    "timmy_08": {
+      "file": "sprites/props/timmy_08.png",
+      "w": 20,
+      "h": 19,
+      "ax": 11,
+      "ay": 18,
+      "src": "TIMMY.SPR:8"
+    },
+    "timmy_09": {
+      "file": "sprites/props/timmy_09.png",
+      "w": 19,
+      "h": 19,
+      "ax": 11,
+      "ay": 18,
+      "src": "TIMMY.SPR:9"
+    },
+    "timmy_10": {
+      "file": "sprites/props/timmy_10.png",
+      "w": 17,
+      "h": 19,
+      "ax": 10,
+      "ay": 18,
+      "src": "TIMMY.SPR:10"
+    },
+    "timmy_11": {
+      "file": "sprites/props/timmy_11.png",
+      "w": 16,
+      "h": 20,
+      "ax": 6,
+      "ay": 20,
+      "src": "TIMMY.SPR:11"
+    },
+    "timmy_12": {
+      "file": "sprites/props/timmy_12.png",
+      "w": 17,
+      "h": 19,
+      "ax": 7,
+      "ay": 20,
+      "src": "TIMMY.SPR:12"
+    },
+    "timmy_13": {
+      "file": "sprites/props/timmy_13.png",
+      "w": 18,
+      "h": 19,
+      "ax": 8,
+      "ay": 20,
+      "src": "TIMMY.SPR:13"
+    },
+    "timmy_14": {
+      "file": "sprites/props/timmy_14.png",
+      "w": 18,
+      "h": 17,
+      "ax": 9,
+      "ay": 19,
+      "src": "TIMMY.SPR:14"
+    },
+    "timmy_15": {
+      "file": "sprites/props/timmy_15.png",
+      "w": 19,
+      "h": 18,
+      "ax": 10,
+      "ay": 19,
+      "src": "TIMMY.SPR:15"
+    },
+    "timmy_16": {
+      "file": "sprites/props/timmy_16.png",
+      "w": 19,
+      "h": 18,
+      "ax": 11,
+      "ay": 18,
+      "src": "TIMMY.SPR:16"
+    },
+    "timmy_17": {
+      "file": "sprites/props/timmy_17.png",
+      "w": 21,
+      "h": 18,
+      "ax": 10,
+      "ay": 17,
+      "src": "TIMMY.SPR:17"
+    },
+    "timmy_18": {
+      "file": "sprites/props/timmy_18.png",
+      "w": 23,
+      "h": 4,
+      "ax": 14,
+      "ay": 2,
+      "src": "TIMMY.SPR:18"
+    },
+    "timmy_19": {
+      "file": "sprites/props/timmy_19.png",
+      "w": 22,
+      "h": 11,
+      "ax": 13,
+      "ay": 9,
+      "src": "TIMMY.SPR:19"
+    },
+    "timmy_20": {
+      "file": "sprites/props/timmy_20.png",
+      "w": 17,
+      "h": 14,
+      "ax": 8,
+      "ay": 12,
+      "src": "TIMMY.SPR:20"
+    },
+    "timmy_21": {
+      "file": "sprites/props/timmy_21.png",
+      "w": 17,
+      "h": 14,
+      "ax": 8,
+      "ay": 12,
+      "src": "TIMMY.SPR:21"
+    },
+    "timmy_22": {
+      "file": "sprites/props/timmy_22.png",
+      "w": 17,
+      "h": 14,
+      "ax": 8,
+      "ay": 12,
+      "src": "TIMMY.SPR:22"
+    },
+    "timmy_23": {
+      "file": "sprites/props/timmy_23.png",
+      "w": 17,
+      "h": 14,
+      "ax": 8,
+      "ay": 12,
+      "src": "TIMMY.SPR:23"
+    },
+    "timmy_24": {
+      "file": "sprites/props/timmy_24.png",
+      "w": 24,
+      "h": 22,
+      "ax": 12,
+      "ay": 18,
+      "src": "TIMMY.SPR:24"
+    },
+    "timmy_25": {
+      "file": "sprites/props/timmy_25.png",
+      "w": 24,
+      "h": 22,
+      "ax": 12,
+      "ay": 18,
+      "src": "TIMMY.SPR:25"
+    },
+    "timmy_26": {
+      "file": "sprites/props/timmy_26.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": 0,
+      "src": "TIMMY.SPR:26"
+    },
+    "timmy_27": {
+      "file": "sprites/props/timmy_27.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": 0,
+      "src": "TIMMY.SPR:27"
+    },
+    "timmy_28": {
+      "file": "sprites/props/timmy_28.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": 0,
+      "src": "TIMMY.SPR:28"
+    },
+    "timmy_29": {
+      "file": "sprites/props/timmy_29.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": 0,
+      "src": "TIMMY.SPR:29"
+    },
+    "timmy_30": {
+      "file": "sprites/props/timmy_30.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": 0,
+      "src": "TIMMY.SPR:30"
+    },
+    "timmy_31": {
+      "file": "sprites/props/timmy_31.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": 0,
+      "src": "TIMMY.SPR:31"
+    },
+    "timmy_32": {
+      "file": "sprites/props/timmy_32.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": 0,
+      "src": "TIMMY.SPR:32"
+    },
+    "timmy_33": {
+      "file": "sprites/props/timmy_33.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": 0,
+      "src": "TIMMY.SPR:33"
+    },
+    "timmy_34": {
+      "file": "sprites/props/timmy_34.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": 0,
+      "src": "TIMMY.SPR:34"
+    },
+    "ktimmy_00": {
+      "file": "sprites/props/ktimmy_00.png",
+      "w": 31,
+      "h": 37,
+      "ax": 16,
+      "ay": 34,
+      "src": "KTIMMY.SPR:0"
+    },
+    "ktimmy_01": {
+      "file": "sprites/props/ktimmy_01.png",
+      "w": 33,
+      "h": 34,
+      "ax": 19,
+      "ay": 33,
+      "src": "KTIMMY.SPR:1"
+    },
+    "ktimmy_02": {
+      "file": "sprites/props/ktimmy_02.png",
+      "w": 32,
+      "h": 34,
+      "ax": 19,
+      "ay": 34,
+      "src": "KTIMMY.SPR:2"
+    },
+    "ktimmy_03": {
+      "file": "sprites/props/ktimmy_03.png",
+      "w": 29,
+      "h": 37,
+      "ax": 11,
+      "ay": 38,
+      "src": "KTIMMY.SPR:3"
+    },
+    "ktimmy_04": {
+      "file": "sprites/props/ktimmy_04.png",
+      "w": 34,
+      "h": 37,
+      "ax": 14,
+      "ay": 38,
+      "src": "KTIMMY.SPR:4"
+    },
+    "ktimmy_05": {
+      "file": "sprites/props/ktimmy_05.png",
+      "w": 36,
+      "h": 34,
+      "ax": 17,
+      "ay": 37,
+      "src": "KTIMMY.SPR:5"
+    },
+    "ktimmy_06": {
+      "file": "sprites/props/ktimmy_06.png",
+      "w": 38,
+      "h": 32,
+      "ax": 20,
+      "ay": 36,
+      "src": "KTIMMY.SPR:6"
+    },
+    "ktimmy_07": {
+      "file": "sprites/props/ktimmy_07.png",
+      "w": 38,
+      "h": 33,
+      "ax": 21,
+      "ay": 35,
+      "src": "KTIMMY.SPR:7"
+    },
+    "ktimmy_08": {
+      "file": "sprites/props/ktimmy_08.png",
+      "w": 37,
+      "h": 34,
+      "ax": 21,
+      "ay": 34,
+      "src": "KTIMMY.SPR:8"
+    },
+    "ktimmy_09": {
+      "file": "sprites/props/ktimmy_09.png",
+      "w": 35,
+      "h": 34,
+      "ax": 20,
+      "ay": 33,
+      "src": "KTIMMY.SPR:9"
+    },
+    "ktimmy_10": {
+      "file": "sprites/props/ktimmy_10.png",
+      "w": 32,
+      "h": 35,
+      "ax": 19,
+      "ay": 34,
+      "src": "KTIMMY.SPR:10"
+    },
+    "ktimmy_11": {
+      "file": "sprites/props/ktimmy_11.png",
+      "w": 28,
+      "h": 37,
+      "ax": 11,
+      "ay": 38,
+      "src": "KTIMMY.SPR:11"
+    },
+    "ktimmy_12": {
+      "file": "sprites/props/ktimmy_12.png",
+      "w": 30,
+      "h": 36,
+      "ax": 13,
+      "ay": 38,
+      "src": "KTIMMY.SPR:12"
+    },
+    "ktimmy_13": {
+      "file": "sprites/props/ktimmy_13.png",
+      "w": 31,
+      "h": 34,
+      "ax": 14,
+      "ay": 37,
+      "src": "KTIMMY.SPR:13"
+    },
+    "ktimmy_14": {
+      "file": "sprites/props/ktimmy_14.png",
+      "w": 33,
+      "h": 32,
+      "ax": 16,
+      "ay": 36,
+      "src": "KTIMMY.SPR:14"
+    },
+    "ktimmy_15": {
+      "file": "sprites/props/ktimmy_15.png",
+      "w": 35,
+      "h": 33,
+      "ax": 19,
+      "ay": 35,
+      "src": "KTIMMY.SPR:15"
+    },
+    "ktimmy_16": {
+      "file": "sprites/props/ktimmy_16.png",
+      "w": 35,
+      "h": 34,
+      "ax": 20,
+      "ay": 34,
+      "src": "KTIMMY.SPR:16"
+    },
+    "ktimmy_17": {
+      "file": "sprites/props/ktimmy_17.png",
+      "w": 39,
+      "h": 34,
+      "ax": 19,
+      "ay": 33,
+      "src": "KTIMMY.SPR:17"
+    },
+    "ktimmy_18": {
+      "file": "sprites/props/ktimmy_18.png",
+      "w": 43,
+      "h": 7,
+      "ax": 27,
+      "ay": 5,
+      "src": "KTIMMY.SPR:18"
+    },
+    "ktimmy_19": {
+      "file": "sprites/props/ktimmy_19.png",
+      "w": 40,
+      "h": 21,
+      "ax": 23,
+      "ay": 18,
+      "src": "KTIMMY.SPR:19"
+    },
+    "ktimmy_20": {
+      "file": "sprites/props/ktimmy_20.png",
+      "w": 33,
+      "h": 26,
+      "ax": 16,
+      "ay": 23,
+      "src": "KTIMMY.SPR:20"
+    },
+    "ktimmy_21": {
+      "file": "sprites/props/ktimmy_21.png",
+      "w": 33,
+      "h": 26,
+      "ax": 16,
+      "ay": 23,
+      "src": "KTIMMY.SPR:21"
+    },
+    "ktimmy_22": {
+      "file": "sprites/props/ktimmy_22.png",
+      "w": 33,
+      "h": 26,
+      "ax": 16,
+      "ay": 23,
+      "src": "KTIMMY.SPR:22"
+    },
+    "ktimmy_23": {
+      "file": "sprites/props/ktimmy_23.png",
+      "w": 33,
+      "h": 26,
+      "ax": 16,
+      "ay": 23,
+      "src": "KTIMMY.SPR:23"
+    },
+    "ktimmy_24": {
+      "file": "sprites/props/ktimmy_24.png",
+      "w": 42,
+      "h": 39,
+      "ax": 21,
+      "ay": 34,
+      "src": "KTIMMY.SPR:24"
+    },
+    "ktimmy_25": {
+      "file": "sprites/props/ktimmy_25.png",
+      "w": 42,
+      "h": 39,
+      "ax": 21,
+      "ay": 34,
+      "src": "KTIMMY.SPR:25"
+    },
+    "ktimmy_26": {
+      "file": "sprites/props/ktimmy_26.png",
+      "w": 20,
+      "h": 35,
+      "ax": 9,
+      "ay": 34,
+      "src": "KTIMMY.SPR:26"
+    },
+    "ktimmy_27": {
+      "file": "sprites/props/ktimmy_27.png",
+      "w": 30,
+      "h": 35,
+      "ax": 17,
+      "ay": 34,
+      "src": "KTIMMY.SPR:27"
+    },
+    "ktimmy_28": {
+      "file": "sprites/props/ktimmy_28.png",
+      "w": 39,
+      "h": 34,
+      "ax": 24,
+      "ay": 33,
+      "src": "KTIMMY.SPR:28"
+    },
+    "ktimmy_29": {
+      "file": "sprites/props/ktimmy_29.png",
+      "w": 42,
+      "h": 31,
+      "ax": 28,
+      "ay": 30,
+      "src": "KTIMMY.SPR:29"
+    },
+    "ktimmy_30": {
+      "file": "sprites/props/ktimmy_30.png",
+      "w": 42,
+      "h": 27,
+      "ax": 30,
+      "ay": 26,
+      "src": "KTIMMY.SPR:30"
+    },
+    "ktimmy_31": {
+      "file": "sprites/props/ktimmy_31.png",
+      "w": 43,
+      "h": 29,
+      "ax": 32,
+      "ay": 25,
+      "src": "KTIMMY.SPR:31"
+    },
+    "ktimmy_32": {
+      "file": "sprites/props/ktimmy_32.png",
+      "w": 32,
+      "h": 29,
+      "ax": 23,
+      "ay": 27,
+      "src": "KTIMMY.SPR:32"
+    },
+    "ktimmy_33": {
+      "file": "sprites/props/ktimmy_33.png",
+      "w": 43,
+      "h": 31,
+      "ax": 21,
+      "ay": 30,
+      "src": "KTIMMY.SPR:33"
+    },
+    "ktimmy_34": {
+      "file": "sprites/props/ktimmy_34.png",
+      "w": 36,
+      "h": 35,
+      "ax": 17,
+      "ay": 34,
+      "src": "KTIMMY.SPR:34"
+    },
+    "spk_00": {
+      "file": "sprites/props/spk_00.png",
+      "w": 38,
+      "h": 36,
+      "ax": 19,
+      "ay": 33,
+      "src": "SPK.SPR:0"
+    },
+    "spk_01": {
+      "file": "sprites/props/spk_01.png",
+      "w": 36,
+      "h": 33,
+      "ax": 18,
+      "ay": 31,
+      "src": "SPK.SPR:1"
+    },
+    "spk_02": {
+      "file": "sprites/props/spk_02.png",
+      "w": 37,
+      "h": 34,
+      "ax": 18,
+      "ay": 32,
+      "src": "SPK.SPR:2"
+    },
+    "spk_03": {
+      "file": "sprites/props/spk_03.png",
+      "w": 39,
+      "h": 36,
+      "ax": 20,
+      "ay": 32,
+      "src": "SPK.SPR:3"
+    },
+    "spk_04": {
+      "file": "sprites/props/spk_04.png",
+      "w": 38,
+      "h": 36,
+      "ax": 20,
+      "ay": 33,
+      "src": "SPK.SPR:4"
+    },
+    "spk_05": {
+      "file": "sprites/props/spk_05.png",
+      "w": 38,
+      "h": 35,
+      "ax": 20,
+      "ay": 34,
+      "src": "SPK.SPR:5"
+    },
+    "spk_06": {
+      "file": "sprites/props/spk_06.png",
+      "w": 38,
+      "h": 32,
+      "ax": 20,
+      "ay": 34,
+      "src": "SPK.SPR:6"
+    },
+    "spk_07": {
+      "file": "sprites/props/spk_07.png",
+      "w": 38,
+      "h": 30,
+      "ax": 20,
+      "ay": 34,
+      "src": "SPK.SPR:7"
+    },
+    "spk_08": {
+      "file": "sprites/props/spk_08.png",
+      "w": 38,
+      "h": 31,
+      "ax": 20,
+      "ay": 33,
+      "src": "SPK.SPR:8"
+    },
+    "spk_09": {
+      "file": "sprites/props/spk_09.png",
+      "w": 38,
+      "h": 32,
+      "ax": 19,
+      "ay": 31,
+      "src": "SPK.SPR:9"
+    },
+    "spk_10": {
+      "file": "sprites/props/spk_10.png",
+      "w": 37,
+      "h": 33,
+      "ax": 18,
+      "ay": 32,
+      "src": "SPK.SPR:10"
+    },
+    "spk_11": {
+      "file": "sprites/props/spk_11.png",
+      "w": 37,
+      "h": 34,
+      "ax": 18,
+      "ay": 32,
+      "src": "SPK.SPR:11"
+    },
+    "spk_12": {
+      "file": "sprites/props/spk_12.png",
+      "w": 37,
+      "h": 36,
+      "ax": 19,
+      "ay": 33,
+      "src": "SPK.SPR:12"
+    },
+    "spk_13": {
+      "file": "sprites/props/spk_13.png",
+      "w": 37,
+      "h": 35,
+      "ax": 19,
+      "ay": 34,
+      "src": "SPK.SPR:13"
+    },
+    "spk_14": {
+      "file": "sprites/props/spk_14.png",
+      "w": 37,
+      "h": 32,
+      "ax": 19,
+      "ay": 34,
+      "src": "SPK.SPR:14"
+    },
+    "spk_15": {
+      "file": "sprites/props/spk_15.png",
+      "w": 37,
+      "h": 31,
+      "ax": 19,
+      "ay": 34,
+      "src": "SPK.SPR:15"
+    },
+    "spk_16": {
+      "file": "sprites/props/spk_16.png",
+      "w": 37,
+      "h": 32,
+      "ax": 19,
+      "ay": 33,
+      "src": "SPK.SPR:16"
+    },
+    "spk_17": {
+      "file": "sprites/props/spk_17.png",
+      "w": 42,
+      "h": 33,
+      "ax": 19,
+      "ay": 31,
+      "src": "SPK.SPR:17"
+    },
+    "spk_18": {
+      "file": "sprites/props/spk_18.png",
+      "w": 15,
+      "h": 6,
+      "ax": 6,
+      "ay": 3,
+      "src": "SPK.SPR:18"
+    },
+    "spk_19": {
+      "file": "sprites/props/spk_19.png",
+      "w": 13,
+      "h": 11,
+      "ax": 5,
+      "ay": 5,
+      "src": "SPK.SPR:19"
+    },
+    "spk_20": {
+      "file": "sprites/props/spk_20.png",
+      "w": 6,
+      "h": 14,
+      "ax": 2,
+      "ay": 7,
+      "src": "SPK.SPR:20"
+    },
+    "spk_21": {
+      "file": "sprites/props/spk_21.png",
+      "w": 8,
+      "h": 8,
+      "ax": 4,
+      "ay": 5,
+      "src": "SPK.SPR:21"
+    },
+    "spk_22": {
+      "file": "sprites/props/spk_22.png",
+      "w": 13,
+      "h": 13,
+      "ax": 2,
+      "ay": 8,
+      "src": "SPK.SPR:22"
+    },
+    "spk_23": {
+      "file": "sprites/props/spk_23.png",
+      "w": 4,
+      "h": 6,
+      "ax": 1,
+      "ay": 3,
+      "src": "SPK.SPR:23"
+    },
+    "spk_24": {
+      "file": "sprites/props/spk_24.png",
+      "w": 1,
+      "h": 1,
+      "ax": 29,
+      "ay": -1,
+      "src": "SPK.SPR:24"
+    },
+    "spk_25": {
+      "file": "sprites/props/spk_25.png",
+      "w": 1,
+      "h": 1,
+      "ax": 29,
+      "ay": -1,
+      "src": "SPK.SPR:25"
+    },
+    "spk_26": {
+      "file": "sprites/props/spk_26.png",
+      "w": 38,
+      "h": 36,
+      "ax": 19,
+      "ay": 33,
+      "src": "SPK.SPR:26"
+    },
+    "spk_27": {
+      "file": "sprites/props/spk_27.png",
+      "w": 36,
+      "h": 35,
+      "ax": 18,
+      "ay": 32,
+      "src": "SPK.SPR:27"
+    },
+    "spk_28": {
+      "file": "sprites/props/spk_28.png",
+      "w": 34,
+      "h": 33,
+      "ax": 17,
+      "ay": 31,
+      "src": "SPK.SPR:28"
+    },
+    "spk_29": {
+      "file": "sprites/props/spk_29.png",
+      "w": 31,
+      "h": 31,
+      "ax": 16,
+      "ay": 29,
+      "src": "SPK.SPR:29"
+    },
+    "spk_30": {
+      "file": "sprites/props/spk_30.png",
+      "w": 30,
+      "h": 29,
+      "ax": 16,
+      "ay": 27,
+      "src": "SPK.SPR:30"
+    },
+    "spk_31": {
+      "file": "sprites/props/spk_31.png",
+      "w": 29,
+      "h": 27,
+      "ax": 16,
+      "ay": 25,
+      "src": "SPK.SPR:31"
+    },
+    "spk_32": {
+      "file": "sprites/props/spk_32.png",
+      "w": 29,
+      "h": 24,
+      "ax": 16,
+      "ay": 22,
+      "src": "SPK.SPR:32"
+    },
+    "spk_33": {
+      "file": "sprites/props/spk_33.png",
+      "w": 29,
+      "h": 23,
+      "ax": 16,
+      "ay": 21,
+      "src": "SPK.SPR:33"
+    },
+    "spk_34": {
+      "file": "sprites/props/spk_34.png",
+      "w": 29,
+      "h": 23,
+      "ax": 16,
+      "ay": 21,
+      "src": "SPK.SPR:34"
+    },
+    "spk_35": {
+      "file": "sprites/props/spk_35.png",
+      "w": 6,
+      "h": 9,
+      "ax": 2,
+      "ay": 4,
+      "src": "SPK.SPR:35"
+    },
+    "spk_36": {
+      "file": "sprites/props/spk_36.png",
+      "w": 8,
+      "h": 8,
+      "ax": 3,
+      "ay": 4,
+      "src": "SPK.SPR:36"
+    },
+    "spk_37": {
+      "file": "sprites/props/spk_37.png",
+      "w": 9,
+      "h": 6,
+      "ax": 4,
+      "ay": 3,
+      "src": "SPK.SPR:37"
+    },
+    "spk_38": {
+      "file": "sprites/props/spk_38.png",
+      "w": 11,
+      "h": 3,
+      "ax": 5,
+      "ay": 2,
+      "src": "SPK.SPR:38"
+    },
+    "spk_39": {
+      "file": "sprites/props/spk_39.png",
+      "w": 9,
+      "h": 6,
+      "ax": 4,
+      "ay": 4,
+      "src": "SPK.SPR:39"
+    },
+    "spk_40": {
+      "file": "sprites/props/spk_40.png",
+      "w": 8,
+      "h": 8,
+      "ax": 4,
+      "ay": 5,
+      "src": "SPK.SPR:40"
+    },
+    "spk_41": {
+      "file": "sprites/props/spk_41.png",
+      "w": 6,
+      "h": 9,
+      "ax": 3,
+      "ay": 6,
+      "src": "SPK.SPR:41"
+    },
+    "spk_42": {
+      "file": "sprites/props/spk_42.png",
+      "w": 3,
+      "h": 11,
+      "ax": 2,
+      "ay": 7,
+      "src": "SPK.SPR:42"
+    },
     "dyna": {
       "file": "sprites/props/dyna.png",
       "w": 28,
@@ -1538,7 +2394,118 @@
       "timmy_02",
       "timmy_03",
       "timmy_04",
-      "timmy_05"
+      "timmy_05",
+      "timmy_06",
+      "timmy_07",
+      "timmy_08",
+      "timmy_09",
+      "timmy_10",
+      "timmy_11",
+      "timmy_12",
+      "timmy_13",
+      "timmy_14",
+      "timmy_15",
+      "timmy_16",
+      "timmy_17",
+      "timmy_18",
+      "timmy_19",
+      "timmy_20",
+      "timmy_21",
+      "timmy_22",
+      "timmy_23",
+      "timmy_24",
+      "timmy_25",
+      "timmy_26",
+      "timmy_27",
+      "timmy_28",
+      "timmy_29",
+      "timmy_30",
+      "timmy_31",
+      "timmy_32",
+      "timmy_33",
+      "timmy_34"
+    ],
+    "ktimmy": [
+      "ktimmy_00",
+      "ktimmy_01",
+      "ktimmy_02",
+      "ktimmy_03",
+      "ktimmy_04",
+      "ktimmy_05",
+      "ktimmy_06",
+      "ktimmy_07",
+      "ktimmy_08",
+      "ktimmy_09",
+      "ktimmy_10",
+      "ktimmy_11",
+      "ktimmy_12",
+      "ktimmy_13",
+      "ktimmy_14",
+      "ktimmy_15",
+      "ktimmy_16",
+      "ktimmy_17",
+      "ktimmy_18",
+      "ktimmy_19",
+      "ktimmy_20",
+      "ktimmy_21",
+      "ktimmy_22",
+      "ktimmy_23",
+      "ktimmy_24",
+      "ktimmy_25",
+      "ktimmy_26",
+      "ktimmy_27",
+      "ktimmy_28",
+      "ktimmy_29",
+      "ktimmy_30",
+      "ktimmy_31",
+      "ktimmy_32",
+      "ktimmy_33",
+      "ktimmy_34"
+    ],
+    "spk": [
+      "spk_00",
+      "spk_01",
+      "spk_02",
+      "spk_03",
+      "spk_04",
+      "spk_05",
+      "spk_06",
+      "spk_07",
+      "spk_08",
+      "spk_09",
+      "spk_10",
+      "spk_11",
+      "spk_12",
+      "spk_13",
+      "spk_14",
+      "spk_15",
+      "spk_16",
+      "spk_17",
+      "spk_18",
+      "spk_19",
+      "spk_20",
+      "spk_21",
+      "spk_22",
+      "spk_23",
+      "spk_24",
+      "spk_25",
+      "spk_26",
+      "spk_27",
+      "spk_28",
+      "spk_29",
+      "spk_30",
+      "spk_31",
+      "spk_32",
+      "spk_33",
+      "spk_34",
+      "spk_35",
+      "spk_36",
+      "spk_37",
+      "spk_38",
+      "spk_39",
+      "spk_40",
+      "spk_41",
+      "spk_42"
     ],
     "dyna": [
       "dyna"

@@ -63,8 +63,10 @@ for the object it finds: its **collision kind**.
     5   the top of a ladder: a platform, and a ladder
     (3 is a ceiling and 6 a platform in the code; no level uses either)
 
-Word 1 (0..9) and word 2 (mostly 0) are read by the hammer's code and are
-not traced.
+Word 1 (0..9) is read by the hammer's code and is not traced. Word 2 is
+a marker for the gits walking over the block (VA 0x2fbfd): 1 turns them
+left, 2 right, 28-30 are conditional actions — see "The gits" in
+README.md.
 """
 import os
 import struct
@@ -75,7 +77,7 @@ import g2
 def load(levels_dir, name):
     """-> dict with the level's geometry and its placed objects.
 
-    Each object: dict(type, x, y, shape, routine, w, h, gid, param, col,
+    Each object: dict(type, x, y, shape, routine, w, h, gid, param, col, marker,
     bitmap)
     where bitmap is (width, height, [[palette index]]), None for
     transparent pixels.
@@ -101,6 +103,7 @@ def load(levels_dir, name):
             routine=routines[shape] if shape < len(routines) else None,
             w=ow * 8, h=oh * 8, gid=gid, param=param,
             col=struct.unpack_from("<h", col, i * 6)[0],
+            marker=struct.unpack_from("<h", col, i * 6 + 4)[0],
             bitmap=g2.rows_to_bitmap(rows, transparent=None),
         ))
     return dict(tiles_w=tw, tiles_h=th, width=tw * 8, height=th * 8,

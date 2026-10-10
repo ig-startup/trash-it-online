@@ -51,7 +51,10 @@ HEADROOM = 64
 #: stands a PANEL.SPR post on each (VA 0x2f623).
 STREET = 256
 #: Every class whose template spawns a TIMMY.SPR.
-TIMMY_CLASSES = (14, 17, 32)
+TIMMY_CLASS = 14
+KING_TIMMY_CLASS = 17
+SPIKE_CLASS = 32
+RULES_CLASS = 16
 #: Class 15 places a stick of dynamite.
 DYNAMITE_CLASS = 15
 #: Class 6 places a cannon (VA 0x5f69a), class 7 a cannonball (VA 0x20b58).
@@ -230,6 +233,9 @@ def export(name):
         # `.COL` word 0: how Jack collides with it — 0 not at all, 1 solid,
         # 2 a platform from above, 4 a ladder, 5 a ladder's top (level.py).
         "col": o["col"],
+        # `.COL` word 2: a marker for the gits walking over it — 1 turns
+        # them left, 2 right (VA 0x2fbfd; README "The gits").
+        **({"marker": o["marker"]} if o["marker"] else {}),
     } for i, o in enumerate(lv["objects"])]
 
     # Start positions and the bell come from the level's own `.OB` — the
@@ -261,14 +267,30 @@ def export(name):
         left = min(o["x"] for o in lv["objects"])
         spawn_pts = [{"x": left + 40 + i * 60, "y": ground} for i in range(4)]
 
-    # Timmies. Classes 14, 17 and 32 all spawn one (their templates point
-    # at TIMMY.SPR), and between them they are about 2000 records across
-    # the archive — the most common thing in the game. Position is the
-    # first two words of the record.
-    timmies = [{"x": x, "y": y + HEADROOM}
-               for cid, _off, payload in placed if cid in TIMMY_CLASSES
-               for x, y in [struct.unpack_from("<hh", payload, 0)]
+    # Timmies. Class 14 a timmy, 17 a king timmy (VA 0x2fd06, 0x2fd42):
+    # x, y, the word at +0xe its mode — 1 locked to the block under it
+    # until that dies, 2 free from the start — and at +0x14 its flags
+    # (bit 1: it heeds the conditional markers). About 1450 records, the
+    # most common thing in the game. See "The gits" in the README.
+    timmies = [{"x": x, "y": y + HEADROOM, "king": cid == KING_TIMMY_CLASS,
+                "locked": w[7] == 1, "flags": w[10]}
+               for cid, _off, payload in placed
+               if cid in (TIMMY_CLASS, KING_TIMMY_CLASS)
+               for w in [struct.unpack_from("<11h", payload, 0)]
+               for x, y in [(w[0], w[1])]
                if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
+
+    # Spike gits. Class 32 (VA 0x1327e) — not a timmy: x, y, and the word
+    # at +0x12 bit 0 a free walker, bit 1 locked to a block. The rules
+    # record caps how many there may be (+0x3e).
+    spikes = [{"x": w[0], "y": w[1] + HEADROOM, "locked": not w[9] & 1}
+              for cid, _off, payload in placed if cid == SPIKE_CLASS
+              for w in [struct.unpack_from("<10h", payload, 0)]
+              if 0 <= w[0] <= lv["width"] and 0 <= w[1] <= lv["height"]]
+    rules = next((payload for cid, _off, payload in placed
+                  if cid == RULES_CLASS and len(payload) >= 0x40), None)
+    spike_max = struct.unpack_from("<h", rules, 0x3e)[0] if rules else 0
+    spikes = spikes[:max(0, spike_max)]
 
     # Dynamite. Class 15, drawn at the record's position plus the offset
     # its constructor applies (VA 0x1d2d5). The word at +14 picks which of
@@ -359,6 +381,7 @@ def export(name):
         "shapes": sizes,
         "spawnPoints": spawn_pts,
         "timmies": timmies,
+        "spikes": spikes,
         "dynamite": dynamite,
         "cannons": cannons,
         "balls": balls,

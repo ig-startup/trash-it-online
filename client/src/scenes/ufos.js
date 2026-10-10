@@ -354,10 +354,11 @@ export default class Ufos {
       u.vy = 0;
       u.x = t.x;
       u.y = t.y - HOVER;
+      t.setData('beamed', true);
     }
     if (u.t % 8 === 0) this._bit(F.RING, u.x, u.y + HOVER, 0, 0, { rise: u, life: 60 });
     if (!t.active || this._w.loose.isBusy(t)) {
-      if (t.active) t.setScale(1);
+      if (t.active) { t.setScale(1); t.setData('beamed', false); }
       u.timmy = null;
       this._go(u, 'roam');
       return;
@@ -427,7 +428,7 @@ export default class Ufos {
     if (u.t === 1) {
       u.frame = F.WRECK;
       u.stolen = (u.stolen + 1) >> 1;
-      if (u.timmy && u.timmy.active) u.timmy.setScale(1);
+      if (u.timmy && u.timmy.active) { u.timmy.setScale(1); u.timmy.setData('beamed', false); }
       u.timmy = null;
     }
     if (u.t % 4 === 0) this._spark(u);

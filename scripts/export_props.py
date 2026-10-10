@@ -38,10 +38,12 @@ PREFIX = "sprites/props"
 PROPS = {
     "bell": ("BELL.SPR", [0]),
     "hammer": ("SPA.SPR", list(range(61))),   # index = SPA frame number
-    # Timmies are the most common object in the game by a wide margin —
-    # about 2000 records across three quarters of the levels. TIMMY.SPR
-    # holds 35 frames; these six read as a walk cycle.
-    "timmy": ("TIMMY.SPR", [0, 1, 2, 3, 4, 5]),
+    # The gits (README "The gits"): every frame of each sheet, index =
+    # frame number, since their frame lists (VA 0xa40be) index the sheet
+    # directly — the walk is 1-16, the fall 6-9, the skid 17-25.
+    "timmy": ("TIMMY.SPR", list(range(35))),
+    "ktimmy": ("KTIMMY.SPR", None),
+    "spk": ("SPK.SPR", None),
     # Dynamite: 202 placements across 42 levels, the third most common
     # thing in the game. Its own sheet carries the stick and the blast.
     "dyna": ("DYNA.SPR", [0]),          # the stick; the sheet has only four
@@ -95,6 +97,8 @@ def main(level_name="0A"):
     manifest = {"frames": {}, "anims": {}}
     for prop, (sheet, indices) in PROPS.items():
         frames = spr.load(os.path.join(ORIG, "SPR", sheet))
+        if indices is None:
+            indices = list(range(len(frames)))
         names = []
         for i, idx in enumerate(indices):
             f = frames[idx]
