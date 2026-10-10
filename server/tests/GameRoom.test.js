@@ -147,6 +147,22 @@ describe('GameRoom', () => {
   });
 
   // -----------------------------------------------------------------------
+  // A bonus clock puts time back on the level's timer
+  // -----------------------------------------------------------------------
+  test('should add a clock\'s seconds while playing, and not otherwise', () => {
+    room.addTime(25);
+    expect(room.timeLeft).toBe(0);
+    room.startGame(LEVEL_DATA);
+    const before = room.timeLeft;
+    room.addTime(25);
+    expect(room.timeLeft).toBe(before + 25);
+    const tick = io._emitted.filter((e) => e.event === EVENTS.TIMER_TICK).pop();
+    expect(tick.data).toEqual({ timeLeft: before + 25 });
+    room.addTime('lots');
+    expect(room.timeLeft).toBe(before + 25);
+  });
+
+  // -----------------------------------------------------------------------
   // Test 9: timer is cleared after level_complete
   // -----------------------------------------------------------------------
   test('should cleanup timer on game end', () => {

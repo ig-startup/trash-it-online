@@ -30,6 +30,11 @@ import { COL, floorUnder } from './blockKinds';
  * blast a second time, or turned about too often — it dies: it floats up
  * out of the level, swaying, and cannot be taken (0x3193e, 0x32164).
  *
+ * The bonus git (.OB class 33) walks with them: from the start, or out of
+ * a shell (the bell's sprite) once its block dies. The overhead blow sends
+ * it up (0x3333c); landed, it swells and bursts (0x33559) into its prize,
+ * which `world.prize` hands on (bonuses.js).
+ *
  * Units are the game's: px and px/tick, stepped at 60 Hz.
  */
 const HZ = 60;
@@ -51,7 +56,7 @@ const WALK = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const FALL = [6, 7, 8, 9];
 const HOP = [3, 4, 5, 6, 7, 8, 9];
 const TURN = [17, 18, 19, 20, 21, 22, 23, 22, 21, 24, 25];
-const SHEET = { timmy: 'timmy', king: 'ktimmy', spike: 'spk', bomb: 'bom' };
+const SHEET = { timmy: 'timmy', king: 'ktimmy', spike: 'spk', bomb: 'bom', bonus: 'bon' };
 const STRUCK_TICKS = 8;
 /** Slot 19: the spike bristling, the bomb's fuse — the list's index steps. */
 const BRISTLE = [26, 27, 28, 29, 30, 31, 32, 33, 34];
@@ -81,6 +86,10 @@ const SHAKEN = [20, 21, 22, 23, 22, 21]; // slot 9
 const ANGEL = [24, 25];                 // slot 10, every 4 ticks
 const GROUND_DRAG = 8000 / 65536;       // |vx| over 9999 loses 8000 a tick
 const RISE = 0x900 / 65536;             // the dead one's lift, a tick
+const BONUS_STRUCK = 17;                // BON's frame while it flies (slot 0x19)
+const BONUS_POP = -6;                   // out of its shell (0x1b2a9)
+const BONUS_HOP = -4;                   // struck (0x3333c)
+const BONUS_BURST = 50;                 // swelling past this it bursts (0x33559)
 /** Blast push by distance (table 0x98c6c): 11 px/tick under 16, 6 at 50, 0 from 76. */
 const blastPush = (d) => {
   const a = Math.abs(d);
@@ -103,6 +112,7 @@ export default class Gits {
    * @param {() => void} world.shake
    * @param {() => any} world.jack  the Jack the gits can touch
    * @param {(x: number, y: number) => void} world.bombBlast
+   * @param {(kind: number, count: number, x: number, y: number, left: boolean) => void} world.prize
    */
   constructor(scene, level, world) {
     this._scene = scene;
@@ -134,6 +144,21 @@ export default class Gits {
         this._free(g, 0, 0);
       }
     });
+    (level.bonuses || []).forEach((b) => {
+      const g = this._make('bonus', b.x, b.y, 0);
+      g.prize = b.prize;
+      g.count = b.count;
+      if (b.locked) {
+        // a shell, the bell's sprite, until its block dies (0x1b568)
+        g.state = 'locked';
+        g.block = world.blockIdAt(b.x, b.y);
+        g.shell = true;
+        applyPropFrame(g.sprite, PROP_ANIMS.bell[0]);
+        if (g.block === null) this._free(g, 0, BONUS_POP);
+      } else {
+        this._free(g, 0, 0);
+      }
+    });
     (level.bombs || []).forEach((b) => {
       const g = this._make('bomb', b.x, b.y, 0);
       if (b.locked) {
@@ -160,6 +185,7 @@ export default class Gits {
 
   /** Sprung free (VA 0x3053f): a random kick, then it falls. */
   _free(g, vx, vy) {
+    g.shell = false;
     g.state = 'fall';
     g.t = 0;
     g.vx = vx;
@@ -196,6 +222,18 @@ export default class Gits {
         if (Phaser.Geom.Intersects.RectangleToRectangle(reach, g.sprite.getBounds())) this._knock(g);
         return;
       }
+      if (g.kind === 'bonus') {
+        if (!['walk', 'turn', 'fall'].includes(g.state)) return;
+        if (!Phaser.Geom.Intersects.RectangleToRectangle(reach, g.sprite.getBounds())) return;
+        // up it goes, sparkling (0x3333c)
+        g.state = 'bstruck';
+        g.t = 0;
+        g.vy = BONUS_HOP;
+        g.y -= 7;
+        g.vx /= 2;
+        g.air = true;
+        return;
+      }
       if (g.kind !== 'spike' && g.kind !== 'bomb') return;
       if (g.state === 'struck' || g.state === 'locked' || g.state === 'blow') return;
       if (!Phaser.Geom.Intersects.RectangleToRectangle(reach, g.sprite.getBounds())) return;
@@ -225,7 +263,8 @@ export default class Gits {
         }
         if (g.state === 'locked') {
           if (g.block !== null && !this._w.blockAlive(g.block)) {
-            this._free(g, (Math.random() * 2 - 1) * KICK, (Math.random() * 2 - 1) * KICK);
+            if (g.shell) this._free(g, 0, BONUS_POP);
+            else this._free(g, (Math.random() * 2 - 1) * KICK, (Math.random() * 2 - 1) * KICK);
           }
           continue;
         }
@@ -263,6 +302,7 @@ export default class Gits {
       if (g.handle && (g.handle.carried || g.handle.flying)) return;
       g.sprite.setPosition(g.x + (g.jitter || 0), g.y);
       g.sprite.setFlipX(g.left);
+      if (g.shell) return;
       applyPropFrame(g.sprite, g.frames[Math.min(g.frame, g.frames.length - 1)]);
     });
     this.collected += taken;
@@ -389,6 +429,42 @@ export default class Gits {
   }
 
   /**
+   * A struck bonus (0x3333c → 0x33559): it flies and bounces at half its
+   * speed until it lands under 1.5 px/tick; then it swells, 1 << (t / 2),
+   * and past 50 bursts into its prize.
+   */
+  _bonusStep(g) {
+    if (g.state === 'swell') {
+      const d = 1 << (g.t >> 1);
+      g.sprite.setScale(1 + d / 32);
+      if (d > BONUS_BURST) {
+        this._w.shake();
+        this._w.prize(g.prize, g.count, g.x, g.y, g.left);
+        g.sprite.destroy();
+      }
+      return;
+    }
+    g.frame = BONUS_STRUCK;
+    g.vx = Math.abs(g.vx) > 9999 / 65536 ? g.vx - Math.sign(g.vx) * GROUND_DRAG : 0;
+    if (this._moveX(g)) g.vx = 0;
+    g.vy = Math.min(TERMINAL, g.vy + GRAVITY);
+    const floor = g.vy > 0 ? this._floor(g.x, g.y, g.y + g.vy) : null;
+    if (floor === null) {
+      g.y += g.vy;
+      if (g.y > this._w.groundY + 200) g.sprite.destroy();
+      return;
+    }
+    g.y = floor;
+    if (g.vy < 1.5) {
+      g.vy = 0;
+      g.state = 'swell';
+      g.t = 0;
+    } else {
+      g.vy = -g.vy / 2;
+    }
+  }
+
+  /**
    * Dizziness (git_tick): every about-turn adds 10, every tick takes 1.
    * Over 30 a turn makes it hop 5 px; at 500 a timmy dies of it, a spike
    * is done for and a bomb lights.
@@ -399,6 +475,7 @@ export default class Gits {
     if (g.dizzy < 500) { g.y -= 5; return; }
     if (g.kind === 'spike') { g.state = 'struck'; g.t = 0; g.vx = 0; return; }
     if (g.kind === 'bomb') { g.state = 'fuse'; g.t = 0; g.index = 0; return; }
+    if (g.kind === 'bonus') return;
     this._enter(g, 'dying');
   }
 
@@ -488,6 +565,10 @@ export default class Gits {
     }
     if (g.state === 'dying') {
       this._dyingStep(g);
+      return;
+    }
+    if (g.state === 'bstruck' || g.state === 'swell') {
+      this._bonusStep(g);
       return;
     }
     if (g.state === 'bristle' || g.state === 'unbristle') {

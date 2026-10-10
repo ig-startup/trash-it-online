@@ -86,6 +86,18 @@ PROPS = {
     # The post at each end of the street (VA 0x2f623): PANEL.SPR, a sheet
     # of odds and ends, frame 16 (+0x44 = 0x10); the right one mirrored.
     "post": ("PANEL.SPR", [16]),
+    # Bonuses (README "Bonuses, the dispenser and the panel"): the bonus
+    # git walks on BON 1-16 like a timmy, 17 struck, 21-23 its sparks; it
+    # waits in a block as a BELL; its prizes are the clock (CLOK 0-23
+    # spinning), the super hoover (BVAC 5) and the bubble.
+    "bon": ("BON.SPR", list(range(24))),
+    "clok": ("CLOK.SPR", list(range(24))),
+    "bvac": ("BVAC.SPR", [5]),
+    "bubble": ("BUBBLE.SPR", [0]),
+    # The dispenser: its body (6) and the lid (0 shut, 1 open).
+    "dis": ("DIS.SPR", [6, 0, 1]),
+    # The secret panel (17) and its twinkle (0x15-0x24).
+    "panel": ("PANEL.SPR", [17] + list(range(21, 37))),
 }
 
 

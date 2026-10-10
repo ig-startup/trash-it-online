@@ -55,6 +55,9 @@ TIMMY_CLASS = 14
 KING_TIMMY_CLASS = 17
 SPIKE_CLASS = 32
 BOMB_CLASS = 45
+BONUS_CLASS = 33
+DISPENSER_CLASS = 8
+PANEL_CLASS = 46
 RULES_CLASS = 16
 #: Class 15 places a stick of dynamite.
 DYNAMITE_CLASS = 15
@@ -311,6 +314,32 @@ def export(name):
         base, shift = struct.unpack_from("<hh", rules, 0x44)
         bomb_force = base << (shift & 31)
 
+    # Bonus gits. Class 33 (VA 0x1b4cf): the word at +0xe 1 walking, 2 a
+    # shell locked in the block under it; the lowest bit of +0x12 its prize
+    # (0 a clock, 1 timmies, 2 a super hoover, 3 a bubble), +0x14 how many
+    # timmies. README "Bonuses, the dispenser and the panel".
+    bonuses = [{"x": w[0], "y": w[1] + HEADROOM, "locked": w[7] == 2,
+                "prize": _lowest_bit(w[9]), "count": w[10]}
+               for cid, _off, payload in placed if cid == BONUS_CLASS
+               for w in [struct.unpack_from("<11h", payload, 0)]
+               if 0 <= w[0] <= lv["width"] and 0 <= w[1] <= lv["height"]]
+
+    # Dispensers. Class 8 (VA 0x5f1ab): +0x1c balls a go, +0x1e goes (0 for
+    # ever), +0x20 ticks between balls.
+    dispensers = [{"x": w[0], "y": w[1] + HEADROOM, "balls": w[14], "goes": w[15],
+                   "gap": w[16]}
+                  for cid, _off, payload in placed if cid == DISPENSER_CLASS
+                  for w in [struct.unpack_from("<18h", payload, 0)]
+                  # three stand out on the street, past the map's edge
+                  if -STREET <= w[0] <= lv["width"] + STREET
+                  and 0 <= w[1] <= lv["height"]]
+
+    # The secret panel. Class 46 (VA 0x1b5ba): +0xe 2 locked in a block.
+    panels = [{"x": w[0], "y": w[1] + HEADROOM, "locked": w[7] == 2}
+              for cid, _off, payload in placed if cid == PANEL_CLASS
+              for w in [struct.unpack_from("<8h", payload, 0)]
+              if 0 <= w[0] <= lv["width"] and 0 <= w[1] <= lv["height"]]
+
     # Dynamite. Class 15, drawn at the record's position plus the offset
     # its constructor applies (VA 0x1d2d5). The word at +14 picks which of
     # two sticks it is: 1 is lit by a hammer blow (template 0x98c84), 2 by
@@ -403,6 +432,9 @@ def export(name):
         "spikes": spikes,
         "bombs": bombs,
         "bombForce": bomb_force,
+        "bonuses": bonuses,
+        "dispensers": dispensers,
+        "panels": panels,
         "dynamite": dynamite,
         "cannons": cannons,
         "balls": balls,

@@ -21,6 +21,7 @@ import Tellies from './tellies';
 import Ufos from './ufos';
 import Seesaws from './seesaws';
 import Gits from './gits';
+import Bonuses from './bonuses';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -399,9 +400,54 @@ export default class GameScene extends Phaser.Scene {
             force: level.bombForce || 0, mask: 0x7ffff, spreadX: 10, spreadY: 16, shockAt: { x, y },
           });
         },
+        prize: (kind, count, x, y, left) => { if (this._bonuses) this._bonuses.prize(kind, count, x, y, left); },
       })
       : null;
     if (this._gits) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._gits.destroy());
+    // ── Bonuses, dispensers, secret panels ───────────────────────────────
+    // .OB classes 33, 8 and 46. See bonuses.js.
+    this._superHoover = 0;     // ticks of the super hoover left (0x3f4024)
+    this._doublePoints = 0;    // ticks of double points left (0x287c52)
+    this._secrets = 0;         // panels taken (level_state +0x18)
+    this._bonuses = hasProps(this) && PROP_ANIMS.dis
+      ? new Bonuses(this, level, {
+        floor: (x, from, to) => floorUnder(blockAt, x, from, to),
+        blockIdAt: (x, y) => {
+          const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+          return id === undefined ? null : id;
+        },
+        blockAlive: (id) => {
+          const e = this._destructibleMap.get(id);
+          return !!(e && e.rect.active);
+        },
+        groundY: bottom,
+        jack: () => this._player,
+        ball: (x, y, vx, vy) => {
+          const key = PROP_ANIMS.ball[0];
+          const sprite = this.add.image(x, y, key).setDepth(2);
+          applyPropFrame(sprite, key);
+          const h = this._loose.add(sprite, 'ball');
+          h.big = false;
+          this._loose.throw(h, x, y, vx, vy);
+        },
+        timmy: (x, y, vx, vy) => { if (this._gits) this._gits.spawnFree(x, y, vx, vy); },
+        addTime: (seconds) => {
+          const sm = SocketManager.getInstance();
+          if (sm.socket) sm.emit(EVENTS.TIME_BONUS, { seconds });
+          this._flashBonus(`+${seconds} СЕК`);
+        },
+        superHoover: (ticks) => { this._superHoover = ticks; },
+        doublePoints: (ticks) => { this._doublePoints = ticks; },
+        secret: () => {
+          this._secrets += 1;
+          this.cameras.main.shake(120, 0.004);
+          this._flashBonus('СЕКРЕТ!');
+        },
+        shake: () => this.cameras.main.shake(120, 0.006),
+      })
+      : null;
+    if (this._bonuses) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bonuses.destroy());
+
     // Hurt, he loses timmies (spill_timmies, VA 0x338d0): each thrown up
     // at -6 px/tick with a random kick, and off his count.
     this._player.on('spill', (count) => {
@@ -583,7 +629,22 @@ export default class GameScene extends Phaser.Scene {
     }, delta);
 
     this._collapse.update(delta);
-    const taken = this._rubble.update(delta, this._player.hooverBox, this._player.nozzle);
+    // The super hoover takes the rubble from a box 2048 x 1024 ahead of
+    // him, not 32 x 32 (VA 0x61740), and blinks; double points count each
+    // piece twice (VA 0x19fd2).
+    const ticks = (delta * 60) / 1000;
+    this._superHoover = Math.max(0, this._superHoover - ticks);
+    this._doublePoints = Math.max(0, this._doublePoints - ticks);
+    let box = this._player.hooverBox;
+    if (box && this._superHoover > 0) {
+      const ahead = this._player.facingLeft ? this._player.x - 40 - 2048 : this._player.x + 40;
+      box = new Phaser.Geom.Rectangle(ahead, this._player.y - 512, 2048, 1024);
+    }
+    if (this._player.vac) {
+      this._player.vac.setAlpha(this._superHoover > 0 && (this.time.now / (1000 / 60)) & 8 ? 0.5 : 1);
+    }
+    let taken = this._rubble.update(delta, box, this._player.nozzle);
+    if (taken && this._doublePoints > 0) taken *= 2;
     if (taken) {
       this._rubbleTaken += taken;
       this._rubbleText.setText(`МУСОР ${this._rubbleTaken}`);
@@ -614,6 +675,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     if (this._ufos) this._ufos.update(delta);
+    if (this._bonuses) this._bonuses.update(delta);
     if (this._gits) {
       const got = this._gits.update(delta, this._player.hooverBox, this._player.nozzle);
       if (got) this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
@@ -657,6 +719,14 @@ export default class GameScene extends Phaser.Scene {
    * @param {T} obj
    * @returns {T}
    */
+  /** A word in the middle of the panel for a moment — a bonus taken. */
+  _flashBonus(text) {
+    const t = this._hud(this.add.text(this.scale.width / 2, this.scale.height - 60, text, {
+      fontFamily: 'monospace', fontSize: '22px', fill: '#ffee55', stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(1000));
+    this.tweens.add({ targets: t, alpha: 0, y: t.y - 20, duration: 1200, onComplete: () => t.destroy() });
+  }
+
   _hud(obj) {
     this.cameras.main.ignore(obj);
     obj.cameraFilter &= ~this._uiCam.id;
@@ -742,6 +812,7 @@ export default class GameScene extends Phaser.Scene {
     if (this._ufos) this._ufos.hit(reach);
     if (this._seesaws) this._seesaws.hit(reach, this._seesawHooks);
     if (this._gits) this._gits.hit(reach);
+    if (this._bonuses) this._bonuses.hit(reach);
     this._dynamite.forEach((d) => {
       if (d.lit || d.litBy !== 'hammer' || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {

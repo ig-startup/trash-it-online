@@ -2591,6 +2591,566 @@
       "ax": 0,
       "ay": 43,
       "src": "PANEL.SPR:16"
+    },
+    "bon_00": {
+      "file": "sprites/props/bon_00.png",
+      "w": 22,
+      "h": 18,
+      "ax": 12,
+      "ay": 17,
+      "src": "BON.SPR:0"
+    },
+    "bon_01": {
+      "file": "sprites/props/bon_01.png",
+      "w": 27,
+      "h": 26,
+      "ax": 16,
+      "ay": 24,
+      "src": "BON.SPR:1"
+    },
+    "bon_02": {
+      "file": "sprites/props/bon_02.png",
+      "w": 23,
+      "h": 27,
+      "ax": 13,
+      "ay": 25,
+      "src": "BON.SPR:2"
+    },
+    "bon_03": {
+      "file": "sprites/props/bon_03.png",
+      "w": 22,
+      "h": 30,
+      "ax": 12,
+      "ay": 26,
+      "src": "BON.SPR:3"
+    },
+    "bon_04": {
+      "file": "sprites/props/bon_04.png",
+      "w": 25,
+      "h": 29,
+      "ax": 15,
+      "ay": 26,
+      "src": "BON.SPR:4"
+    },
+    "bon_05": {
+      "file": "sprites/props/bon_05.png",
+      "w": 26,
+      "h": 28,
+      "ax": 16,
+      "ay": 27,
+      "src": "BON.SPR:5"
+    },
+    "bon_06": {
+      "file": "sprites/props/bon_06.png",
+      "w": 31,
+      "h": 26,
+      "ax": 17,
+      "ay": 28,
+      "src": "BON.SPR:6"
+    },
+    "bon_07": {
+      "file": "sprites/props/bon_07.png",
+      "w": 35,
+      "h": 24,
+      "ax": 19,
+      "ay": 28,
+      "src": "BON.SPR:7"
+    },
+    "bon_08": {
+      "file": "sprites/props/bon_08.png",
+      "w": 34,
+      "h": 24,
+      "ax": 19,
+      "ay": 26,
+      "src": "BON.SPR:8"
+    },
+    "bon_09": {
+      "file": "sprites/props/bon_09.png",
+      "w": 30,
+      "h": 25,
+      "ax": 18,
+      "ay": 24,
+      "src": "BON.SPR:9"
+    },
+    "bon_10": {
+      "file": "sprites/props/bon_10.png",
+      "w": 26,
+      "h": 26,
+      "ax": 16,
+      "ay": 25,
+      "src": "BON.SPR:10"
+    },
+    "bon_11": {
+      "file": "sprites/props/bon_11.png",
+      "w": 23,
+      "h": 28,
+      "ax": 12,
+      "ay": 26,
+      "src": "BON.SPR:11"
+    },
+    "bon_12": {
+      "file": "sprites/props/bon_12.png",
+      "w": 28,
+      "h": 29,
+      "ax": 16,
+      "ay": 26,
+      "src": "BON.SPR:12"
+    },
+    "bon_13": {
+      "file": "sprites/props/bon_13.png",
+      "w": 30,
+      "h": 28,
+      "ax": 18,
+      "ay": 27,
+      "src": "BON.SPR:13"
+    },
+    "bon_14": {
+      "file": "sprites/props/bon_14.png",
+      "w": 31,
+      "h": 26,
+      "ax": 18,
+      "ay": 28,
+      "src": "BON.SPR:14"
+    },
+    "bon_15": {
+      "file": "sprites/props/bon_15.png",
+      "w": 33,
+      "h": 25,
+      "ax": 18,
+      "ay": 28,
+      "src": "BON.SPR:15"
+    },
+    "bon_16": {
+      "file": "sprites/props/bon_16.png",
+      "w": 32,
+      "h": 25,
+      "ax": 17,
+      "ay": 26,
+      "src": "BON.SPR:16"
+    },
+    "bon_17": {
+      "file": "sprites/props/bon_17.png",
+      "w": 40,
+      "h": 26,
+      "ax": 18,
+      "ay": 24,
+      "src": "BON.SPR:17"
+    },
+    "bon_18": {
+      "file": "sprites/props/bon_18.png",
+      "w": 25,
+      "h": 21,
+      "ax": 13,
+      "ay": 12,
+      "src": "BON.SPR:18"
+    },
+    "bon_19": {
+      "file": "sprites/props/bon_19.png",
+      "w": 21,
+      "h": 17,
+      "ax": 11,
+      "ay": 11,
+      "src": "BON.SPR:19"
+    },
+    "bon_20": {
+      "file": "sprites/props/bon_20.png",
+      "w": 17,
+      "h": 14,
+      "ax": 9,
+      "ay": 9,
+      "src": "BON.SPR:20"
+    },
+    "bon_21": {
+      "file": "sprites/props/bon_21.png",
+      "w": 13,
+      "h": 11,
+      "ax": 7,
+      "ay": 8,
+      "src": "BON.SPR:21"
+    },
+    "bon_22": {
+      "file": "sprites/props/bon_22.png",
+      "w": 11,
+      "h": 9,
+      "ax": 6,
+      "ay": 7,
+      "src": "BON.SPR:22"
+    },
+    "bon_23": {
+      "file": "sprites/props/bon_23.png",
+      "w": 7,
+      "h": 6,
+      "ax": 4,
+      "ay": 6,
+      "src": "BON.SPR:23"
+    },
+    "clok_00": {
+      "file": "sprites/props/clok_00.png",
+      "w": 36,
+      "h": 31,
+      "ax": 18,
+      "ay": 31,
+      "src": "CLOK.SPR:0"
+    },
+    "clok_01": {
+      "file": "sprites/props/clok_01.png",
+      "w": 36,
+      "h": 32,
+      "ax": 18,
+      "ay": 31,
+      "src": "CLOK.SPR:1"
+    },
+    "clok_02": {
+      "file": "sprites/props/clok_02.png",
+      "w": 34,
+      "h": 34,
+      "ax": 17,
+      "ay": 32,
+      "src": "CLOK.SPR:2"
+    },
+    "clok_03": {
+      "file": "sprites/props/clok_03.png",
+      "w": 33,
+      "h": 34,
+      "ax": 16,
+      "ay": 32,
+      "src": "CLOK.SPR:3"
+    },
+    "clok_04": {
+      "file": "sprites/props/clok_04.png",
+      "w": 29,
+      "h": 34,
+      "ax": 14,
+      "ay": 32,
+      "src": "CLOK.SPR:4"
+    },
+    "clok_05": {
+      "file": "sprites/props/clok_05.png",
+      "w": 28,
+      "h": 34,
+      "ax": 12,
+      "ay": 32,
+      "src": "CLOK.SPR:5"
+    },
+    "clok_06": {
+      "file": "sprites/props/clok_06.png",
+      "w": 26,
+      "h": 34,
+      "ax": 10,
+      "ay": 32,
+      "src": "CLOK.SPR:6"
+    },
+    "clok_07": {
+      "file": "sprites/props/clok_07.png",
+      "w": 29,
+      "h": 34,
+      "ax": 13,
+      "ay": 32,
+      "src": "CLOK.SPR:7"
+    },
+    "clok_08": {
+      "file": "sprites/props/clok_08.png",
+      "w": 30,
+      "h": 34,
+      "ax": 15,
+      "ay": 32,
+      "src": "CLOK.SPR:8"
+    },
+    "clok_09": {
+      "file": "sprites/props/clok_09.png",
+      "w": 32,
+      "h": 34,
+      "ax": 16,
+      "ay": 32,
+      "src": "CLOK.SPR:9"
+    },
+    "clok_10": {
+      "file": "sprites/props/clok_10.png",
+      "w": 34,
+      "h": 33,
+      "ax": 17,
+      "ay": 32,
+      "src": "CLOK.SPR:10"
+    },
+    "clok_11": {
+      "file": "sprites/props/clok_11.png",
+      "w": 36,
+      "h": 32,
+      "ax": 18,
+      "ay": 31,
+      "src": "CLOK.SPR:11"
+    },
+    "clok_12": {
+      "file": "sprites/props/clok_12.png",
+      "w": 36,
+      "h": 31,
+      "ax": 18,
+      "ay": 31,
+      "src": "CLOK.SPR:12"
+    },
+    "clok_13": {
+      "file": "sprites/props/clok_13.png",
+      "w": 35,
+      "h": 32,
+      "ax": 17,
+      "ay": 31,
+      "src": "CLOK.SPR:13"
+    },
+    "clok_14": {
+      "file": "sprites/props/clok_14.png",
+      "w": 34,
+      "h": 33,
+      "ax": 17,
+      "ay": 32,
+      "src": "CLOK.SPR:14"
+    },
+    "clok_15": {
+      "file": "sprites/props/clok_15.png",
+      "w": 33,
+      "h": 34,
+      "ax": 16,
+      "ay": 32,
+      "src": "CLOK.SPR:15"
+    },
+    "clok_16": {
+      "file": "sprites/props/clok_16.png",
+      "w": 31,
+      "h": 34,
+      "ax": 15,
+      "ay": 32,
+      "src": "CLOK.SPR:16"
+    },
+    "clok_17": {
+      "file": "sprites/props/clok_17.png",
+      "w": 29,
+      "h": 34,
+      "ax": 16,
+      "ay": 32,
+      "src": "CLOK.SPR:17"
+    },
+    "clok_18": {
+      "file": "sprites/props/clok_18.png",
+      "w": 26,
+      "h": 34,
+      "ax": 16,
+      "ay": 32,
+      "src": "CLOK.SPR:18"
+    },
+    "clok_19": {
+      "file": "sprites/props/clok_19.png",
+      "w": 28,
+      "h": 34,
+      "ax": 16,
+      "ay": 32,
+      "src": "CLOK.SPR:19"
+    },
+    "clok_20": {
+      "file": "sprites/props/clok_20.png",
+      "w": 30,
+      "h": 34,
+      "ax": 15,
+      "ay": 32,
+      "src": "CLOK.SPR:20"
+    },
+    "clok_21": {
+      "file": "sprites/props/clok_21.png",
+      "w": 32,
+      "h": 34,
+      "ax": 16,
+      "ay": 32,
+      "src": "CLOK.SPR:21"
+    },
+    "clok_22": {
+      "file": "sprites/props/clok_22.png",
+      "w": 34,
+      "h": 34,
+      "ax": 17,
+      "ay": 32,
+      "src": "CLOK.SPR:22"
+    },
+    "clok_23": {
+      "file": "sprites/props/clok_23.png",
+      "w": 36,
+      "h": 32,
+      "ax": 18,
+      "ay": 31,
+      "src": "CLOK.SPR:23"
+    },
+    "bvac": {
+      "file": "sprites/props/bvac.png",
+      "w": 84,
+      "h": 52,
+      "ax": 41,
+      "ay": 36,
+      "src": "BVAC.SPR:5"
+    },
+    "bubble": {
+      "file": "sprites/props/bubble.png",
+      "w": 37,
+      "h": 32,
+      "ax": 18,
+      "ay": 31,
+      "src": "BUBBLE.SPR:0"
+    },
+    "dis_00": {
+      "file": "sprites/props/dis_00.png",
+      "w": 18,
+      "h": 16,
+      "ax": 4,
+      "ay": 14,
+      "src": "DIS.SPR:6"
+    },
+    "dis_01": {
+      "file": "sprites/props/dis_01.png",
+      "w": 19,
+      "h": 19,
+      "ax": 23,
+      "ay": 20,
+      "src": "DIS.SPR:0"
+    },
+    "dis_02": {
+      "file": "sprites/props/dis_02.png",
+      "w": 19,
+      "h": 19,
+      "ax": 23,
+      "ay": 20,
+      "src": "DIS.SPR:1"
+    },
+    "panel_00": {
+      "file": "sprites/props/panel_00.png",
+      "w": 51,
+      "h": 41,
+      "ax": 29,
+      "ay": 38,
+      "src": "PANEL.SPR:17"
+    },
+    "panel_01": {
+      "file": "sprites/props/panel_01.png",
+      "w": 13,
+      "h": 13,
+      "ax": 21,
+      "ay": 12,
+      "src": "PANEL.SPR:21"
+    },
+    "panel_02": {
+      "file": "sprites/props/panel_02.png",
+      "w": 17,
+      "h": 17,
+      "ax": 23,
+      "ay": 14,
+      "src": "PANEL.SPR:22"
+    },
+    "panel_03": {
+      "file": "sprites/props/panel_03.png",
+      "w": 17,
+      "h": 17,
+      "ax": 23,
+      "ay": 14,
+      "src": "PANEL.SPR:23"
+    },
+    "panel_04": {
+      "file": "sprites/props/panel_04.png",
+      "w": 19,
+      "h": 19,
+      "ax": 24,
+      "ay": 15,
+      "src": "PANEL.SPR:24"
+    },
+    "panel_05": {
+      "file": "sprites/props/panel_05.png",
+      "w": 21,
+      "h": 21,
+      "ax": 25,
+      "ay": 16,
+      "src": "PANEL.SPR:25"
+    },
+    "panel_06": {
+      "file": "sprites/props/panel_06.png",
+      "w": 21,
+      "h": 21,
+      "ax": 25,
+      "ay": 16,
+      "src": "PANEL.SPR:26"
+    },
+    "panel_07": {
+      "file": "sprites/props/panel_07.png",
+      "w": 19,
+      "h": 19,
+      "ax": 24,
+      "ay": 15,
+      "src": "PANEL.SPR:27"
+    },
+    "panel_08": {
+      "file": "sprites/props/panel_08.png",
+      "w": 18,
+      "h": 19,
+      "ax": 23,
+      "ay": 15,
+      "src": "PANEL.SPR:28"
+    },
+    "panel_09": {
+      "file": "sprites/props/panel_09.png",
+      "w": 15,
+      "h": 15,
+      "ax": 22,
+      "ay": 13,
+      "src": "PANEL.SPR:29"
+    },
+    "panel_10": {
+      "file": "sprites/props/panel_10.png",
+      "w": 17,
+      "h": 17,
+      "ax": 23,
+      "ay": 14,
+      "src": "PANEL.SPR:30"
+    },
+    "panel_11": {
+      "file": "sprites/props/panel_11.png",
+      "w": 19,
+      "h": 19,
+      "ax": 24,
+      "ay": 15,
+      "src": "PANEL.SPR:31"
+    },
+    "panel_12": {
+      "file": "sprites/props/panel_12.png",
+      "w": 17,
+      "h": 17,
+      "ax": 23,
+      "ay": 14,
+      "src": "PANEL.SPR:32"
+    },
+    "panel_13": {
+      "file": "sprites/props/panel_13.png",
+      "w": 19,
+      "h": 19,
+      "ax": 24,
+      "ay": 15,
+      "src": "PANEL.SPR:33"
+    },
+    "panel_14": {
+      "file": "sprites/props/panel_14.png",
+      "w": 15,
+      "h": 15,
+      "ax": 22,
+      "ay": 13,
+      "src": "PANEL.SPR:34"
+    },
+    "panel_15": {
+      "file": "sprites/props/panel_15.png",
+      "w": 13,
+      "h": 13,
+      "ax": 21,
+      "ay": 12,
+      "src": "PANEL.SPR:35"
+    },
+    "panel_16": {
+      "file": "sprites/props/panel_16.png",
+      "w": 13,
+      "h": 13,
+      "ax": 21,
+      "ay": 12,
+      "src": "PANEL.SPR:36"
     }
   },
   "anims": {
@@ -2961,6 +3521,88 @@
     ],
     "post": [
       "post"
+    ],
+    "bon": [
+      "bon_00",
+      "bon_01",
+      "bon_02",
+      "bon_03",
+      "bon_04",
+      "bon_05",
+      "bon_06",
+      "bon_07",
+      "bon_08",
+      "bon_09",
+      "bon_10",
+      "bon_11",
+      "bon_12",
+      "bon_13",
+      "bon_14",
+      "bon_15",
+      "bon_16",
+      "bon_17",
+      "bon_18",
+      "bon_19",
+      "bon_20",
+      "bon_21",
+      "bon_22",
+      "bon_23"
+    ],
+    "clok": [
+      "clok_00",
+      "clok_01",
+      "clok_02",
+      "clok_03",
+      "clok_04",
+      "clok_05",
+      "clok_06",
+      "clok_07",
+      "clok_08",
+      "clok_09",
+      "clok_10",
+      "clok_11",
+      "clok_12",
+      "clok_13",
+      "clok_14",
+      "clok_15",
+      "clok_16",
+      "clok_17",
+      "clok_18",
+      "clok_19",
+      "clok_20",
+      "clok_21",
+      "clok_22",
+      "clok_23"
+    ],
+    "bvac": [
+      "bvac"
+    ],
+    "bubble": [
+      "bubble"
+    ],
+    "dis": [
+      "dis_00",
+      "dis_01",
+      "dis_02"
+    ],
+    "panel": [
+      "panel_00",
+      "panel_01",
+      "panel_02",
+      "panel_03",
+      "panel_04",
+      "panel_05",
+      "panel_06",
+      "panel_07",
+      "panel_08",
+      "panel_09",
+      "panel_10",
+      "panel_11",
+      "panel_12",
+      "panel_13",
+      "panel_14",
+      "panel_15",
+      "panel_16"
     ]
   },
   "hammerBySlot": {

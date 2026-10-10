@@ -217,6 +217,13 @@ io.on('connection', (socket) => {
     console.log(`[object_hit] room=${room.code} socket=${socket.id} objectId=${data.objectId}`);
   });
 
+  // --- time_bonus ---
+  socket.on(EVENTS.TIME_BONUS, (data = {}) => {
+    const room = rooms.getPlayerRoom(socket.id);
+    if (!room) return;
+    room.addTime(data.seconds);
+  });
+
   // --- disconnect ---
   socket.on('disconnect', () => {
     const room = rooms.getPlayerRoom(socket.id);

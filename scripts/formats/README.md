@@ -1614,7 +1614,8 @@ turns at ±0.92, ±1.37, ±1.83, ±2.29 (0xa43f8). Word +0x1e is how many
 times it does so (1, 2, 4; 0 for ever); spent, it rises off the screen.
 
 **The panel** (class 46, `PANEL.SPR` frame 17, one in each of 21 levels).
-A secret: locked in a block, drawn with six layers that shift with the
+A secret — standing free (18), or locked in a block (3, word +0xe = 2)
+until the block dies — drawn with six layers that shift with the
 camera for a 3-D look and a twinkle at random spots. Freed, it sits; Jack
 touching it (outcome 16) takes it — `level_state +0x18` goes up by one,
 a count the game hands back to the front end (F.EXE) — with 32 sparks.

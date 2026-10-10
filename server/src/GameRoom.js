@@ -109,6 +109,19 @@ class GameRoom {
   }
 
   /**
+   * Time onto the level's clock — a bonus clock taken (the original adds
+   * 25 seconds, VA 0x12096). Everyone sees the new time at once.
+   * @param {number} seconds
+   */
+  addTime(seconds) {
+    if (this.state !== 'playing') return;
+    const add = Math.max(0, Math.min(600, Math.floor(Number(seconds) || 0)));
+    if (!add) return;
+    this.timeLeft += add;
+    this._emit(EVENTS.TIMER_TICK, { timeLeft: this.timeLeft });
+  }
+
+  /**
    * Handle a destructible object being hit.
    * @param {string} socketId
    * @param {string} objectId

@@ -9,6 +9,7 @@ const EVENTS = {
   PLAYER_UPDATE: 'player_update',
   BELL_HIT: 'bell_hit',
   OBJECT_HIT: 'object_hit',
+  TIME_BONUS: 'time_bonus',      // a clock taken: seconds onto the level's timer
 
   // Server → Client
   ROOM_CREATED: 'room_created',
