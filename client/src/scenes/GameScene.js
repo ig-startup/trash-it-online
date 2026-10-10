@@ -5,27 +5,39 @@ import SocketManager from '../network/SocketManager.js';
 import {
   EVENTS, PLAYER_COLORS, HAMMER, hammerForce,
 } from '../../../shared/constants.mjs';
-import { getLevel, nextLevelId, DEFAULT_LEVEL_ID } from '../levels';
+import {
+  BUNDLED, levelIdOr, levelUrl, nextLevelId, DEFAULT_LEVEL_ID,
+} from '../levels';
 import { WORLD_COLORS } from '../palette';
 import { buildBackground } from '../entities/drawBackground';
 import { preloadRealJackFrames } from '../entities/jackSprites';
 import { preloadProps, hasProps, PROP_ANIMS, applyPropFrame } from '../entities/props';
 import LooseObjects from './looseObjects';
+import Rubble from './rubble';
+import Collapse from './collapse';
+import Cannons from './cannons';
+import Suckers from './suckers';
+import Tellies from './tellies';
+import Ufos from './ufos';
+import Seesaws from './seesaws';
+import Gits from './gits';
+import Bonuses from './bonuses';
+import {
+  COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
+} from './blockKinds';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
 const FORCE_MAX_VISITS = 600; // guard: a blow decays fast, but not in one frame
 const TILE = 8;              // px — the original's collision-map cell
+const VIEW_WIDTH = 320;      // px of the level on screen at once, as in the original
+const VIEW_HEIGHT = 200;
 /** Player states during which a swing connects (see STATES in Player.js). */
 const STRIKE_STATES = new Set(['strikeSide', 'strikeOver']);
-const RUBBLE_LIMIT = 120;    // pieces kept on screen before the oldest goes
-const RUBBLE_SPREAD = 90;    // px/s sideways, randomised as the game does
-const RUBBLE_LIFT = 260;     // px/s upward kick
-const TIMMY_FRAME_MS = 120;  // timmy walk-cycle rate
-const HOOVER_HEIGHT = 20;    // px above his feet the nozzle sits
-const HOOVER_REACH = 110;    // px the suction reaches — ours, not the game's
-const HOOVER_SWALLOW = 16;   // px at which a timmy is taken
-const HOOVER_PULL = 3.2;     // px per tick a caught timmy is drawn in
+// The debris masks a blow throws rubble with: the sledge v1's record
+// +0x34 / +0x38 for the hammer, 0x3ffff for the blast (VA 0x1f8c5).
+const HAMMER_RUBBLE_MASK = 4095;
+const BLAST_RUBBLE_MASK = 0x3ffff;
 // Dynamite, all from the original (see "Dynamite" in scripts/formats/README.md).
 // The fuse: 35 ticks of the lit stick hopping, 25 of the flame, then ten
 // steps of eleven ticks counting down (VA 0x1d4ec → 0x1d584 → 0x1d60b).
@@ -54,7 +66,8 @@ export default class GameScene extends Phaser.Scene {
     this._roomCode = data.roomCode || '';
     this._players = data.players || [];
     this._mode = data.mode || 'coop';
-    this._levelId = data.levelId || DEFAULT_LEVEL_ID;
+    this._levelId = levelIdOr(data.levelId || DEFAULT_LEVEL_ID);
+    this._level = null;
     this._myPlayerId = data.myPlayerId || (data.players && data.players[0] ? data.players[0].id : 'local');
     this._hostId = data.hostId || null;
   }
@@ -63,9 +76,23 @@ export default class GameScene extends Phaser.Scene {
     preloadRealJackFrames(this);
     preloadProps(this);
 
-    // Levels converted from the original game bring their own artwork:
-    // one texture per building block plus the wall behind them.
-    const level = getLevel(this._levelId);
+    // A converted level is served, not bundled: its data comes first, and
+    // then the artwork it names — one texture of building blocks plus the
+    // wall behind them.
+    const id = this._levelId;
+    const key = `leveldata_${id}`;
+    if (BUNDLED[id]) {
+      this._useLevel(BUNDLED[id]);
+    } else if (this.cache.json.exists(key)) {
+      this._useLevel(this.cache.json.get(key));
+    } else {
+      this.load.once(`filecomplete-json-${key}`, (_k, _t, data) => this._useLevel(data));
+      this.load.json(key, levelUrl(id));
+    }
+  }
+
+  /** Takes a level's data, and queues the artwork it names. */
+  _useLevel(level) {
     this._level = level;
     if (level.background) {
       this.load.image(this._bgKey(level), level.background);
@@ -88,9 +115,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
-    const level = this._level || getLevel(this._levelId);
+    const level = this._level;
     const levelWidth = level.widthTiles * level.tileSize;
     const levelHeight = level.heightTiles * level.tileSize;
+    // The street the map stands in: the floor runs past both side edges,
+    // and players start and bells stand on it (see export_level.STREET).
+    const streetLeft = level.ground ? level.ground.x : 0;
+    const streetRight = level.ground ? level.ground.x + level.ground.width : levelWidth;
 
     // ── Background ────────────────────────────────────────────────────────────
     if (level.background && this.textures.exists(this._bgKey(level))) {
@@ -99,8 +130,9 @@ export default class GameScene extends Phaser.Scene {
       // the `.SCN` screen is cropped off by the exporter, because tiling
       // it laid a grey band across the level every 200 pixels.
       const src = this.textures.get(this._bgKey(level)).getSourceImage();
+      const x0 = Math.floor(streetLeft / src.width) * src.width;
       for (let y = 0; y < levelHeight; y += src.height) {
-        for (let x = 0; x < levelWidth; x += src.width) {
+        for (let x = x0; x < streetRight; x += src.width) {
           this.add.image(x, y, this._bgKey(level)).setOrigin(0, 0).setDepth(-10);
         }
       }
@@ -130,6 +162,22 @@ export default class GameScene extends Phaser.Scene {
       ).setVisible(false);
       this.physics.add.existing(floor, true);
       this._platforms.add(floor);
+
+      // A post closes each end of the street (VA 0x2f623), the right one
+      // mirrored, and nobody walks past it.
+      if (hasProps(this) && PROP_ANIMS.post) {
+        [[streetLeft, false], [streetRight, true]].forEach(([x, flip]) => {
+          const post = this.add.image(x, g.y, PROP_ANIMS.post[0]).setDepth(-5);
+          applyPropFrame(post, PROP_ANIMS.post[0]);
+          post.setFlipX(flip);
+        });
+      }
+      [streetLeft - 16, streetRight].forEach((x) => {
+        const wall = this.add.rectangle(x + 8, levelHeight / 2, 16, levelHeight * 2)
+          .setVisible(false);
+        this.physics.add.existing(wall, true);
+        this._platforms.add(wall);
+      });
     }
 
     // ── Destructibles (rubble, original palette) ────────────────────────────────
@@ -159,8 +207,11 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.existing(rect, true);
       }
       this._destructibles.add(rect);
+      const col = d.col === undefined ? COL.SOLID : d.col;
+      applyCollisionKind(rect.body, col);
+      rect.setData('col', col);
       const entry = {
-        rect, id: d.id, hp: d.hp, solid: !!d.solid,
+        rect, id: d.id, hp: d.hp, solid: !!d.solid, col,
         width: d.width, height: d.height,
         tx: Math.round(d.x / this._tile), ty: Math.round(d.y / this._tile),
         tw: Math.max(1, Math.round(d.width / this._tile)),
@@ -182,20 +233,6 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.existing(this._bellGraphics, true);
     this._bellHit = false;
 
-    // ── Timmies ───────────────────────────────────────────────────────────
-    // The most common object in the game: about 2000 records across the
-    // archive, from three classes that all spawn TIMMY.SPR. They are
-    // drawn and counted here; collecting them is the hoover's job and
-    // the hoover is not built, so nothing picks them up yet.
-    this._timmies = [];
-    (level.timmies || []).forEach((t) => {
-      if (!hasProps(this)) return;
-      const sprite = this.add.image(t.x, t.y, PROP_ANIMS.timmy[0]).setDepth(2);
-      applyPropFrame(sprite, PROP_ANIMS.timmy[0]);
-      sprite.setData('phase', Math.random() * 1000);
-      this._timmies.push(sprite);
-    });
-
     // ── Dynamite ──────────────────────────────────────────────────────────
     // 202 placements across 42 levels, of two kinds: 63 that a hammer
     // lights — the overhead strike, which is the blow that reaches sprites
@@ -209,6 +246,38 @@ export default class GameScene extends Phaser.Scene {
       applyPropFrame(stick, PROP_ANIMS.dyna[0]);
       this._dynamite.push({ sprite: stick, lit: 0, litBy: d.lit_by || 'touch' });
     });
+
+    // ── Cannons ───────────────────────────────────────────────────────────
+    // On wheels they are what his pushing stance takes hold of. Made
+    // before him, so he is drawn in front of what he pushes.
+    this._cannons = hasProps(this) && PROP_ANIMS.cwhl
+      ? new Cannons(this, level.cannons || [], (x, y) => this._blockAt(x, y),
+        level.ground ? level.ground.y : levelHeight,
+        (h, x, y, vx, vy) => {
+          h.inside = null;
+          this._loose.throw(h, x, y, vx, vy);
+        })
+      : null;
+
+    // ── Teleporters (.OB class 27) ────────────────────────────────────────
+    // Made before him too: he stands in their beams, not behind them.
+    this._tellies = hasProps(this) && PROP_ANIMS.telly && (level.tellies || []).length
+      ? new Tellies(this, level.tellies, (x, y) => this._blockAt(x, y),
+        level.ground ? level.ground.y : levelHeight)
+      : null;
+    if (this._tellies) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._tellies.destroy());
+
+    // ── Cannonballs (.OB class 7) ─────────────────────────────────────────
+    // Things to pick up, like the dynamite — and what a cannon fires.
+    this._balls = [];
+    (level.balls || []).forEach((b) => {
+      if (!hasProps(this) || !PROP_ANIMS.ball) return;
+      const key = PROP_ANIMS.ball[b.big ? 1 : 0];
+      const sprite = this.add.image(b.x, b.y, key).setDepth(2);
+      applyPropFrame(sprite, key);
+      this._balls.push({ sprite, big: !!b.big });
+    });
+    if (this._cannons) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._cannons.destroy());
 
     // ── Local player ─────────────────────────────────────────────────────────
     const myPlayerData = this._players.find((p) => p.id === this._myPlayerId)
@@ -233,16 +302,184 @@ export default class GameScene extends Phaser.Scene {
     // ── What can be picked up ─────────────────────────────────────────────
     this._loose = new LooseObjects(this,
       () => [...this._platforms.getChildren(), ...this._destructibles.getChildren()],
-      levelHeight + 120);
+      levelHeight + 120, {
+        // A ball coming down into a cannon's bowl is taken in (VA 0x20c15).
+        falling: (h) => {
+          if (this._seesaws && this._seesaws.fallingLoose(h, this._seesawHooks)) return true;
+          const taken = (h.kind === 'ball' && this._cannons && this._cannons.tryLoad(h))
+            || (this._suckers && this._suckers.catchLoose(h));
+          if (!taken) return false;
+          h.inside = true;
+          h.flying = false;
+          h.vx = 0;
+          h.vy = 0;
+          return true;
+        },
+        impact: (h, hit) => this._ballImpact(h, hit),
+      });
     this._dynamite.forEach((d) => {
       if (d.litBy === 'hammer') d.handle = this._loose.add(d.sprite, 'dynamite');
     });
-    this._timmies.forEach((t) => this._loose.add(t, 'timmy'));
+    this._balls.forEach((b) => { this._loose.add(b.sprite, 'ball').big = b.big; });
+    this._suckers = hasProps(this) && PROP_ANIMS.sucker
+      ? new Suckers(this, level.suckers || [], this._loose)
+      : null;
+    if (this._suckers) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._suckers.destroy());
+
+    // ── Seesaws and the 20-ton weights ────────────────────────────────────
+    // .OB classes 0 and 1, in 43 and 42 levels. See seesaws.js.
+    this._seesawHooks = {
+      launchJack: (pl, x, y, vy) => pl.thrownUp(x, y, vy),
+    };
+    (level.weights || []).forEach((w) => {
+      if (!hasProps(this) || !PROP_ANIMS.lead) return;
+      const sprite = this.add.image(w.x, w.y, PROP_ANIMS.lead[0]).setDepth(2);
+      applyPropFrame(sprite, PROP_ANIMS.lead[0]);
+      this._loose.add(sprite, 'lead');
+    });
+    this._seesaws = hasProps(this) && PROP_ANIMS.bcsaw && (level.seesaws || []).length
+      ? new Seesaws(this, level.seesaws, this._loose,
+        (x, y) => {
+          const ground = level.ground ? level.ground.y : levelHeight;
+          const top = floorUnder((bx, by) => this._blockAt(bx, by), x, y - 1, Math.min(y + 64, ground));
+          return top ?? (y + 64 >= ground ? ground : y);
+        })
+      : null;
+    if (this._seesaws) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._seesaws.destroy());
     this._player.findPickup = (x, y) => this._loose.find(x, y, this._player.getBounds());
+    this._player.findCrusher = () => {
+      if (!this._collapse) return null;
+      const b = this._player.body;
+      return this._collapse.over(b.left, b.right, b.top, b.bottom);
+    };
+    // Ladders: the probes his climbing states make of the tile map.
+    const blockAt = (x, y) => this._blockAt(x, y);
+    const bottom = level.ground ? level.ground.y : levelHeight;
+    this._player.ladder = {
+      at: (x, feet) => ladderAt(blockAt, x, feet),
+      topUnder: (x, feet) => ladderTopUnder(blockAt, x, feet),
+      topAt: (x, y) => { const b = blockAt(x, y); return b ? b.top : null; },
+      floor: (x, from, to) => (to >= bottom ? bottom : floorUnder(blockAt, x, from, to)),
+    };
     this._player.on('pickup', (h) => this._loose.pick(h));
     this._player.on('putdown', ({ handle, x, y }) => this._loose.place(handle, x, y));
     this._player.on('throw', ({ handle, x, y, vx, vy }) => this._loose.throw(handle, x, y, vx, vy));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._loose.destroy());
+
+    // ── Gits: timmies, king timmies, spike gits ──────────────────────────
+    // The most common things in the game. Placed timmies sit locked to
+    // their block until it dies, then walk; the hoover takes them, and
+    // they count. See gits.js.
+    this._gits = hasProps(this) && PROP_ANIMS.timmy
+      ? new Gits(this, level, {
+        blockAt,
+        blockIdAt: (x, y) => {
+          const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+          return id === undefined ? null : id;
+        },
+        blockAlive: (id) => {
+          const e = this._destructibleMap.get(id);
+          return !!(e && e.rect.active);
+        },
+        markerAt: (x, y) => {
+          const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+          const e = id === undefined ? null : this._destructibleMap.get(id);
+          return e && e.rect.active ? e.marker || 0 : 0;
+        },
+        groundY: bottom,
+        width: levelWidth,
+        loose: this._loose,
+        shake: () => this.cameras.main.shake(120, 0.006),
+        jack: () => this._player,
+        // The bomb's blast (VA 0x329dc): blocks from 15 px up, its force
+        // the level's (rules +0x44 << +0x46), 10 across and 16 up and
+        // down, four of them; the shock at its feet.
+        bombBlast: (x, y) => {
+          this.cameras.main.shake(300, 0.01);
+          this._blast(x, y - 15, this.time.now, {
+            force: level.bombForce || 0, mask: 0x7ffff, spreadX: 10, spreadY: 16, shockAt: { x, y },
+          });
+        },
+        prize: (kind, count, x, y, left) => { if (this._bonuses) this._bonuses.prize(kind, count, x, y, left); },
+      })
+      : null;
+    if (this._gits) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._gits.destroy());
+    // ── Bonuses, dispensers, secret panels ───────────────────────────────
+    // .OB classes 33, 8 and 46. See bonuses.js.
+    this._superHoover = 0;     // ticks of the super hoover left (0x3f4024)
+    this._doublePoints = 0;    // ticks of double points left (0x287c52)
+    this._secrets = 0;         // panels taken (level_state +0x18)
+    this._bonuses = hasProps(this) && PROP_ANIMS.dis
+      ? new Bonuses(this, level, {
+        floor: (x, from, to) => floorUnder(blockAt, x, from, to),
+        blockIdAt: (x, y) => {
+          const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+          return id === undefined ? null : id;
+        },
+        blockAlive: (id) => {
+          const e = this._destructibleMap.get(id);
+          return !!(e && e.rect.active);
+        },
+        groundY: bottom,
+        jack: () => this._player,
+        ball: (x, y, vx, vy) => {
+          const key = PROP_ANIMS.ball[0];
+          const sprite = this.add.image(x, y, key).setDepth(2);
+          applyPropFrame(sprite, key);
+          const h = this._loose.add(sprite, 'ball');
+          h.big = false;
+          this._loose.throw(h, x, y, vx, vy);
+        },
+        timmy: (x, y, vx, vy) => { if (this._gits) this._gits.spawnFree(x, y, vx, vy); },
+        addTime: (seconds) => {
+          const sm = SocketManager.getInstance();
+          if (sm.socket) sm.emit(EVENTS.TIME_BONUS, { seconds });
+          this._flashBonus(`+${seconds} СЕК`);
+        },
+        superHoover: (ticks) => { this._superHoover = ticks; },
+        doublePoints: (ticks) => { this._doublePoints = ticks; },
+        secret: () => {
+          this._secrets += 1;
+          this.cameras.main.shake(120, 0.004);
+          this._flashBonus('СЕКРЕТ!');
+        },
+        shake: () => this.cameras.main.shake(120, 0.006),
+      })
+      : null;
+    if (this._bonuses) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bonuses.destroy());
+
+    // Hurt, he loses timmies (spill_timmies, VA 0x338d0): each thrown up
+    // at -6 px/tick with a random kick, and off his count.
+    this._player.on('spill', (count) => {
+      if (!this._gits) return;
+      const n = Math.min(count, this._gits.collected);
+      for (let i = 0; i < n; i += 1) {
+        this._gits.spawnFree(this._player.x, this._player.y - 20, (Math.random() * 2 - 1) * 2, -6);
+      }
+      this._gits.collected -= n;
+      this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
+    });
+
+    // ── UFOs ──────────────────────────────────────────────────────────────
+    // .OB class 31, in 36 levels: they abduct timmies, knock Jack flying,
+    // and land — when one can be hit from above. See ufos.js.
+    this._ufos = hasProps(this) && PROP_ANIMS.ufo && level.ufo
+      ? new Ufos(this, level.ufo, {
+        bounds: { left: 0, right: levelWidth, top: 0, bottom },
+        blockAt,
+        groundY: bottom,
+        jacks: () => [this._player],
+        timmies: () => (this._gits ? this._gits.timmies() : []),
+        loose: this._loose,
+        giveTimmy: (x, y, vx, vy) => { if (this._gits) this._gits.spawnFree(x, y, vx, vy); },
+        explode: (x, y) => {
+          this.cameras.main.shake(300, 0.01);
+          this._blast(x, y, this.time.now);
+        },
+        knock: (pl, speed, spill) => pl.knockedBack(speed, spill),
+      })
+      : null;
+    if (this._ufos) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._ufos.destroy());
 
     // Colliders
     this.physics.add.collider(this._player, this._platforms);
@@ -259,68 +496,104 @@ export default class GameScene extends Phaser.Scene {
     this._but2Key = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
 
     // ── Camera ────────────────────────────────────────────────────────────────
-    this.cameras.main.setBounds(0, 0, levelWidth, levelHeight);
-    this.cameras.main.startFollow(this._player, true, 0.1, 0.1);
+    // The original's screen is 320x240 "mode X" with the play field clipped
+    // to its top 200 lines (the sprite blitter, VA 0x34ed8, stops at x 0x140 and y 200);
+    // the rest is the panel. So the world camera shows exactly 320x200 of
+    // the level, scaled to the canvas width, and the HUD gets the strip
+    // below it, on a camera of its own that does not zoom.
+    const zoom = this.scale.width / VIEW_WIDTH;
+    this.cameras.main
+      .setViewport(0, 0, this.scale.width, VIEW_HEIGHT * zoom)
+      .setZoom(zoom)
+      .setBounds(streetLeft, 0, streetRight - streetLeft, levelHeight)
+      .startFollow(this._player, true, 0.1, 0.1);
+    this._uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height)
+      .setName('hud');
+    // World objects, those made so far and every one made later, stay off
+    // the HUD camera; _hud() moves an object to it.
+    this._uiCam.ignore(this.children.list);
+    this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, (obj) => {
+      this._uiCam.ignore(obj);
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE);
+    });
 
     // ── HUD ───────────────────────────────────────────────────────────────────
+    const panelTop = VIEW_HEIGHT * zoom;
+    const panelH = this.scale.height - panelTop;
+    this._hud(this.add.rectangle(this.scale.width / 2, panelTop + panelH / 2,
+      this.scale.width, panelH, 0x111122));
 
-    // Timer — centered at top
-    this.timerText = this.add.text(400, 16, '3:00', {
+    // Timer — centered in the panel
+    this.timerText = this._hud(this.add.text(400, panelTop + 10, '3:00', {
       fontSize: '32px',
       fill: '#ffffff',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(10);
+    }).setOrigin(0.5, 0).setDepth(10));
 
-    // Mode label — top right
+    // Mode label — panel right
     const modeLabel = this._mode === 'race' ? 'ГОНКА' : 'КООП';
-    this._modeLabelText = this.add.text(784, 16, modeLabel, {
+    this._modeLabelText = this._hud(this.add.text(784, panelTop + 10, modeLabel, {
       fontSize: '20px',
       fill: '#ffff00',
-    }).setOrigin(1, 0).setScrollFactor(0).setDepth(10);
+    }).setOrigin(1, 0).setDepth(10));
 
-    // Player list — top left (colored icon + name per player)
+    // Player list — panel left (colored icon + name per player)
     this._playerListObjects = [];
     const playersData = this._players || [];
     playersData.forEach((p, idx) => {
-      const yPos = 16 + idx * 28;
+      const yPos = panelTop + 6 + idx * 22;
       const colorHex = parseInt((p.color || '#ffffff').replace('#', ''), 16);
-      const icon = this.add.rectangle(16, yPos + 8, 16, 16, colorHex)
-        .setScrollFactor(0).setDepth(10);
-      const nameLabel = this.add.text(30, yPos, p.name || p.id, {
+      const icon = this._hud(this.add.rectangle(16, yPos + 8, 14, 14, colorHex)
+        .setDepth(10));
+      const nameLabel = this._hud(this.add.text(30, yPos, p.name || p.id, {
         fontSize: '14px',
         fill: '#ffffff',
         stroke: '#000000',
         strokeThickness: 2,
-      }).setScrollFactor(0).setDepth(10);
+      }).setDepth(10));
       this._playerListObjects.push(icon, nameLabel);
     });
 
-    // Small room/mode debug line — top left below player list
-    this._modeText = this.add.text(10, 10, `${this._mode === 'race' ? 'ГОНКА' : 'КООП'} | ${this._roomCode}`, {
-      fontSize: '11px',
-      color: '#555555',
-    }).setScrollFactor(0);
+    // Small room/mode debug line — panel bottom right
+    this._modeText = this._hud(this.add.text(784, this.scale.height - 4,
+      `${this._mode === 'race' ? 'ГОНКА' : 'КООП'} | ${this._roomCode}`, {
+        fontSize: '11px',
+        color: '#555555',
+      }).setOrigin(1, 1));
 
-    /** Timmies hoovered up. The game keeps this tally too. */
-    this._timmyCount = 0;
-    this._timmyText = this.add.text(16, 100, `ТИММИ ${this._timmyCount}`, {
+    /** Rubble hoovered up, as the game counts it: area / 16 a piece. */
+    this._rubbleTaken = 0;
+    this._rubbleText = this._hud(this.add.text(784, panelTop + 40, `МУСОР ${this._rubbleTaken}`, {
       fontSize: '16px',
       fill: '#ffcc33',
       stroke: '#000000',
       strokeThickness: 3,
-    }).setScrollFactor(0).setDepth(10);
+    }).setOrigin(1, 0).setDepth(10));
+    /** Timmies hoovered up (the player's +0x64, VA 0x1a036). */
+    this._timmyText = this._hud(this.add.text(784, panelTop + 60, 'ТИММИ 0', {
+      fontSize: '16px',
+      fill: '#ffcc33',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(1, 0).setDepth(10));
 
-    this._debugText = this.add.text(10, 28, '', {
+    this._debugText = this._hud(this.add.text(220, this.scale.height - 4, '', {
       fontSize: '11px',
       color: '#556655',
-    }).setScrollFactor(0);
+    }).setOrigin(0, 1));
 
     // ── Throttle timestamp ────────────────────────────────────────────────────
     this._lastUpdateSent = 0;
 
-    /** Debris from smashed blocks, oldest first. */
-    this._rubble = [];
+    /** Structures that lose their support fall (see collapse.js). */
+    this._collapse = new Collapse(this, level.heightTiles || Math.ceil(levelHeight / this._tile));
+
+    /** What smashed blocks become: see-through rubble the hoover clears. */
+    this._rubble = new Rubble(this, level.ground ? level.ground.y : levelHeight);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._rubble.destroy());
 
     // ── Remote players ────────────────────────────────────────────────────────
     this.remotePlayers = new Map();
@@ -346,13 +619,36 @@ export default class GameScene extends Phaser.Scene {
     // we looked.
     const { JustDown } = Phaser.Input.Keyboard;
     const but2Pressed = JustDown(this._but2Key) || JustDown(this._cursors.space);
+    // The speed physics moved him at this frame, before he sets the next
+    // one: what a cannon he pushes moves at too, or it runs a frame ahead.
+    this._movedVx = this._player.body.velocity.x;
     this._player.update(this._cursors, {
       but1: JustDown(this._but1Key),
       but2: but2Pressed || this._but2Key.isDown || this._cursors.space.isDown,
       but2Pressed,
     }, delta);
 
-    if (this._player.hooverOut) this._suckTimmies();
+    this._collapse.update(delta);
+    // The super hoover takes the rubble from a box 2048 x 1024 ahead of
+    // him, not 32 x 32 (VA 0x61740), and blinks; double points count each
+    // piece twice (VA 0x19fd2).
+    const ticks = (delta * 60) / 1000;
+    this._superHoover = Math.max(0, this._superHoover - ticks);
+    this._doublePoints = Math.max(0, this._doublePoints - ticks);
+    let box = this._player.hooverBox;
+    if (box && this._superHoover > 0) {
+      const ahead = this._player.facingLeft ? this._player.x - 40 - 2048 : this._player.x + 40;
+      box = new Phaser.Geom.Rectangle(ahead, this._player.y - 512, 2048, 1024);
+    }
+    if (this._player.vac) {
+      this._player.vac.setAlpha(this._superHoover > 0 && (this.time.now / (1000 / 60)) & 8 ? 0.5 : 1);
+    }
+    let taken = this._rubble.update(delta, box, this._player.nozzle);
+    if (taken && this._doublePoints > 0) taken *= 2;
+    if (taken) {
+      this._rubbleTaken += taken;
+      this._rubbleText.setText(`МУСОР ${this._rubbleTaken}`);
+    }
 
     // ── Hammer interactions ───────────────────────────────────────────────────
     // Blocks take the blow once, on the frame it lands (the player's
@@ -364,23 +660,32 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this._tickDynamite(time);
+    if (this._cannons) this._tickCannons(delta);
+    if (this._tellies) {
+      if (this._player.state !== 'caught') this._tellies.meet(this._player);
+      this._tellies.update(delta,
+        (pl, x, y, sx, sy) => pl.holdAt(x, y, sx, sy),
+        (pl) => pl.letGo());
+    }
+    if (this._suckers) {
+      if (this._player.state !== 'caught') this._suckers.catchJack(this._player);
+      this._suckers.update(delta,
+        (pl, x, y) => pl.holdAt(x, y),
+        (pl, x, y, vy) => pl.thrownUp(x, y, vy));
+    }
+
+    if (this._ufos) this._ufos.update(delta);
+    if (this._bonuses) this._bonuses.update(delta);
+    if (this._gits) {
+      const got = this._gits.update(delta, this._player.hooverBox, this._player.nozzle);
+      if (got) this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
+    }
+    if (this._seesaws) this._seesaws.update(this._player, this._seesawHooks);
 
     // A stick that goes off in his hands is gone from them.
     const held = this._player.carried;
     if (held && !held.sprite.active) this._player.dropCarried();
     this._loose.update(delta, this._player.carried ? this._player.carryPoint : null, this._player.aim);
-
-    // Timmies mill about on the spot; each keeps its own phase so they
-    // do not step in unison.
-    if (this._timmies.length) {
-      const frames = PROP_ANIMS.timmy;
-      this._timmies.forEach((t) => {
-        if (!t.active) return;
-        const i = Math.floor((time + t.getData('phase')) / TIMMY_FRAME_MS)
-          % frames.length;
-        applyPropFrame(t, frames[i]);
-      });
-    }
 
     // ── Throttled player update (for future socket send) ──────────────────────
     if (time - this._lastUpdateSent >= PLAYER_UPDATE_INTERVAL) {
@@ -407,6 +712,26 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Put a game object on the HUD camera instead of the world one.
+   * @template T
+   * @param {T} obj
+   * @returns {T}
+   */
+  /** A word in the middle of the panel for a moment — a bonus taken. */
+  _flashBonus(text) {
+    const t = this._hud(this.add.text(this.scale.width / 2, this.scale.height - 60, text, {
+      fontFamily: 'monospace', fontSize: '22px', fill: '#ffee55', stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(1000));
+    this.tweens.add({ targets: t, alpha: 0, y: t.y - 20, duration: 1200, onComplete: () => t.destroy() });
+  }
+
+  _hud(obj) {
+    this.cameras.main.ignore(obj);
+    obj.cameraFilter &= ~this._uiCam.id;
+    return obj;
+  }
 
   /**
    * The cells a blow lands in, in the order the original visits them
@@ -482,11 +807,39 @@ export default class GameScene extends Phaser.Scene {
     // Only the overhead blow reaches sprites, and of the dynamite only the
     // kind a hammer lights listens for it.
     if (!overhead) return;
+    if (this._cannons) this._cannons.hit(reach);
+    if (this._suckers) this._suckers.hit(reach);
+    if (this._ufos) this._ufos.hit(reach);
+    if (this._seesaws) this._seesaws.hit(reach, this._seesawHooks);
+    if (this._gits) this._gits.hit(reach);
+    if (this._bonuses) this._bonuses.hit(reach);
     this._dynamite.forEach((d) => {
       if (d.lit || d.litBy !== 'hammer' || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {
         d.lit = this.time.now + FUSE_MS;
       }
+    });
+  }
+
+  /**
+   * Pushing (VA 0x28771 → 0x27f96): in the stance, he takes hold of a
+   * cannon on wheels his box overlaps, and while it still does it rolls at
+   * his speed. Out of the stance, or apart, it rolls on by itself.
+   */
+  _tickCannons(delta) {
+    const pl = this._player;
+    const bounds = pl.getBounds();
+    if (pl.pushing && !this._cannons.all.some((c) => c.heldBy === pl)) {
+      const c = this._cannons.find(bounds, pl.facingLeft);
+      if (c) c.heldBy = pl;
+    }
+    this._cannons.update(delta, (c) => {
+      if (c.heldBy !== pl) return null;
+      if (!pl.pushing || !this._cannons.touches(c, pl.getBounds())) {
+        c.heldBy = null;
+        return null;
+      }
+      return this._movedVx / 60;
     });
   }
 
@@ -520,9 +873,15 @@ export default class GameScene extends Phaser.Scene {
    * patch — striking up to four blocks, and travelling both down and up
    * through what they touch. At twenty million it breaks everything it
    * reaches, which is how a stick flattens what a hammer only chips. Then
-   * a shock 70 px either way sets off any stick it catches.
+   * a shock 70 px either way sets off any stick it catches and throws Jack
+   * (VA 0x2bc86). A bomb's blast is the same with its own force, mask and
+   * spread (`opts`), the shock at its feet.
    */
-  _blast(x, y, time) {
+  _blast(x, y, time, opts = {}) {
+    const {
+      force = BLAST_FORCE, mask = BLAST_RUBBLE_MASK, spreadX = BLAST_SPREAD, spreadY = BLAST_SPREAD,
+      shockAt = { x, y },
+    } = opts;
     if (hasProps(this)) {
       const boom = this.add.image(x, y, PROP_ANIMS.blast[0]).setDepth(6);
       applyPropFrame(boom, PROP_ANIMS.blast[0]);
@@ -538,20 +897,27 @@ export default class GameScene extends Phaser.Scene {
       });
     }
     const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
-    const steps = [0, BLAST_SPREAD, -BLAST_SPREAD];
-    let left = BLAST_STRIKES;
-    steps.forEach((sy) => steps.forEach((sx) => {
+    const stepsX = [0, spreadX, -spreadX];
+    const stepsY = [0, spreadY, -spreadY];
+    let left = force > 0 ? BLAST_STRIKES : 0;
+    stepsY.forEach((sy) => stepsX.forEach((sx) => {
       if (left <= 0) return;
       const cx = Math.floor((Math.round(x) + sx) / 8) * 8 + 4;
       const cy = Math.floor((Math.round(y) + sy) / 8) * 8 + 4;
       const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(cx, cy));
       if (!hit) return;
-      this._applyForce(hit, BLAST_FORCE, 0, undefined, { down: true, up: true });
+      this._applyForce(hit, force, 0,
+        { tally: new Map(), visits: 0, mask }, { down: true, up: true });
       left -= 1;
     }));
 
-    const shock = new Phaser.Geom.Rectangle(x - BLAST_SHOCK, y - BLAST_SHOCK,
+    // The shock (VA 0x1d8d1) reaches Jack too: pushed, and hurt up close.
+    const shock = new Phaser.Geom.Rectangle(shockAt.x - BLAST_SHOCK, shockAt.y - BLAST_SHOCK,
       BLAST_SHOCK * 2, BLAST_SHOCK * 2);
+    if (Phaser.Geom.Intersects.RectangleToRectangle(shock, this._player.getBounds())) {
+      this._player.blasted(shockAt.x, shockAt.y);
+    }
+    if (this._gits) this._gits.blasted(shockAt.x, shockAt.y, shock);
     this._dynamite.forEach((d) => {
       if (d.lit || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(shock, d.sprite.getBounds())) d.lit = time + FUSE_MS;
@@ -606,9 +972,10 @@ export default class GameScene extends Phaser.Scene {
 
     entry.hp -= force;
     blow.tally.set(entry.id, (blow.tally.get(entry.id) || 0) + force);
+    if (this._collapse) this._collapse.touch();   // any hit sets the dirty flag
 
     if (entry.hp <= 0) {
-      this._throwRubble(entry);
+      this._rubble.add(entry.rect, blow.mask || HAMMER_RUBBLE_MASK);
       this._forgetBlock(entry);
     } else if (entry.rect.setFillStyle) {
       entry.rect.setFillStyle(WORLD_COLORS.rubbleDark); // plain rectangle
@@ -646,13 +1013,77 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Take a destroyed block out of the world and out of the map. */
-  _forgetBlock(entry) {
+  /**
+   * A cannonball striking a block (VA 0x1f36d from above, 0x1f28c from the
+   * side): only at 5 px/tick and over coming down, 3 sideways, and with the
+   * force of its weight doubled for every px/tick over 2 — halved coming
+   * down, where it goes into the block both ways. The big ball weighs
+   * 50000 to the small one's 5, and throws its rubble wider.
+   */
+  _ballImpact(h, { x, y, speed, side, dir }) {
+    if (h.kind !== 'ball' && h.kind !== 'lead') return;
+    const sp = Math.floor(speed);
+    if (sp < (side ? 3 : 5)) return;
+    // the weight's mass is its +0x4c, 25 (VA 0x1e6c3)
+    const mass = h.kind === 'lead' ? 25 : h.big ? 50000 : 5;
+    const force = side ? mass * 2 ** (sp - 2) : (mass * 2 ** (sp - 2)) / 2;
+    const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+    const entry = id === undefined ? null : this._destructibleMap.get(id);
+    if (!entry) return;
+    const mask = mass > 40000 ? 0x7ffff : 0x3fff;
+    const blow = () => ({ tally: new Map(), visits: 0, mask });
+    if (side) {
+      this._applyForce(entry, force, 0, blow(), dir > 0 ? { down: true, up: false } : { down: false, up: true });
+    } else {
+      this._applyForce(entry, force, 0, blow(), { down: false, up: true });
+      this._applyForce(entry, force, 0, blow(), { down: true, up: false });
+    }
+  }
+
+  /**
+   * The block whose cell holds a point, as the probes see it (VA 0x60301):
+   * its collision kind and its top. Null for an empty cell.
+   */
+  _blockAt(x, y) {
+    if (x < 0 || y < 0 || x >= this._gridW * this._tile) return null;
+    const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+    const entry = id === undefined ? null : this._destructibleMap.get(id);
+    if (!entry || !entry.rect.active) return null;
+    return { col: entry.col, top: entry.ty * this._tile };
+  }
+
+  /** Clear a block's cells from the collision map (VA 0x68980). */
+  _unstampCells(entry) {
     for (let dy = 0; dy < entry.th; dy += 1) {
       for (let dx = 0; dx < entry.tw; dx += 1) {
         const key = (entry.ty + dy) * this._gridW + entry.tx + dx;
         if (this._cellOwner.get(key) === entry.id) this._cellOwner.delete(key);
       }
+    }
+  }
+
+  /**
+   * A falling group has come down on `hit`, `hitter` first: the impact goes
+   * down into the one and up into the other (VA 0x68b2d → 0x689e6 / 0x68a91),
+   * and shakes the screen by how hard it was.
+   */
+  _landed(hit, hitter, force) {
+    if (force > 0) {
+      this._applyForce(hit, force, 0, undefined, { down: true, up: false });
+      if (hitter && hitter.rect.active) {
+        this._applyForce(hitter, force, 0, undefined, { down: false, up: true });
+      }
+    }
+    const shake = Math.min(0.012, force / 400000);
+    if (shake > 0.0015) this.cameras.main.shake(120, shake);
+  }
+
+  /** Take a destroyed block out of the world and out of the map. */
+  _forgetBlock(entry) {
+    this._unstampCells(entry);
+    if (this._collapse) {
+      this._collapse.falling.delete(entry.id);
+      this._collapse.touch();
     }
     if (entry.rect.active) {
       entry.rect.destroy();
@@ -685,61 +1116,6 @@ export default class GameScene extends Phaser.Scene {
       if (id !== undefined) out.push(id);
     }
     return out;
-  }
-
-  _throwRubble(entry) {
-    if (this._rubble.length >= RUBBLE_LIMIT) {
-      const oldest = this._rubble.shift();
-      if (oldest && oldest.active) oldest.destroy();
-    }
-    const src = entry.rect;
-    const piece = src.texture && src.frame
-      ? this.add.image(src.x, src.y, src.texture.key, src.frame.name)
-      : this.add.rectangle(src.x, src.y, entry.width, entry.height,
-        WORLD_COLORS.rubbleBrown);
-    piece.setDepth(1);   // in front of the blocks, behind the HUD
-    this.physics.add.existing(piece);
-    piece.body.setVelocity(
-      Phaser.Math.Between(-RUBBLE_SPREAD, RUBBLE_SPREAD),
-      Phaser.Math.Between(-RUBBLE_LIFT, -RUBBLE_LIFT / 3),
-    );
-    piece.body.setCollideWorldBounds(false);
-    this.physics.add.collider(piece, this._platforms);
-    this.physics.add.collider(piece, this._destructibles);
-    this._rubble.push(piece);
-  }
-
-  /**
-   * The hoover pulls nearby timmies in and swallows them.
-   *
-   * The game's own reach and pull strength are not decoded — the sucker
-   * is its own object class, 154 of them across 72 levels — so the
-   * numbers here are ours. What is the game's is that the hoover is what
-   * collects timmies at all, and that they are counted: the level state
-   * keeps a timmy tally alongside rubble and the clock.
-   */
-  _suckTimmies() {
-    if (!this._timmies.length) return;
-    const jx = this._player.x;
-    const jy = this._player.y - HOOVER_HEIGHT;
-    for (let i = this._timmies.length - 1; i >= 0; i -= 1) {
-      const t = this._timmies[i];
-      if (!t.active) { this._timmies.splice(i, 1); continue; }
-      if (this._loose.isBusy(t)) continue;
-      const dx = jx - t.x;
-      const dy = jy - t.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist > HOOVER_REACH) continue;
-      if (dist < HOOVER_SWALLOW) {
-        t.destroy();
-        this._timmies.splice(i, 1);
-        this._timmyCount += 1;
-        if (this._timmyText) this._timmyText.setText(`ТИММИ ${this._timmyCount}`);
-        continue;
-      }
-      t.x += (dx / dist) * HOOVER_PULL;
-      t.y += (dy / dist) * HOOVER_PULL;
-    }
   }
 
   _checkHammerBell() {
@@ -810,30 +1186,29 @@ export default class GameScene extends Phaser.Scene {
    *   server's `game_started` gets there first; this is the offline path.
    */
   showResultOverlay(title, subtitle, options = {}) {
-    const { width, height } = this.cameras.main;
+    const { width, height } = this.scale;
     const cx = width / 2;
     const cy = height / 2;
 
     // Semi-transparent black background
-    this.add.rectangle(cx, cy, width, height, 0x000000, 0.75)
-      .setScrollFactor(0)
-      .setDepth(100);
+    this._hud(this.add.rectangle(cx, cy, width, height, 0x000000, 0.75)
+      .setDepth(100));
 
     // Title text
-    this.add.text(cx, cy - 60, title, {
+    this._hud(this.add.text(cx, cy - 60, title, {
       fontSize: '48px',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+    }).setOrigin(0.5).setDepth(101));
 
     // Subtitle text
-    this.add.text(cx, cy, subtitle, {
+    this._hud(this.add.text(cx, cy, subtitle, {
       fontSize: '24px',
       color: '#cccccc',
       stroke: '#000000',
       strokeThickness: 2,
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+    }).setOrigin(0.5).setDepth(101));
 
     // Countdown text
     const { nextLevel } = options;
@@ -841,10 +1216,10 @@ export default class GameScene extends Phaser.Scene {
       ? `Следующий уровень через ${n}...`
       : `Возврат в меню через ${n}...`);
     let countdown = 3;
-    const countdownText = this.add.text(cx, cy + 60, label(countdown), {
+    const countdownText = this._hud(this.add.text(cx, cy + 60, label(countdown), {
       fontSize: '18px',
       color: '#aaaaaa',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+    }).setOrigin(0.5).setDepth(101));
 
     const timer = this.time.addEvent({
       delay: 1000,
@@ -906,7 +1281,7 @@ export default class GameScene extends Phaser.Scene {
     // Game started — create RemotePlayer for each other player
     sm.on(EVENTS.GAME_STARTED, (data = {}) => {
       const players = data.players || [];
-      const level = this._level || getLevel(this._levelId);
+      const level = this._level;
       players.forEach((p, idx) => {
         if (p.id === this._myPlayerId) return;
         const spawn = level.spawnPoints[Math.max(0, idx)] || level.spawnPoints[0];
@@ -958,7 +1333,10 @@ export default class GameScene extends Phaser.Scene {
     // An object was destroyed on the server side
     sm.on(EVENTS.OBJECT_DESTROYED, ({ objectId } = {}) => {
       const entry = this._destructibleMap.get(objectId);
-      if (entry && entry.rect.active) this._forgetBlock(entry);
+      if (entry && entry.rect.active) {
+        this._rubble.add(entry.rect, HAMMER_RUBBLE_MASK);
+        this._forgetBlock(entry);
+      }
     });
   }
 }

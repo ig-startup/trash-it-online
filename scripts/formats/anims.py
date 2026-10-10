@@ -178,7 +178,18 @@ def table(exe):
 HAMMER_TABLE_VA = 0x9ff88
 
 
-def hammer_lists(exe, jack=None, raw=False):
+#: The hoover's lists, same shape as the hammer's, of VAC.SPR frames
+#: (VA 0x615ca reads `[slot*4 + 0xa47c4]`). Only slots 8, 9, 28, 29, 70
+#: and 71 have one.
+HOOVER_TABLE_VA = 0xa47c4
+
+
+def hoover_lists(exe, jack=None):
+    """-> {slot: [VAC.SPR words]}, raw, as hammer_lists(raw=True)."""
+    return hammer_lists(exe, jack, raw=True, table_va=HOOVER_TABLE_VA)
+
+
+def hammer_lists(exe, jack=None, raw=False, table_va=HAMMER_TABLE_VA):
     """
     -> {slot: [SPA.SPR frame numbers]}, each as long as Jack's list.
 
@@ -191,8 +202,8 @@ def hammer_lists(exe, jack=None, raw=False):
     jack = jack or table(exe)
     out = {}
     for slot, info in jack.items():
-        va = code.u32(HAMMER_TABLE_VA + 4 * slot)
-        if not va:
+        va = code.u32(table_va + 4 * slot)
+        if not va or not 0x90000 <= va < 0xb0000:
             continue
         words = [struct.unpack_from('<H', code.read(va + 2 * k, 2), 0)[0]
                  for k in range(len(info['frames']))]

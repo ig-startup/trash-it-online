@@ -1,0 +1,34 @@
+# The UFO (.OB class 31, BON/UFO.SPR) — read whole; see README "The UFO".
+# Its own fields: +0x54/+0x58 the point it steers to, +0x5c the timmy it is
+# taking, +0x60 the Jack it is after, +0x66..+0x6c the four action periods
+# and +0x6e..+0x74 their countdowns, +0x78 timmies stolen.
+0x1315c  f  ufo_set_params                 ; preset from the 16-byte table at 0x93b58, then every non-zero .OB field overrides it
+0x137dd  f  ufo_pick_roam_point            ; the level's centre ± random, kept 80 px above the bottom
+0x138b7  f  cell_solid_at                  ; ? the live tile under a point has a collision kind, or the point is below the level
+0x138f3  f  ufo_aim_land_near_jack         ; ~100 px above a random Jack, pulled toward him until the point is clear
+0x139d1  f  ufo_aim_above_jack             ; 150 px above a random Jack, ± a random step
+0x13a48  f  ufo_speed_band                 ; |vx| in 1 px/tick steps from 1.5 → 0, 1, 2, …
+0x13adb  f  ufo_steer                      ; v += (target - pos) / 64, then damped by 1/8, at most 5 px/tick; moves; retunes its hum
+0x13ba3  f  ufo_steer_over_timmy           ; the same, toward 120 px above the timmy, by 1/32
+0x13c5a  f  ufo_steer_over_jack            ; the same, toward 120 px above Jack, by 1/8
+0x142f5  f  find_free_timmy                ; the first TIMMY.SPR in the sprite list that nothing holds, carries or links
+0x14326  f  random_jack                    ; players[random].jack
+0x14897  f  ufo_spark                      ; a child at an offset, flung with a random kick — while hit and while dying
+0x14b8c  f  ufo_wreck                      ; ? the two pieces it breaks into
+0x14935  f  ufo_hit                        ; hit from above while landed: stolen count halves (rounding up), one timmy dropped every 32 ticks, then ufo_dying
+0x14a11  f  ufo_dying                      ; shakes 120 ticks, then two blasts, the blocks round it, a flash, and it is gone
+0x14da4  f  ufo_hit_sub_14da4              ; only called from ufo_hit
+0x13ca1  f  ufo_roam                       ; start state: drifts to random points; the four countdowns pick the next action
+0x13dd2  f  ufo_go_land                    ; action 1 (period +0x66): flies over a Jack
+0x13ee3  f  ufo_descend                    ; drops at 2.5 px/tick, braking, until it meets floor
+0x14013  f  ufo_landed                     ; frames 0x12-0x16; the overhead blow (flag 0x80) → ufo_hit
+0x140d8  f  ufo_take_off
+0x13e6b  f  ufo_go_drop                    ; action 2 (period +0x6a; 0x7ffe never): to 150 px above a Jack
+0x14211  f  ufo_drop                       ; at tick 50 a bomb (BOM) or spikes (SPK), the mix from the .OB field
+0x14354  f  ufo_go_abduct                  ; action 3 (period +0x68): to a free timmy
+0x144b9  f  ufo_beam_timmy                 ; 120 px above it, a beam piece every 8 ticks; lifts it after 30; kills it at 10 px and counts it; lets go if Jack grabs it
+0x14427  f  ufo_go_zap_jack                ; action 4 (period +0x6c): to a random Jack, unless he is busy (flags 0x40220403)
+0x1462c  f  ufo_zap_jack                   ; 15 ticks over him, beam every 4; within 10 px sets his +0x43 bit 0x10 and his player's +0x15e = 8 (?)
+0x14759  f  ufo_beam_piece_a               ; follows its UFO (partner), stretching with age
+0x147d2  f  ufo_beam_piece_b
+0x14e5f  f  ufo_debris                     ; falls under gravity, frames 0x19-0x1c

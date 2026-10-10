@@ -1,0 +1,6 @@
+# Video and input at the port level — names from the I/O they do.
+0x61be1  f  wait_vretrace                  ; port 0x3da: waits out the retrace in progress, then for the next
+0x68626  f  vga_set_palette                ; port 0x3c8 the first index, then 3 bytes a colour to 0x3c9
+0x6c6ea  f  joystick_time_axis             ; game port: fires the one-shots (out 0xff) and counts until the axis bit drops
+0x61d2e  f  vga_copy_plane                 ; ? 200 rows, every 4th byte of the source — one plane of an unchained (mode X) screen
+0x619cc  f  vga_copy_to_screen             ; 800 × 32 dwords to 0xa0000 (Ghidra shows it as a data label there)

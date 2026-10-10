@@ -1,5 +1,5 @@
 """
-Trash It (1997 DOS) — level assembly: .WAM + .I + .OBT + .G2 / .G2R.
+Trash It (1997 DOS) — level assembly: .WAM + .I + .OBT + .G2 / .G2R + .COL.
 
 CONFIDENCE: confirmed. Decoded from the level loader in G.EXE
 (VA 0x2cce9) and verified against LEVELS/0A.*: the .WAM size is exactly
@@ -17,6 +17,7 @@ placed on it. Five files, all sharing the level's 2-character name:
   .OBT   the object type table: size and strength per type
   .G2    the shape library (see g2.py)
   .G2R   one byte per shape: 1 = static, 2 = destructible
+  .COL   one record per object: how Jack collides with it (below)
   .PAL   the palette (see pal.py)
   .SCN   the background screens (see scn.py)
   .SDE   a small block of per-level settings (see notes in README)
@@ -47,7 +48,25 @@ whose meaning isn't pinned down yet).
 
 The .OB next to them is read too — it is the level's startup spawn
 stream, where the player starts, the bell and the timmies come from (see
-ob.py). Only .COL is never opened by G.EXE.
+ob.py).
+
+.COL: 6 bytes per object, three i16, indexed by the object's number — so
+record 0 is the "no object" slot and the file holds N + 1 records (true
+of all 147 levels). The game loads it whole into VA 0x3f20c4 (VA 0x6028f,
+4800 bytes) and every probe of the tile map reads word 0 of the record
+for the object it finds: its **collision kind**.
+
+    0   no collision at all — scenery Jack walks in front of
+    1   solid: floor, wall and ceiling
+    2   a platform: floor only, and only from above (feet above its top)
+    4   a ladder: no collision; UP climbs it
+    5   the top of a ladder: a platform, and a ladder
+    (3 is a ceiling and 6 a platform in the code; no level uses either)
+
+Word 1 (0..9) is read by the hammer's code and is not traced. Word 2 is
+a marker for the gits walking over the block (VA 0x2fbfd): 1 turns them
+left, 2 right, 28-30 are conditional actions — see "The gits" in
+README.md.
 """
 import os
 import struct
@@ -58,7 +77,8 @@ import g2
 def load(levels_dir, name):
     """-> dict with the level's geometry and its placed objects.
 
-    Each object: dict(type, x, y, shape, routine, w, h, gid, param, bitmap)
+    Each object: dict(type, x, y, shape, routine, w, h, gid, param, col, marker,
+    bitmap)
     where bitmap is (width, height, [[palette index]]), None for
     transparent pixels.
     """
@@ -67,6 +87,7 @@ def load(levels_dir, name):
             return f.read()
 
     wam, idx, obt = read(".WAM"), read(".I"), read(".OBT")
+    col = read(".COL")
     shapes = g2.split_records(read(".G2"))
     routines = list(read(".G2R"))
 
@@ -81,6 +102,8 @@ def load(levels_dir, name):
             type=otype, x=x, y=y, shape=shape,
             routine=routines[shape] if shape < len(routines) else None,
             w=ow * 8, h=oh * 8, gid=gid, param=param,
+            col=struct.unpack_from("<h", col, i * 6)[0],
+            marker=struct.unpack_from("<h", col, i * 6 + 4)[0],
             bitmap=g2.rows_to_bitmap(rows, transparent=None),
         ))
     return dict(tiles_w=tw, tiles_h=th, width=tw * 8, height=th * 8,

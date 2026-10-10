@@ -1,0 +1,74 @@
+# Field names for G.EXE's structures, read by fields.py.
+#
+#   <struct> <offset> <type> <name>   ; what it is, and where that is shown
+#
+# Types: u8 s8 u16 s16 u32 s32, fix (16.16), ptr, code (a routine),
+# <struct>* (a pointer to one). Only fields with evidence go here — an
+# offset a class reuses for its own purposes (the bin's count at +0x4a,
+# the teleporter's cycle at +0x54) stays unnamed under "sprite".
+#
+# sprite  — a live entity: Jack, the hammer, the bell, every .OB class.
+# jack    — a sprite known to be Jack; falls back to "sprite".
+# player  — the 360-byte player struct, four from VA 0x28b97c.
+# object  — a level block, the 112-byte entities from VA 0x3f6178.
+
+sprite 00 sprite* partner        ; what it carries / what carries it: jack[0] = obj, obj[0] = jack (README "Carrying and throwing")
+sprite 10 code    state          ; the behaviour routine; set_state writes it (README "Jack's state machine")
+sprite 14 ptr     template       ; the template it was spawned from (spawn_from_template, VA 0x2ed96)
+sprite 24 fix     x              ; 16.16 x; the shared step adds vx to it (VA 0x22d31)
+sprite 26 s16     x_px           ; integer part of x
+sprite 28 fix     y              ; 16.16 y
+sprite 2a s16     y_px           ; integer part of y
+sprite 30 fix     vx             ; x += vx each tick (VA 0x22d31)
+sprite 34 fix     vy             ; += 0x4800 a tick while airborne (VA 0x22d31)
+sprite 3c u16     sprite_id      ; template word 0: its sprite-table index (0x35 TIMMY, 0x3f KTIMMY, 0x5b TOMMY, 0 JACKS)
+sprite 40 u8      flags          ; bit 2 faces left (entity_frame_rect), 0x20 holding, 0x80 hit from above
+sprite 41 u8      link_flags     ; 2 carrying, 4 carried, 0x20/0x40 riding links (README "Carrying", "The sucker")
+sprite 44 s16     frame          ; index into the sprite sheet at +0xc8 (entity_frame_rect)
+sprite c8 ptr     sheet          ; the loaded .SPR this sprite draws from (entity_frame_rect)
+
+jack   4a s16     frame_timer    ; ticks into the current frame; play_anim zeroes it
+jack   54 player* player         ; Jack's player struct (VA 0x218c9)
+jack   58 s16     frame_due      ; the frame index steps when frame_timer reaches it, then it grows by one
+jack   5a s16     release_frame  ; the swing's frame index, copied on letting go (VA 0x23b61)
+jack   68 fix     fall_start     ; y where the fall began; a fall past 358 px is special (VA 0x22d31)
+
+player 00 sprite* jack           ; the player's Jack
+player 08 s16     anim_req       ; the slot play_anim was asked for
+player 0a s16     anim_slot      ; the slot playing; play_anim does nothing when they match
+player 0c ptr     anim           ; that slot's record, from anim_slots
+player 10 s16     anim_frame     ; frame index within the animation; reset by play_anim
+player 14 fix     top_speed      ; from the animation's speed profile (README "Movement and gravity")
+player 1c fix     accel          ; from the same profile
+player 20 fix     rate           ; from the same profile
+player 4c sprite* hoover         ; made for each player at VA 0x21616
+player 54 sprite* hammer         ; the hammer entity
+player 58 ptr     hammer_list    ; per slot: which hammer frame goes with each of Jack's frames (play_anim)
+player 9c s16     anim_changed   ; 1 when play_anim switched slots, else 0
+player ac ptr     squash_block   ; the block that landed on him without the hat (README "A falling block on Jack")
+player 15c s16    ladder_regrab  ; 15 ticks after leaving a ladder before he can catch one in the air (README "Ladders")
+player 166 s16    control_mode   ; keyboard / pad mode; 4 or more changes the scheme (README "Controls")
+
+object 00 u16     flags          ; bit 0 alive, 2 grounded by the flood, 4 groupable, 5 group head, 6 grouped, 7 weighed
+object 02 u16     type           ; .WAM type — the .OBT index
+object 04 fix     vy             ; on a group head: the whole group's
+object 08 fix     y
+object 0a s16     y_px
+object 0c fix     x
+object 0e s16     x_px
+object 10 fix     height
+object 14 s32     mass           ; .OBT field 6
+object 18 s32     hp             ; .OBT field 0; -1 indestructible
+object 1c s32     group_dx       ; while falling: offset from the group
+object 20 s32     group_dy
+object 44 u16     id             ; as stamped into the collision map
+object 46 u16     tile_x
+object 48 u16     tile_y
+object 4a u16     tiles_w
+object 4c u16     tiles_h
+object 4e u16     width
+object 50 u16     height_px
+object 5c u16     above          ; objects resting on it
+object 5e u16     below          ; objects it rests on
+object 64 ptr     shape          ; its .G2 shape
+object 68 code    draw           ; the routine its .G2R byte selects

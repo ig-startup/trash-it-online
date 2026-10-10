@@ -22,7 +22,10 @@ const NEXT_LEVEL_DELAY = 4000; // matches the client's result overlay
  */
 function loadLevel(id) {
   try {
-    return require(`../../client/src/levels/${id}.json`);
+    // Converted levels are served to the client from client/public/levels;
+    // the hand-built one ships in the client bundle.
+    if (id === 'level_01') return require('../../client/src/levels/level01.json');
+    return require(`../../client/public/levels/${id}.json`);
   } catch (err) {
     console.warn(`[level] no data for ${id}: ${err.message}`);
     return id;
@@ -212,6 +215,13 @@ io.on('connection', (socket) => {
     if (!room) return;
     room.handleObjectHit(socket.id, data.objectId, data.force);
     console.log(`[object_hit] room=${room.code} socket=${socket.id} objectId=${data.objectId}`);
+  });
+
+  // --- time_bonus ---
+  socket.on(EVENTS.TIME_BONUS, (data = {}) => {
+    const room = rooms.getPlayerRoom(socket.id);
+    if (!room) return;
+    room.addTime(data.seconds);
   });
 
   // --- disconnect ---

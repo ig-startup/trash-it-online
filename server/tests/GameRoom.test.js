@@ -1,7 +1,7 @@
 'use strict';
 
 const GameRoom = require('../src/GameRoom');
-const { EVENTS } = require('../../shared/constants');
+const { EVENTS, HAMMER_FORCE } = require('../../shared/constants');
 
 // Sample level data matching tech-spec format
 const LEVEL_DATA = {
@@ -147,6 +147,22 @@ describe('GameRoom', () => {
   });
 
   // -----------------------------------------------------------------------
+  // A bonus clock puts time back on the level's timer
+  // -----------------------------------------------------------------------
+  test('should add a clock\'s seconds while playing, and not otherwise', () => {
+    room.addTime(25);
+    expect(room.timeLeft).toBe(0);
+    room.startGame(LEVEL_DATA);
+    const before = room.timeLeft;
+    room.addTime(25);
+    expect(room.timeLeft).toBe(before + 25);
+    const tick = io._emitted.filter((e) => e.event === EVENTS.TIMER_TICK).pop();
+    expect(tick.data).toEqual({ timeLeft: before + 25 });
+    room.addTime('lots');
+    expect(room.timeLeft).toBe(before + 25);
+  });
+
+  // -----------------------------------------------------------------------
   // Test 9: timer is cleared after level_complete
   // -----------------------------------------------------------------------
   test('should cleanup timer on game end', () => {
@@ -159,5 +175,34 @@ describe('GameRoom', () => {
     jest.advanceTimersByTime(5000);
     const emitCountAfterAdvance = io._room.emit.mock.calls.length;
     expect(emitCountAfterAdvance).toBe(emitCountAfterEnd);
+  });
+
+  // -----------------------------------------------------------------------
+  // The original's own hit points, on a level that has tough blocks: 0C.
+  // -----------------------------------------------------------------------
+  describe('with a real level', () => {
+    const LEVEL_0C = require('../../client/public/levels/level_0C.json');
+    const destroyedIds = () => io._emitted
+      .filter((e) => e.event === EVENTS.OBJECT_DESTROYED)
+      .map((e) => e.data.objectId);
+
+    test('an unbreakable block is not even tracked', () => {
+      const hard = LEVEL_0C.destructibles.find((o) => o.solid);
+      room.startGame(LEVEL_0C);
+      room.handleObjectHit('player-1', hard.id, 1e9);
+      expect(destroyedIds()).not.toContain(hard.id);
+    });
+
+    test('a fully charged sledge only dents a tough block', () => {
+      // The starting hammer is weak against these: 0C's blocks are 1000+
+      // hit points and a full charge is 75. Breaking takes many blows.
+      const tough = LEVEL_0C.destructibles
+        .find((o) => !o.solid && o.hp > HAMMER_FORCE);
+      room.startGame(LEVEL_0C);
+      room.handleObjectHit('player-1', tough.id, HAMMER_FORCE);
+      expect(destroyedIds()).not.toContain(tough.id);
+      room.handleObjectHit('player-1', tough.id, tough.hp);
+      expect(destroyedIds()).toContain(tough.id);
+    });
   });
 });

@@ -1,0 +1,35 @@
+# Bonuses, the dispenser and the secret panel — .OB classes 33, 8 and 46.
+# See README "Bonuses, the dispenser and the panel".
+0x1b4cf  f  ob_class_33_bonus              ; word +0xe: 1 a walking bonus git, 2 a BELL-sprite shell locked in a block; +0x12 lowest bit → its prize (+0x68), +0x14 a count (+0x76)
+0x1b568  f  bonus_shell_tick               ; the shell waits for its block (0x1b2a9), then becomes a walking bonus git
+0x135ba  f  spawn_bonus_git                ; spawn_timmy from BON's template, +0x68 the prize, +0x76 the count
+0x17716  f  lowest_bit_or_none             ; as lowest_bit, but -1 for none
+0x3333c  f  bonus_struck                   ; the overhead blow: vy -4, up 7 px, vx halved, three sparks and a sound; bounces at half
+0x33559  f  bonus_swell                    ; landed: swells 1 << (t / 2); past 50 bursts — seven pieces, the prize (0x123c0), a sound
+0x337b6  f  bonus_sparkle                  ; a BON spark every 4 ticks while it is struck
+0x123c0  f  bonus_prize                    ; by +0x68: 0 a clock, 1 +0x76 timmies flung up (at least 1), 2 a super hoover (BVAC), 3 a bubble
+0x12238  f  bon_spawn_spark                ; a BON child, frame 0x15 → 0x17, gone
+0x1b2a9  f  pickup_wait_for_block          ; locked (+0x42 bit 1): when the block dies, unlocked and thrown up at vy -6; 1 while locked
+0x1b304  f  generic_pickup_create          ; "couldn't spawn pickup": at (ax, dx), frame param, locked to the block there when bx is 2
+0x11d83  f  spawn_clock                    ; CLOK at a point, frame 0, ten turns
+0x11dcc  f  clock_tick                     ; spins a frame every 3 ticks; after ten turns hops about for 240 ticks (state_11e63), and again
+0x11edd  f  clock_hit                      ; the overhead blow bursts it into twelve pieces, a shake — the time is lost
+0x12096  f  jack_touch_clock               ; outcome 14: +25 seconds (BCD 0x96fb0 += 0x25), a sound
+0x1b3eb  f  spawn_super_hoover             ; BVAC 20 px up at vy -4.57, falls to the bottom
+0x1b48c  f  jack_touch_super_hoover        ; outcome 13: the super hoover (0x61866)
+0x61866  f  super_hoover_on                ; option bit 0x80000 and 3600 ticks (0x3f4024): the hoover blinks and its suck box is 2048x1024
+0x1b4aa  f  super_hoover_tick              ; counts 0x3f4024 down; at 0 the option is off
+0x1b220  f  bubble_tick                    ; freed, it bounces about at random (vy to -8, vx to ±4) with a sound
+0x1b29d  f  jack_touch_bubble              ; outcome 8: double points (0x1a516), the bubble gone
+0x1a516  f  double_points_on               ; option bit 0x80 for 1920 ticks (0x287c52), the panel shows it the first time
+0x19fd2  f  add_rubble_score               ; doubled while option bit 0x80 is on
+0x1b5ba  f  ob_class_46_panel              ; the secret panel (frame 17), locked in a block, with six parallax layers and a twinkle
+0x1b6f5  f  panel_twinkle_tick             ; a sparkle at random spots on the panel, frames 0x15-0x24
+0x1b84e  f  panel_layer_tick               ; a layer offset from the panel by (panel - camera) / depth, for a 3-D look
+0x1baae  f  panel_tick                     ; waits for its block, then sits with physics
+0x1bacb  f  jack_touch_panel               ; outcome 16: level_state +0x18 += 1 (for F.EXE), 32 sparks, two sounds
+0x5f1ab  f  ob_class_8_dispenser           ; DIS.SPR: words +0x16 lock (2), +0xe fall (2), +0x1a physics (2), +0x1c balls a go, +0x1e goes (0 for ever), +0x20 ticks between balls
+0x5f3bb  f  dispenser_idle                 ; the overhead blow → dispenser_fire: 40 ticks, wobbling; ball speed = force >> 5 into 3..32
+0x5f487  f  dispenser_fire                 ; at 36 the lid opens; then a small cannonball at (x-17, y-16), up at the speed, across from 0xa43f8; when out of goes it rises away
+0x5f5ba  f  dispenser_leave                ; vy 2.25, less 0x4800 a tick — up and off the screen
+0xa43f8  d  dispenser_ball_vx              ; eight: ±0.92, ±1.37, ±1.83, ±2.29 px/tick, alternating

@@ -1,32 +1,31 @@
 /**
  * Level registry.
  *
- * `level_01` is the hand-built MVP level. Everything else is converted
- * straight from the original game's own files by scripts/export_level.py —
- * real geometry, real artwork. Re-running that script regenerates
- * `generated.js`, so new levels appear here without touching this file.
+ * `level_01` is the hand-built MVP level, bundled. Everything else is
+ * converted straight from the original game's own files by
+ * scripts/export_level.py — real geometry, real artwork — and served from
+ * `levels/<id>.json`, so a game loads only the level it plays: all of them
+ * bundled would be megabytes before the menu.
  */
 import level01 from './level01.json';
-import { GENERATED_LEVELS } from './generated';
 import levelOrder from '../../../shared/levels.json';
 
-export const LEVELS = {
-  level_01: level01,
-  ...GENERATED_LEVELS,
-};
+/** Levels that ship inside the bundle. */
+export const BUNDLED = { level_01: level01 };
 
 /** The order levels are played in — shared with the server. */
-export const LEVEL_ORDER = (levelOrder.order || [])
-  .filter((id) => LEVELS[id]);
+export const LEVEL_ORDER = levelOrder.order || [];
 
 export const DEFAULT_LEVEL_ID = LEVEL_ORDER[0] || 'level_01';
 
-/**
- * @param {string} id
- * @returns {object} the level, falling back to the default one
- */
-export function getLevel(id) {
-  return LEVELS[id] || LEVELS[DEFAULT_LEVEL_ID];
+/** A known level id, or the default one. */
+export function levelIdOr(id) {
+  return BUNDLED[id] || LEVEL_ORDER.includes(id) ? id : DEFAULT_LEVEL_ID;
+}
+
+/** @returns {string} where a served level's data is */
+export function levelUrl(id) {
+  return `levels/${id}.json`;
 }
 
 /**

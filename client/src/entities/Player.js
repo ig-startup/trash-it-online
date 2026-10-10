@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import {
   ensureJackTextures, applyJackFrame, PLAYER_WIDTH, FULL_HEIGHT,
 } from './drawJack';
-import { PROP_ANIMS, PROP_FRAME_INFO, HAMMER_BY_SLOT, hasProps } from './props';
+import {
+  PROP_ANIMS, PROP_FRAME_INFO, HAMMER_BY_SLOT, HOOVER_BY_SLOT, hasProps,
+} from './props';
 import { JACK_FRAME_INFO, JACK_SCALE } from './jackSprites';
 import { MAX_CHARGE } from '../../../shared/constants.mjs';
 
@@ -56,6 +58,8 @@ const PROFILES = {
   run: { top: perS(350000), accel: perS2(12000), turn: perS2(12000) },
   // profile 0 — the windups and strikes, the hat, the hoover
   slow: { top: perS(100000), accel: perS2(4000), turn: perS2(8000) },
+  // profile 4 — pushing
+  push: { top: perS(200000), accel: perS2(8000), turn: perS2(10000) },
 };
 const EASE_INTO_TOP = 1 / 32;      // the original's `>> 5` above the cap
 const FRICTION = perS2(2000);      // every tick, keys or not (VA 0x22d31)
@@ -179,6 +183,93 @@ const STATES = {
   // The aim's frames step with its own schedule (see THROW), so `ms` is unused.
   throwAim: { slot: 47, anim: 'throwAim', ms: Infinity, hold: true, carry: true },
   throwRelease: { slot: 41, anim: 'throwRelease', ms: 4 * TICK_MS, next: 'stand', locks: true, brakes: true },
+
+  // A falling block on him (VA 0x21aef). Pinned under it: 0x29c92 (slot
+  // 62, the standing frame, squashed) or, in the hard hat, 0x29e16 (slot
+  // 68, the hat). Then flattened, 0x29f7a (slot 65), and the tumble back
+  // up, 0x2a2fe (slot 64) — or out of the hat with a wobble, 0x2a199.
+  pinned: { slot: 62, anim: 'idle', ms: Infinity, hold: true, crushed: true },
+  pinnedHat: { slot: 68, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, crushed: true },
+  flattened: { slot: 65, anim: 'flat', ms: Infinity, hold: true, crushed: true },
+  hatPop: { slot: 69, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, crushed: true },
+  tumble: { slot: 64, anim: 'tumble', ms: 3 * TICK_MS, next: 'stand', locks: true, brakes: true },
+
+  // Hurt — a spike git, its needles, a bomb's or a stick's blast, a UFO's
+  // bolt (see "What hurts Jack" in the README). Out of the hat he is sent
+  // flying through 0x2b152 (slot 73, its four frames a step every four
+  // ticks); in it the hat is, through 0x26539 (slot 43, the hat frame).
+  stung: { slot: 73, anim: 'land', ms: 4 * TICK_MS, hold: true, hurt: true },
+  hatJump: { slot: 43, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, hurt: true },
+
+  // Ladders. 0x25bda climbs (slot 33), its frame picked by his height, not
+  // a clock; 0x299b6 tops out onto the platform (slot 60) and 0x29b15 steps
+  // off a top onto the ladder (slot 61, the same list backwards). Their
+  // frames are set by the ladder logic, so `ms` is unused.
+  climb: { slot: 33, anim: 'climb', ms: Infinity, hold: true, ladder: true },
+  topOut: { slot: 60, anim: 'topOut', ms: Infinity, hold: true, ladder: true },
+  stepOn: { slot: 61, anim: 'topOut', ms: Infinity, hold: true, ladder: true },
+
+  // Pushing. Up held on the run goes into 0x2820b (slot 38): arms out,
+  // leaning in, his frame picked by his x; slowing to a stop there, or Up
+  // held standing, is 0x28691 (slot 52), the same stance still. Both take
+  // hold of what can be pushed — see `pushing`.
+  push: { slot: 38, anim: 'push', ms: Infinity, hold: true, push: true, profile: 'push' },
+  pushStand: { slot: 52, anim: 'pushStand', ms: 400, loop: true, push: true, profile: 'push' },
+
+  // Caught on a sucker's cup (VA 0x194d6 sets his `+0x40 |= 0x400020` and
+  // holds him there) until it throws him. Which frame he shows there is
+  // not traced; the fall's is ours.
+  caught: { slot: 31, anim: 'fall', ms: Infinity, hold: true, caught: true },
+};
+
+/**
+ * Pushing (0x2820b): pushing back the other way faster than this skids
+ * him (0x2bf20, 2.75 px/tick); with no direction he brakes by the skid's
+ * 5000 a tick until under 10000, then stands in the stance (0x283da).
+ */
+const PUSH_SKID = perS(0x2bf20);
+
+/**
+ * Ladders (see "Ladders" in scripts/formats/README.md). He climbs at 2
+ * px/tick either way. Topping out and stepping off a top each run twelve
+ * frames two ticks apart, lifting him by half a frame's entry in the table
+ * at VA 0xa130e a tick — 25 px in all — before he is set on the top. Off a
+ * ladder by any way but the top, he cannot catch hold of one in the air
+ * for 15 ticks (`+0x15c`). From a run or in the air he catches one only
+ * slower than 5 px/tick.
+ */
+const LADDER_TOP = 5;   // the ladder probe's answer at a ladder's top
+const LADDER = {
+  climb: 2,
+  stepTicks: 2,
+  lift: [0, -2, -3, 0, 0, -1, -3, -3, -3, -3, -2, -5],
+  frames: 12,
+  stepDown: 9,          // 0x29b15 drops him this far onto the ladder at once
+  belowTop: 31,         // …and leaves him this far under the top's edge
+  regrab: 15,
+  topOutRise: 25,       // what the strip lifts him, should there be no top
+  probeUp: 30,          // the ladder probe's row, over his feet (box 0xa0264)
+  grabSpeed: perS(0x50000),
+};
+
+/**
+ * Under a falling block (see "A falling block on Jack" in the formats
+ * README). Squash is the block's descent since it touched him; past 32 px
+ * he shoots out. Flattened he lies 150 ticks, flapping ±0x3000 a tick with
+ * 0x1500 of friction; out of the hat he falls at half gravity while his
+ * width and height spring back (kicked 0x28000 / -0x20000, each pulled
+ * back by half its offset a tick).
+ */
+const CRUSH = {
+  squashOut: 32,
+  popOut: -6,          // px/tick, without the hat
+  popHat: -4,          // px/tick, in it
+  flatTicks: 150,
+  flap: 0x3000 / 65536,
+  flapFriction: 0x1500 / 65536,
+  flatFriction: 4000 / 65536,
+  wobbleW: 0x28000 / 65536,
+  wobbleH: -0x20000 / 65536,
 };
 
 /** States in which the hoover is out and sucking. */
@@ -313,6 +404,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._hammerHidden = true;  // in the hat, per the game's list flags
     this._hammerOut = false;    // the hammer mode: out of the hat, in hand
     this._jumpTicks = 0;
+    this._invuln = 0;          // +0x7c: ticks he cannot be hurt, blinking (VA 0x2b9fd)
+    this._noEvents = 0;        // player +0x15a: ticks nothing touches him
+    this._hurtVy = 0;          // vy while hurt and airborne, for the bounce
+    this._hurtAir = false;     // …and whether he has left the floor since
+    this._hurtTicks = 0;
 
     /** What he holds overhead — an opaque handle the scene owns — or null. */
     this.carried = null;
@@ -322,9 +418,29 @@ export default class Player extends Phaser.Physics.Arcade.Image {
      * @type {null | ((x: number, y: number) => any)}
      */
     this.findPickup = null;
+    /**
+     * Set by the scene: the falling block over his head, if any, as
+     * `{ id, bottom, vy }` — vy in px/tick (VA 0x60a00 reads the map the
+     * falling groups are stamped into).
+     * @type {null | (() => ({id: any, bottom: number, vy: number} | null))}
+     */
+    this.findCrusher = null;
+    this._crush = null;        // the pin: which block, and where it touched
+    this._squashX = 1;         // art scale on top of the frame's own
+    this._squashY = 1;
     this._reach = THROW.reachStart;
     this._lift = THROW.liftStart;
     this._aimTicks = 0;
+    /**
+     * Set by the scene: the probes his ladder states make of the tile map —
+     * `at(x, feet)` the ladder probe (0, 4 or 5), `topUnder(x, feet)` a
+     * ladder's top under him, `topAt(x, y)` the top of the block at a point,
+     * `floor(x, from, to)` what stops him climbing down.
+     */
+    this.ladder = null;
+    this._regrab = 0;          // ticks before he may catch a ladder in the air
+    this._ladderTicks = 0;     // into a top-out or a step-off
+    this._ladderTarget = 0;    // the y it ends on
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -351,6 +467,16 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this.hammer = scene.add.image(x, y, PROP_ANIMS.hammer[0]).setScale(JACK_SCALE);
       this.hammer.setVisible(false);
     }
+    // So is the hoover (VAC.SPR, VA 0x615ca): it follows him and shows the
+    // frame its own list names, hidden until the list switches it on.
+    this.vac = null;
+    this._vacKey = null;
+    this._vacHidden = true;
+    this._vacFrame = -1;
+    if (hasProps(scene) && PROP_ANIMS.vac) {
+      this.vac = scene.add.image(x, y, PROP_ANIMS.vac[0]).setScale(JACK_SCALE);
+      this.vac.setVisible(false);
+    }
 
     // Follow the body only after physics has moved it, so the art never
     // trails the camera by a frame.
@@ -375,6 +501,19 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.art.setFlipX(flip);
     Player._anchor(this.art, JACK_FRAME_INFO[this.art.texture.key + '|' + this.art.frame.name]
       || JACK_FRAME_INFO[this.art.texture.key], flip);
+    this.art.setScale(JACK_SCALE * this._squashX, JACK_SCALE * this._squashY);
+    // Hurt, he blinks while he cannot be hurt again — fast, then for the
+    // last 100 ticks slower (VA 0x2ba0f).
+    const clock = Math.floor(this.scene.time.now / TICK_MS);
+    const off = this._invuln > 0
+      && (this._invuln > 100 ? (clock & 7) > 3 : (clock & 15) > 11);
+    this.art.setAlpha(off ? 0.25 : 1);
+
+    if (this.vac && this.vac.visible) {
+      this.vac.setPosition(this.x, this.y);
+      this.vac.setFlipX(flip);
+      Player._anchor(this.vac, PROP_FRAME_INFO[this._vacKey], flip);
+    }
 
     if (!this.hammer || !this.hammer.visible) return;
     this.hammer.setPosition(this.x, this.y);
@@ -402,6 +541,23 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   /** True while the hoover is out and able to suck. */
   get hooverOut() {
     return HOOVER_STATES.has(this.state);
+  }
+
+  /**
+   * Where the hoover sucks, or null when it is not working: from VAC
+   * frame 10 on (the frames it is held in), a 32 px box 40 px ahead of his
+   * feet and 8 up (VA 0x61769 → 0x61472). Its height is the same 32 the
+   * game passes for the width — read as such, not traced further.
+   */
+  get hooverBox() {
+    if (this._vacFrame < 10) return null;
+    const x = this._facingLeft ? this.x - 72 : this.x + 40;
+    return new Phaser.Geom.Rectangle(x, this.y - 8, 32, 32);
+  }
+
+  /** Where the nozzle is — what sucked things are drawn towards (VA 0x6151c, ±0x28). */
+  get nozzle() {
+    return { x: this.x + (this._facingLeft ? -40 : 40), y: this.y };
   }
 
   /** Where the carried object sits now: on his head, or at his feet while he bends for it. */
@@ -521,6 +677,33 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     this._advanceAnim(now);
     const spec = STATES[this.state] || STATES.stand;
+    const ticks = dt * ORIGINAL_HZ;
+    this._invuln = Math.max(0, this._invuln - ticks);
+    this._noEvents = Math.max(0, this._noEvents - ticks);
+
+    // ── Hurt: flying, or the hat bouncing ─────────────────────────────────
+    if (spec.hurt) {
+      this._hurtTick(body, dt, now, onGround);
+      return;
+    }
+
+    // ── Under a falling block ─────────────────────────────────────────────
+    if (spec.crushed) {
+      this._crushTick(body, dt, now, onGround);
+      return;
+    }
+    if (spec.caught) {
+      body.setVelocity(0, 0);
+      return;
+    }
+    if (this._checkCrusher(body, now, onGround)) return;
+    this._regrab = Math.max(0, this._regrab - dt * ORIGINAL_HZ);
+
+    // ── On a ladder ───────────────────────────────────────────────────────
+    if (spec.ladder) {
+      this._ladderTick(cursors, body, dt, now, but2Pressed);
+      return;
+    }
 
     // ── States that own the player until their animation is done ──────────
     if (spec.locks) {
@@ -622,11 +805,34 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this._enter('pickBend', now);
         return;
       }
-      if (Phaser.Input.Keyboard.JustDown(cursors.down) && still) {
+      if (still && Phaser.Input.Keyboard.JustDown(cursors.down)) {
         body.setVelocityX(0);
-        this._enter('hatIn', now);
+        // On a ladder's top, Down goes down it (0x22a05) — before the hat.
+        const top = this.ladder ? this.ladder.topUnder(this.x, this.y) : null;
+        if (top !== null) this._stepOnLadder(top, now);
+        else this._enter('hatIn', now);
         return;
       }
+    }
+
+    // ── Up at a ladder climbs it (0x22a99, 0x22598, 0x22e16) ──────────────
+    if (!this._armed && !spec.push && cursors.up.isDown && this.ladder
+        && (onGround || this._regrab <= 0)
+        && Math.abs(body.velocity.x) < LADDER.grabSpeed
+        && this.ladder.at(this.x, this.y)) {
+      this._grabLadder(now);
+      return;
+    }
+
+    // ── Up held anywhere else on the ground: the pushing stance ───────────
+    if (spec.push) {
+      this._pushTick(cursors, body, dt, now, onGround, but2Pressed);
+      return;
+    }
+    if (!this._armed && onGround && cursors.up.isDown
+        && (this.state === 'walk' || this.state === 'stand')) {
+      this._enter(this.state === 'walk' ? 'push' : 'pushStand', now);
+      return;
     }
 
     // ── The skid brakes by itself; a direction key runs again ─────────────
@@ -693,6 +899,463 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       body.setVelocityX(0);
       this._enter('stand', now);
     }
+  }
+
+  /**
+   * Every tick (VA 0x21aef): a falling block over him. In the air it turns
+   * a rise into a fall, or adds half its speed to his; on the ground it
+   * pins him — unless his hands are full, when what he holds drops.
+   * Returns true when it has taken the tick.
+   */
+  _checkCrusher(body, now, onGround) {
+    const c = this.findCrusher && this.findCrusher();
+    if (!c) return false;
+    if (!onGround) {
+      if (body.velocity.y < 0) body.setVelocityY(-body.velocity.y);
+      else body.setVelocityY(body.velocity.y + (c.vy * ORIGINAL_HZ) / 2);
+      return false;
+    }
+    if (this.carried) {
+      this.emit('putdown', { handle: this.carried, ...this._feetAhead() });
+      this.carried = null;
+      this._enter('stand', now);
+      return true;
+    }
+    const inHat = this.state === 'hat' || this.state === 'hatIn';
+    this._crush = { id: c.id, contact: c.bottom, ticks: 0, w: 0, h: 0, vw: 0, vh: 0 };
+    body.setVelocity(0, 0);
+    body.setAllowGravity(false);
+    body.checkCollision.up = false;
+    this._hammerOut = false;
+    this._hammerHidden = true;
+    this._enter(inHat ? 'pinnedHat' : 'pinned', now);
+    return true;
+  }
+
+  /** One tick pinned, flattened or popping out of the hat. */
+  _crushTick(body, dt, now, onGround) {
+    const k = this._crush || { ticks: 0, w: 0, h: 0, vw: 0, vh: 0 };
+    const ticks = dt * ORIGINAL_HZ;
+    k.ticks += ticks;
+
+    if (this.state === 'pinned' || this.state === 'pinnedHat') {
+      body.setVelocity(0, 0);
+      const c = this.findCrusher && this.findCrusher();
+      const squash = c && c.id === k.id ? Math.max(0, c.bottom - k.contact) : null;
+      if (squash === null || squash > CRUSH.squashOut) {
+        this._squashX = 1;
+        this._squashY = 1;
+        body.setAllowGravity(true);
+        if (this.state === 'pinned') {
+          // Out at -6 and flattened, flung a random way (rand >> 15).
+          const fling = Math.random() * 2;
+          body.setVelocity((Math.random() < 0.5 ? -1 : 1) * fling * ORIGINAL_HZ,
+            (CRUSH.popOut + Math.random() * 2) * ORIGINAL_HZ);
+          k.ticks = 0;
+          this._enter('flattened', now);
+        } else {
+          body.setVelocity(0, CRUSH.popHat * ORIGINAL_HZ);
+          body.setGravityY(-this.scene.physics.world.gravity.y / 2);
+          Object.assign(k, { w: 0, h: 0, vw: CRUSH.wobbleW, vh: CRUSH.wobbleH, ticks: 0 });
+          this._enter('hatPop', now);
+        }
+        return;
+      }
+      this._squashY = Math.max(0.15, (FULL_HEIGHT - squash) / FULL_HEIGHT);
+      this._squashX = (PLAYER_WIDTH + squash / 2) / PLAYER_WIDTH;
+      return;
+    }
+
+    if (this.state === 'hatPop') {
+      // Width and height spring back about their rest (VA 0x2a1f0).
+      k.w += k.vw * ticks;
+      k.vw -= k.w * 0.5 * ticks;
+      k.h += k.vh * ticks;
+      k.vh -= k.h * 0.5 * ticks;
+      this._squashX = Math.max(0.3, (PLAYER_WIDTH + k.w) / PLAYER_WIDTH);
+      this._squashY = Math.max(0.3, (FULL_HEIGHT + k.h) / FULL_HEIGHT);
+      if (onGround && body.velocity.y >= 0 && k.ticks > 2) {
+        this._squashX = 1;
+        this._squashY = 1;
+        body.setGravityY(0);
+        body.checkCollision.up = true;
+        this._crush = null;
+        this._enter('hat', now);
+      }
+      return;
+    }
+
+    // Flattened: through the air with friction, then flapping on the floor.
+    if (!onGround) {
+      const vx = body.velocity.x / ORIGINAL_HZ;
+      const slowed = Math.abs(vx) > 9999 / 65536 ? vx - Math.sign(vx) * CRUSH.flatFriction * ticks : 0;
+      body.setVelocityX(slowed * ORIGINAL_HZ);
+      return;
+    }
+    const phase = Math.floor(k.ticks) & 0x1f;
+    const back = Math.floor(k.ticks) & 0x20;
+    const ahead = this._facingLeft ? -1 : 1;
+    let vx = body.velocity.x / ORIGINAL_HZ;
+    if (phase < 0x14) vx += (back ? -ahead : ahead) * CRUSH.flap * ticks;
+    vx = Math.abs(vx) > 9999 / 65536 ? vx - Math.sign(vx) * CRUSH.flapFriction * ticks : 0;
+    body.setVelocityX(vx * ORIGINAL_HZ);
+    const frame = (phase < 0x10) === !back ? 1 : 2;
+    if (this._animFrame !== frame) {
+      this._animFrame = frame;
+      this._showFrame(STATES.flattened);
+    }
+    if (k.ticks > CRUSH.flatTicks) {
+      body.checkCollision.up = true;
+      this._crush = null;
+      body.setVelocityY(JUMP * 0.6);
+      this._enter('tumble', now);
+    }
+  }
+
+  /** Onto the ladder: no gravity, and the probes instead of collisions. */
+  _grabLadder(now) {
+    const body = this.body;
+    body.setVelocity(0, 0);
+    body.setAllowGravity(false);
+    body.checkCollision.none = true;
+    this._enter('climb', now);
+    this._climbFrame();
+  }
+
+  /** Off the top onto the ladder (0x29b15): 9 px down at once, then the strip. */
+  _stepOnLadder(top, now) {
+    this._grabLadder(now);
+    this._ladderTicks = 0;
+    this._ladderTarget = top;
+    this.body.reset(this.x, this.y + LADDER.stepDown);
+    this._enter('stepOn', now);
+    this._animFrame = LADDER.frames - 1;
+    this._showFrame(STATES.stepOn);
+  }
+
+  /** Back to gravity and collisions, leaving the ladder by any way. */
+  _offLadder() {
+    this.body.setAllowGravity(true);
+    this.body.checkCollision.none = false;
+  }
+
+  /** The climb's frame is his height: `(y >> 1) & 15` (VA 0x25de3). */
+  _climbFrame() {
+    this._animFrame = (Math.floor(this.y) >> 1) & 15;
+    this._showFrame(STATES.climb);
+  }
+
+  /**
+   * One tick on a ladder. Climbing (0x25bda): Up and Down move him 2 px a
+   * tick and nothing else steers; the jump leaves; a floor under him going
+   * down stands him on it; running out of ladder going up tops him out if
+   * he was at its top, and otherwise, either way, he falls. Topping out and
+   * stepping off run their strips (0x299b6, 0x29b15).
+   */
+  _ladderTick(cursors, body, dt, now, but2Pressed) {
+    const ticks = dt * ORIGINAL_HZ;
+    body.setVelocity(0, 0);
+    const x = this.x;
+
+    if (this.state === 'topOut' || this.state === 'stepOn') {
+      this._ladderTicks += ticks;
+      const step = Math.floor(this._ladderTicks / LADDER.stepTicks);
+      const out = this.state === 'topOut';
+      const f = out ? 1 + step : LADDER.frames - 1 - step;
+      if (out ? f >= LADDER.frames : f <= 0) {
+        if (out) {
+          body.reset(x, this._ladderTarget);
+          this._enter('stand', now);
+        } else {
+          body.reset(x, this._ladderTarget + LADDER.belowTop);
+          this._enter('climb', now);
+          this._climbFrame();
+        }
+        return;
+      }
+      const lift = LADDER.lift[f] / 2;
+      body.reset(x, this.y + (out ? lift : -lift) * ticks);
+      this._animFrame = f;
+      this._showFrame(STATES[this.state]);
+      return;
+    }
+
+    if (but2Pressed) {
+      this._regrab = LADDER.regrab;
+      this._jump(now);
+      return;
+    }
+    const dir = cursors.up.isDown ? -1 : (cursors.down.isDown ? 1 : 0);
+    const to = this.y + dir * LADDER.climb * ticks;
+    if (dir > 0) {
+      const floor = this.ladder.floor(x, this.y, to);
+      if (floor !== null) {
+        body.reset(x, floor);
+        this._enter('stand', now);
+        return;
+      }
+    }
+    if (dir !== 0) {
+      if (this.ladder.at(x, to)) {
+        body.reset(x, to);
+      } else if (dir < 0 && this.ladder.at(x, this.y) === LADDER_TOP) {
+        // Out of ladder at its top: up onto the platform it holds, whose
+        // top is the block's 30 px over his feet (0x25d80).
+        this._ladderTicks = 0;
+        const top = this.ladder.topAt(x, this.y - LADDER.probeUp);
+        this._ladderTarget = top === null ? this.y - LADDER.topOutRise : top;
+        this._enter('topOut', now);
+        return;
+      } else {
+        this._regrab = LADDER.regrab;
+        this._enter('fall', now);
+        return;
+      }
+    }
+    this._climbFrame();
+  }
+
+  /**
+   * Held in place — on a sucker's cup, or in a teleporter's beam — at
+   * (x, y), drawn squeezed by (sx, sy).
+   */
+  holdAt(x, y, sx = 1, sy = 1) {
+    const body = this.body;
+    if (this.state !== 'caught') {
+      // Hands full, what he holds drops, as under a falling block (ours).
+      if (this.carried) {
+        this.emit('putdown', { handle: this.carried, ...this._feetAhead() });
+        this.carried = null;
+      }
+      body.setAllowGravity(false);
+      body.checkCollision.none = true;
+      this._enter('caught', this.scene.time.now);
+    }
+    body.reset(x, y);
+    this._squashX = sx;
+    this._squashY = sy;
+  }
+
+  /** Let go where he is held, to fall as he will. */
+  letGo() {
+    const body = this.body;
+    body.setAllowGravity(true);
+    body.checkCollision.none = false;
+    this._squashX = 1;
+    this._squashY = 1;
+    this._enter('fall', this.scene.time.now);
+  }
+
+  /** Thrown off it straight up, at `vy` px/tick, from (x, y). */
+  thrownUp(x, y, vy) {
+    const body = this.body;
+    body.setAllowGravity(true);
+    body.checkCollision.none = false;
+    body.reset(x, y);
+    this._squashX = 1;
+    this._squashY = 1;
+    body.setVelocity(0, vy * ORIGINAL_HZ);
+    this._jumpBoost = 0;
+    this._enter('rise', this.scene.time.now);
+  }
+
+  /**
+   * Knocked flying by a UFO's bolt (VA 0x1264b, speed 3): up at `speed`,
+   * and across at least that much — backwards, if he was standing still.
+   * Out of the hat he loses `spill` timmies and is hurt; in it the hat
+   * bounces.
+   */
+  knockedBack(speed, spill = 8) {
+    if (!this._canBeHit()) return;
+    const body = this.body;
+    let vx = body.velocity.x / ORIGINAL_HZ;
+    if (vx === 0) vx = this._facingLeft ? speed : -speed;
+    else if (Math.abs(vx) < speed) vx = Math.sign(vx) * speed;
+    this._dropForHurt();
+    body.setVelocity(vx * ORIGINAL_HZ, -speed * ORIGINAL_HZ);
+    if (this._inHat()) {
+      this._noEvents = 17;
+      this._enter('hatJump', this.scene.time.now);
+      return;
+    }
+    this._sting(spill);
+  }
+
+  /**
+   * Touched by what hurts (Jack's event outcomes 11 and 12, VA 0x12491 /
+   * 0x125c1): a walking spike git, or its needles. The two trade speeds,
+   * each then held to 2-4 px/tick across and 2-3 up or down — or, with no
+   * speed, sent 2 apart. Out of the hat he then flies (vy -4, at least 2
+   * across), loses up to eight timmies and cannot be hurt for 400 ticks;
+   * in it the hat bounces, unless he was all but out of it.
+   *
+   * @param {{x: number, y: number, vx: number, vy: number}} from  px, px/tick
+   * @returns {{vx: number, vy: number}|null} what `from` is left with, or
+   *   null when he could not be hurt
+   */
+  hurt(from) {
+    if (!this._canBeHit() || this._invuln > 0) return null;
+    const body = this.body;
+    const held = (v, away, lo, hi) => (v === 0 ? away * lo
+      : Math.sign(v) * Phaser.Math.Clamp(Math.abs(v), lo, hi));
+    const awayX = this.x < from.x ? -1 : 1;
+    const awayY = this.y < from.y ? -1 : 1;
+    const vx = held(from.vx, awayX, 2, 4);
+    const vy = held(from.vy, awayY, 2, 3);
+    const left = {
+      vx: held(body.velocity.x / ORIGINAL_HZ, -awayX, 2, 4),
+      vy: held(body.velocity.y / ORIGINAL_HZ, -awayY, 2, 3),
+    };
+    this._noEvents = 50;
+    this._dropForHurt();
+    body.y -= 0.5;
+    if (this._inHat()) {
+      this._noEvents = 17;
+      body.setVelocity(vx * ORIGINAL_HZ, vy * ORIGINAL_HZ);
+      if (this.state === 'hatOut' && this._animFrame >= 4) this._enter('stand', this.scene.time.now);
+      else this._enter('hatJump', this.scene.time.now);
+      return left;
+    }
+    body.setVelocity(vx * ORIGINAL_HZ, -4 * ORIGINAL_HZ);
+    this._sting(8);
+    return left;
+  }
+
+  /**
+   * Caught by a blast at (x, y) — a bomb's or a stick's (VA 0x2bc86). It
+   * pushes him by how far he is from it, each way along table 0x98c6c (11
+   * px/tick under 16 px, 6 at 50, none from 76), halved — quartered in the
+   * hat — and always up when he stands. Within 30 px of it, out of the hat,
+   * he is hurt and loses four timmies.
+   */
+  blasted(x, y) {
+    if (!this._canBeHit()) return;
+    const inHat = this._inHat();
+    if (!inHat && this._invuln > 0) return;
+    const body = this.body;
+    const push = (d) => {
+      const a = Math.abs(d);
+      const v = a < 16 ? 11 : a < 50 ? 11 - ((a - 16) / 34) * 5 : a < 76 ? 6 - ((a - 50) / 26) * 6 : 0;
+      return (Math.sign(d) * v) / (inHat ? 4 : 2);
+    };
+    this._noEvents = 17;
+    this._dropForHurt();
+    const py = push(this.y - y);
+    const vy = body.velocity.y / ORIGINAL_HZ + (body.blocked.down ? -Math.abs(py) : py);
+    const vx = body.velocity.x / ORIGINAL_HZ + push(this.x - x);
+    body.y -= 0.5;
+    body.setVelocity(vx * ORIGINAL_HZ, vy * ORIGINAL_HZ);
+    if (inHat) {
+      this._enter('hatJump', this.scene.time.now);
+      return;
+    }
+    if (Math.abs(this.x - x) < 30 && Math.abs(this.y - 21 - y) < 30) this._sting(4);
+    else this._enter('fall', this.scene.time.now);
+  }
+
+  /** Whether anything may touch him now (player +0x15a, and what holds him). */
+  _canBeHit() {
+    if (this._noEvents > 0) return false;
+    const spec = STATES[this.state] || STATES.stand;
+    return !spec.crushed && !spec.caught && !spec.ladder;
+  }
+
+  /** In the hard hat — the game's +0x41 bit 0. */
+  _inHat() {
+    return ['hatIn', 'hat', 'hatOut', 'hatJump'].includes(this.state);
+  }
+
+  /** What he holds drops (VA 0x1e7d5). */
+  _dropForHurt() {
+    if (this.carried) {
+      this.emit('putdown', { handle: this.carried, ...this._feetAhead() });
+      this.carried = null;
+    }
+    this._jumpBoost = 0;
+  }
+
+  /** Into slot 73: his timmies spill, and for 400 ticks he cannot be hurt. */
+  _sting(spill) {
+    this._invuln = 400;
+    this._enter('stung', this.scene.time.now);
+    if (spill > 0) this.emit('spill', spill);
+  }
+
+  /**
+   * One tick flying hurt, or of the hat bouncing (0x2b152 / 0x26539):
+   * friction 2000 a tick across; landing at 1.5 px/tick or more bounces
+   * him back up — at an eighth of the speed, the hat at a quarter — and
+   * slower lands him: on his feet, or in the hat.
+   */
+  _hurtTick(body, dt, now, onGround) {
+    const ticks = dt * ORIGINAL_HZ;
+    this._hurtTicks += ticks;
+    let vx = body.velocity.x / ORIGINAL_HZ;
+    vx = Math.abs(vx) > 399 / 65536 ? vx - Math.sign(vx) * (2000 / 65536) * ticks : 0;
+    body.setVelocityX(vx * ORIGINAL_HZ);
+    if (!onGround) {
+      // the collision zeroes vy on landing, so keep the speed it came down at
+      this._hurtAir = true;
+      this._hurtVy = body.velocity.y;
+      return;
+    }
+    // On the floor: once he has been off it — or if the hit never lifted him.
+    if (!this._hurtAir && this._hurtTicks < 4) return;
+    const fell = Math.max(0, this._hurtVy) / ORIGINAL_HZ;
+    this._hurtAir = false;
+    this._hurtVy = 0;
+    if (fell < 1.5) {
+      this._enter(this.state === 'hatJump' ? 'hat' : 'land', now);
+      return;
+    }
+    body.setVelocityY((-fell / (this.state === 'hatJump' ? 4 : 8)) * ORIGINAL_HZ);
+  }
+
+  /** True while he is in the stance that takes hold of what can be pushed. */
+  get pushing() {
+    return !!(STATES[this.state] && STATES[this.state].push);
+  }
+
+  /** One tick of pushing (0x2820b) or standing in the stance (0x28691). */
+  _pushTick(cursors, body, dt, now, onGround, but2Pressed) {
+    const across = cursors.left.isDown || cursors.right.isDown;
+    if (!onGround) {
+      this._enter('fall', now);
+      return;
+    }
+    if (!cursors.up.isDown) {
+      this._enter(across ? 'walk' : 'stand', now);
+      return;
+    }
+    if (but2Pressed) {
+      this._jump(now);
+      return;
+    }
+    if (this.state === 'pushStand') {
+      body.setVelocityX(0);
+      if (across) this._enter('push', now);
+      return;
+    }
+    const vx = body.velocity.x;
+    if (across) {
+      const dir = cursors.left.isDown ? -1 : 1;
+      if (Math.sign(vx) === -dir && Math.abs(vx) > PUSH_SKID) {
+        this._skidVx = vx;
+        this._enter('skid', now);
+        return;
+      }
+      this._steer(cursors, body, dt, PROFILES.push);
+    } else if (Math.abs(vx) < SKID_STOP) {
+      body.setVelocityX(0);
+      this._enter('pushStand', now);
+      return;
+    } else {
+      body.setVelocityX(vx - Math.sign(vx) * SKID_BRAKE * dt);
+    }
+    // His frame is where he is: (x >> 3) & 15, run backwards facing left.
+    const f = (Math.floor(this.x) >> 3) & 15;
+    this._animFrame = this._facingLeft ? 15 - f : f;
+    this._showFrame(STATES.push);
   }
 
   /** The jump (0x22b91): -4.5 px/tick, more while BUT2 stays down. */
@@ -784,6 +1447,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const prev = this.state;
     this.state = name;
     const spec = STATES[name] || STATES.stand;
+    if (STATES[prev] && STATES[prev].ladder && !spec.ladder) this._offLadder();
     // In hand once it is out of the hat, until it goes back in — or into
     // the hat with the hoover's strip, or with him when he ducks.
     if (name === 'hammerStand' && (prev === 'hammerDraw' || prev === 'hooverStow')) this._hammerOut = true;
@@ -799,6 +1463,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._strikeCharge = strike ? strike.charge : 0;
     this._animFrame = spec.startFrame || 0;
     this._animTimer = now;
+    if (spec.hurt) {
+      this._hurtTicks = 0;
+      this._hurtAir = false;
+      this._hurtVy = 0;
+    }
     this._showFrame(spec);
   }
 
@@ -870,6 +1539,23 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       }
       this.hammer.setVisible(word !== null && !this._hammerHidden);
     }
+    if (this.vac) {
+      // Slots without a hoover list put it away (VA 0x617c7); the rest
+      // show it, with the same sticky switches as the hammer's list.
+      const list = spec.slot !== undefined ? HOOVER_BY_SLOT[spec.slot] : null;
+      if (!list || !list.length) {
+        this._vacHidden = true;
+        this._vacFrame = -1;
+      } else {
+        const word = list[Math.min(this._animFrame, list.length - 1)];
+        if (word & HAMMER_HIDE) this._vacHidden = true;
+        if (word & HAMMER_SHOW) this._vacHidden = false;
+        this._vacFrame = this._vacHidden ? -1 : word & HAMMER_FRAME;
+        this._vacKey = PROP_ANIMS.vac[word & HAMMER_FRAME];
+        this.vac.setTexture(this._vacKey);
+      }
+      this.vac.setVisible(!this._vacHidden);
+    }
   }
 
   /** How many frames a pose has, 1 if it is missing. */
@@ -909,6 +1595,10 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     if (this.art) {
       this.art.destroy();
       this.art = null;
+    }
+    if (this.vac) {
+      this.vac.destroy();
+      this.vac = null;
     }
     if (this.hammer) {
       this.hammer.destroy();

@@ -175,36 +175,33 @@ same *type* (same size/strength) wear different graphics.
 | 4 | u16 height | in tiles — **verified** |
 | 6 | u16 **mass** | forced to 1 when stored as 0; the level loader copies it to the entity's `+0x14`, and the collapse pass sums it up a pile to get the force of an impact (VA 0x69850) — **confirmed by its reader** |
 
-## `.SCN` — background — **Partly wrong in these notes**
+## `.SCN` — background textures, drawn in perspective — **Confirmed**
 
-The layout below is right as far as it goes, and the layers do decode to
-recognisable images. What is wrong is the assumption that a layer *is*
-the backdrop.
+A `.SCN` is 256-pixel-wide textures, one byte a pixel, no header (see
+`scn.py`; the old "3072-byte lead-in and 320x200 layers" reading sheared
+every row and is gone). What the game does with them is a **perspective
+renderer**, not a blit: its camera has a depth (`0x28bf40`, the zoom; the
+sprites are scaled by `0x50000000 / (camera z - sprite z)` too, VA
+0x6ae1e), and the backdrop is drawn row by row through an affine scanline
+mapper (VA 0x18acc, 256x256 source, both indices masked to 8 bits):
 
-| offset | size | field |
-|---|---|---|
-| 0 | 3072 | lead-in |
-| 3072 | 64000 | layer 0 |
-| 67072 | 64000 | layer 1 |
-| 131072 | 64000 | layer 2 (only in 195072-byte files) |
+- **The horizon** (VA 0x1c759): row `100 + (20.0 / (SDE[0] - camera z)) ×
+  camera y`, held to 0..199.
+- **Below it** (VA 0x18f74), from the horizon down to row 199: a plane
+  whose texture scale is `SDE[1]`, offset every tick by `SDE[4]` and
+  `SDE[5]` × 0x1000 — an **auto-scroll**, -5 and -5 in 12 levels (drifting
+  cloud or water), 0 elsewhere.
+- **Above it** (VA 0x1c895), from the horizon up: a farther plane, its
+  step `(SDE[0] - camera z) / 320 >> SDE[2]` a row; it stops once the
+  texture runs out unless `SDE[3]` says to carry on to the top (59
+  levels), and the rest is filled plain (0x6d2ab).
+- Which planes are drawn at all is the **graphics detail** setting
+  (`0x287c70` / `0x287c72`, four presets at VA 0x1c69f-0x1c70d), not the
+  level: at the lowest the backdrop is a plain fill (0x6d2f4).
 
-The renderer (VA 0x18e64 and around) does not blit a layer. It walks the
-buffer as **256-byte units**, addressing them `0x257634 + (index << 8)`
-where the index is derived from a coordinate by a shift, and the shift
-amounts come out of the `.SDE` header — `0x984c4`, which is `.SDE` +4.
-The loop runs ~200 times, once per screen row. So the background is
-composed per scanline, at a scale the level's own settings control, and
-not from a layer taken whole.
-
-Two things support that. Drawing layer 0 as a picture and tiling it
-across a level gives a smear rather than a backdrop — which is what it
-looks like in the clone today. And level 0C's layer 2 is a developer's
-hand-drawn scribble (the words "I'm a" and some doodled shapes), which
-no level would ever display.
-
-Reconstructing the background properly means reading that renderer
-through. Until then anything the clone draws from a `.SCN` is a
-placeholder.
+The clone draws texture 0 flat and tiled — the look of the lowest detail
+level with a texture. Doing it as the game does needs the camera's depth,
+which the clone does not model.
 
 ## `.SDE` — background settings + scene sprites — **Confirmed**
 
@@ -212,7 +209,7 @@ Not a flat settings block: a 0x40-byte header followed by an array.
 
 | offset | size | field |
 |---|---|---|
-| 0x00 | 7 x u32 | background/parallax parameters, unpacked into globals at VA 0x18255; the last two are also split into four bytes each |
+| 0x00 | 8 x i32 | the backdrop (see `.SCN`): [0] the far plane's distance (520-1094), [1] the near plane's texture scale (0-2), [2] the far plane's step shift (1-2), [3] carry the far plane to the top (0/1), [4] [5] auto-scroll a tick (0, or -5 in 12 levels), [6] [7] split into bytes at VA 0x18255 — always 0 |
 | 0x3c | u16 | scene sprite count N (max 40) |
 | 0x40 | N x 44 | scene sprite records |
 
@@ -235,13 +232,50 @@ not gameplay.
 **`.SDE` holds no gameplay placement** — no spawns, no bell. Those are in
 `.OB`.
 
-## `.STP` — **Inferred, not decoded to meaning**
+## `.STP` — the level's additive blend table — **Confirmed**
 
-Always 65536 bytes = 256x256. A debug flag in `G.EXE` — `"/STP [1-3 |
-4] : Write out .STP file, with transparency 1-3 (default is 4)"` —
-shows it is *written* by the game as a debug dump, and it is read back
-into a 64 KB buffer (VA 0x10be9). Rendering it as a bitmap gives a
-structured grid, not a picture. Not needed to reconstruct a level.
+65536 bytes: a 256x256 table read at level load into `blend_table`
+(0xbd4e4, VA 0x10be9) and used as `dst = table[src × 256 + dst]` (VA
+0x34ed8). Row 0 is the identity — colour 0 is see-through. Every other
+entry is the palette colour **nearest to `src + dst`, saturating**: light
+added to what is behind. Checked on 0A, 3C, 7M and EK with the merged
+palette — mean error 16-21 against 11-18 for the best any palette colour
+could do, while "half and half" scores 115 and more. The debug switch
+`/STP [1-3 | 4]` writes one (the "transparency" being its strength; 4,
+full, is what ships).
+
+Drawn through it:
+- **rubble** (VA 0x2d381) — which is why smashed blocks look pale and
+  ghostly;
+- sprites whose template word +0x18 has bits 0x8000 | 0x2000 (VA
+  0x2d552; drawing mode `+0x20 = -2`): the **bubble**, the **panel's**
+  twinkle and layers, the **teleporter's beam**, `VM`;
+- panel icons with the same bits in their frame word (VA 0x2e4b4).
+
+The same template word with 0x8000 alone is a colour remap — table
+`0xa1c28[n]`, 256 bytes: 1-3 are the player colours (Jack, flags, bins);
+with 0x4000 it is mode -1 (`HEAT`, not read). `0xa1b28`, all 255, draws a
+sprite as a flat silhouette — the super hoover's blink.
+
+## `.J` — demo recordings — **Confirmed**
+
+15 files (0D-4D, and the test levels T*, U*): the joypad of up to four
+players, recorded with `/RECORD` and played back with `/PLAYBACK` (VA
+0x177da, 0x17923); the front end runs them as its attract mode ("into demo
+mode with %s seq lev %d"). Four equal blocks, one a player — 4012 bytes
+each (12012 in the larger files):
+
+| offset | size | field |
+|---|---|---|
+| 0 | u16 | ticks recorded |
+| 2 | u16 | events |
+| 4 | u32 | the recorder's write pointer (junk on disk) |
+| 8 | events × (u16, u16) | (ticks, pad bits): the pad held for that many ticks |
+
+Checked on all 15: the events' ticks add up to the header's, exactly.
+0D is one player for 2 minutes; 4D has all four. A run of 1000 ticks is
+split (VA 0x1781c). During playback a real key press ends the demo
+("Joypad has been touched").
 
 ## `.OB` — the level's startup code — **Confirmed**
 
@@ -344,13 +378,68 @@ for almost every shipped level, and the elaborate locking variant is the
 exception that no level actually ships. Subtypes 2 and 8 are still
 unread.
 
-### Start positions still do not all fit
+### Off the map: the street, the posts and the flags — **Confirmed**
 
-Of 255 player starts, 75 fall outside the `.WAM` bounds, several with a
-small negative x (-19, -29, -130), and 17 of 135 bells are outside too.
-It is not an off-screen margin: the bounds the tile lookup checks are the
-level size exactly (`DAT_00410484 = width_in_tiles << 3`). Unexplained,
-and the reason this is not yet wired into the client's level export.
+Of 255 player starts, 75 fall outside the `.WAM` bounds (-19, -98, -130, …,
+and in 4M and 5M past the right edge), and 17 of 135 bells do too. They
+are not mistakes: **the level stands in a street.** The floor is the
+level's bottom edge at any x — when an entity's y reaches the level height
+(`[0x41044c]`, rows × 8) it lands there (VA 0x609bc), whatever the tile
+map says — and every off-map start sits 3 to 33 px above it. At load
+(VA 0x2cf19) the street's ends are set to `(-256) & ~7` and
+`(width + 0x107) & ~7`, i.e. 256 px past each side, and a PANEL.SPR post
+is stood on each at the bottom edge (VA 0x2f623; frame 16, the right one
+mirrored). So players walk in from the street, and some bells are out on
+it.
+
+Class 2 (FLAG.SPR, in every level) is not decoration either: it is the
+player's **flag**, where he comes back to. Its constructor (VA 0x1f499;
+0x1f4fe… for players 2-4) stores `x, y - 10` per player at VA 0x28b928 and
+a bobbing flag entity per player at 0x28b948 (templates 0xa34ec…, one
+colour each). When Jack is knocked out (state 0x2a199, slot 69: thrown up
+with a random sideways kick), after 150 ticks he goes to state 0x2a2fe
+(slot 64) and flies to his flag on a damped spring — `v += (flag - pos) >>
+6`, then `v -= v >> 3`, capped at 16 px/tick — and once he is within
+1/64 px of it and slower than 1/16 px/tick he is set down on it (VA 0x2a4a8) and stands again. The
+flags are usually just off the map too, next to the starts.
+
+## `.PAK` — RNC ProPack — **Confirmed**
+
+Ten files in `FSPR/`, all RNC method 2 (F.EXE logs `"failed to
+'unpropack()' RNC buffer"`). `pak.py` unpacks every one and each matches
+the CRC-16 in its header, so the decode is byte-exact.
+
+- `LVSPAT1..9.PAK` — 640×480 bytes, but not a picture: 255 draws the
+  paths of level-select screen N, and single pixels 1..N (13 to 32 a
+  screen, 201 in all) number points along them. 201 against 147 levels —
+  not one point per level; what they mean is F.EXE's to tell.
+- `WARNING.PAK` — a 20-byte header (16 bits per pixel, 2 bytes, …, u16
+  width 640, u16 height 256) and 640×256 **RGB555** — the anti-piracy
+  screen. Read as 8-bit, it looks like two interleaved half-images.
+
+## Sound — `SBANK.0`, `.WVL`, `.XMI`, the scripts — **Confirmed**
+
+All Miles Sound System 3.x; `sound.py` reads all four.
+
+- `SFX/SBANK.0` (67 samples, the game) and `FSFX/SBANK.0` (60, the front
+  end): a 0x800-byte directory of `{u32 offset, u32 size}`, ended by a
+  size with a zero low word (the game's own test). Each entry is a whole
+  RIFF WAVE, 11025 Hz, 8- or 16-bit mono; some still carry their
+  authoring names (`EXPLOS1.AIF`) and 1996 dates.
+- `SFX/0A.WVL` — a Miles wave library: 32-byte `WAVE_ENTRY` records
+  (bank, patch, root key, offset, size, format, flags, rate), 8 patches
+  of 2–4 s at 22050 Hz. The music is phrases, not notes — which is why a
+  six-minute XMI has 152 notes.
+- `SFX/0?.XMI` — one per section letter, `FORM XDIR / CAT XMID`, three
+  sequences each (they differ). XMIDI runs at a fixed 120 Hz; `sound.py
+  export` writes them as `.mid` at that clock.
+- The **sound scripts** live in G.EXE, not a file: 154 pointers at VA
+  0x95f9c, a sound id indexes them; then the per-sample loop table at
+  0x96204 (67 × `(start, end)`), right behind it. A script is a priority
+  then ops — `play sample @rate+rnd&mask`, `wait`, pan/pitch moves, `end`
+  — run by the interpreter at 0x1631c through 21 handlers at 0x9641c.
+  The sound ids quoted in these notes (0x58, 0x59, 0x37 …) are indexes
+  into it: `sound.py scripts G.EXE` names the sample each one plays.
 
 ## Game logic
 
@@ -720,7 +809,7 @@ the attacker (`+8`), the force (`+0x4e`) and the hit flag (`+0x40 |=
 0x80`). Three things read that flag: a clock, `CLOK.SPR` (VA 0x11edd —
 it bursts into twelve pieces and is gone), a hanging sign, `DIS.SPR`
 (VA 0x5f3c0 — it swings, amplitude `force >> 5` clamped to 3..32), and a
-creature whose state goes to VA 0x14935 with sound 0x84 (not yet named).
+landed UFO, which goes to VA 0x14935 (`ufo_hit`) with sound 0x84 — see The UFO.
 The hammer-lit kind of dynamite reads it too (see Dynamite).
 
 Not yet read: how the wielder's +0x74/+0x78 ever differ from the record
@@ -848,8 +937,8 @@ Pushing the other way brakes by the profile's turn rate instead and, once
 step every fourth tick and hold on the last. Running into a wall during
 it bounces him: `vx = -vx / 4` (VA 0x227ea).
 
-**The tick is the display's vertical retrace.** The main loop (VA 0x2c654
-→ 0x2cb6e) waits for retrace (port 0x3da), then runs the logic frame
+**The tick is the display's vertical retrace.** `game_main` (VA 0x2c52c) loops
+on 0x2cb6e, which waits for retrace (port 0x3da), then runs the logic frame
 (VA 0x2cbb9) once — or, if the machine has fallen behind, `elapsed_ms /
 13` times, clamped to 1..4 and only changed when two measurements agree
 (VA 0x10ad0; the millisecond clock is the PIT read at VA 0x76f26). Both
@@ -942,7 +1031,7 @@ Empty-handed, standing (0x22892) or running (0x22275):
 | UP held, at a ladder | climb (0x25bda) |
 | DOWN held alone, **running** (arrow let go, still moving) | **pick up** (0x267e3, via 0x20ee0) |
 | UP held, running | push (0x2820b) |
-| UP held, standing | 0x28691: holds on to a sprite of category bit 1 that is moving towards him, taking it from whoever had it |
+| UP held, standing | 0x28691: the pushing stance, still — holds on to a cannon rolling at him (see Pushing) |
 
 With the hammer out (0x23499 standing, 0x236b9 walking — cycle B,
 profile 0, so slower):
@@ -971,7 +1060,7 @@ The level's option byte (0x98224) switches actions off: bit 1 the
 hammer, 2 the hammer's DOWN action, 4 the hoover, 8 the hoover's.
 
 The clone plays this layout with Z as BUT1 and X (or Space) as BUT2.
-Not yet in it: the ladders, pushing, 0x28691, the hammer's and the
+Not yet in it: the hammer's and the
 hoover's DOWN actions, and the hat's BUT2. Two choices are its own:
 putting a carried thing down takes a fresh press of Down (the game tests
 Down held, so keeping it held after the lift would drop it at once), and
@@ -1099,22 +1188,650 @@ so the structures settle *before* the sprites move, and 0x2d1b5 (which
 builds the draw list by testing every object against the camera) runs
 after both.
 
+### What a destroyed block becomes — **Confirmed**
+
+`remove_object_data` (VA 0x68724) keeps the block's entity and turns it
+into **rubble**: it swaps the draw routine from 0x2d285 (opaque, through
+0x38be8) to 0x2d381, which draws through 0x34ed8 — a blit that writes
+`dst = table[src * 256 + dst]` with the 256x256 blend table at 0xbd4e4,
+so the rubble is **see-through**. Its state becomes 0x60f60:
+
+- it flies with a random push (`vy = -((rand & mask) + 0x4e29)`, `vx = ±(rand
+  & mask)`, the masks those of "What a hammer blow carries") and falls at
+  **5000 a tick** (0.076 px/tick²) — *through* everything, to the bottom of
+  the level (`0x41044c`), not onto the blocks below;
+- on the bottom it bounces, `vy = -(vy / 4)`, puffs dust (0x6125c,
+  `DUST.SPR`) and comes to rest;
+- resting, it counts down `+0x60` from **2000 ticks** (about 33 s) and every
+  tick puts itself on the rubble list (0x3f3390, count 0x3f4022) — the list
+  the hoover reads;
+- when the count runs out (0x61205) it sinks into the floor a pixel a tick
+  until it is gone.
+
+A second mode (`0x41044e`, state 0x6109e) sends rubble flying sideways
+towards a point instead; not traced.
+
+### The hoover — **Confirmed**
+
+The hoover is a sprite of its own, `VAC.SPR` (template 0xa3444, made for
+each player at VA 0x21616 and kept at the player's `+0x4c`), and like the
+hammer it follows Jack and shows a frame from a list per animation slot
+(table 0xa47c4, indexed by the frame index): slot 70, drawing it, shows
+nothing until entry 12 (`0x8009` — show, frame 9) and then frames 9 → 0;
+slot 28, held, frame 26; slot 29, walking, frames 10-26; slot 71, putting
+it away, frames 0-9 then `0x4000` (hide). Showing plays sound 0x16, hiding
+0x17.
+
+From frame 10 on it **sucks** (VA 0x617xx → 0x61472): a box 32 px wide
+starting **40 px ahead** of Jack (72 px when facing left: `x - 0x48`), at
+`y - 8`, tested against **the rubble list only**. A caught piece (state
+0x61518) moves an eighth of the way to the nozzle across and a quarter
+down each tick while its height shrinks by a quarter a tick, then its
+width; at 4 px it is gone and counted (0x61327: area / 16). Timmies are
+not on that list — the hoover does not take them.
+
+### A falling block on Jack — **Confirmed**
+
+Every tick (VA 0x21aef, from Jack's routine) 0x60a00 looks along Jack's
+width in the **falling** map (0x69fdf reads the provisional map 0x40f334,
+where moving groups are stamped) for a solid block over him:
+
+- in the air: rising, his `vy` flips downward; falling, he gets half the
+  block's `vy` on top of his own;
+- on the ground without the hat: the block goes in the player's `+0xac`
+  and Jack enters **0x29c92** — pinned; each tick the block's descent since
+  contact is his squash, `+0x52` (height) down by it and `+0x50` (width) up
+  by half of it. When the block stops pressing, or has pressed him more
+  than **32 px**, he shoots out at `vy = -6` into **0x29f7a**: flattened
+  (slot 65, sheet frames 323-325, Jack as a pancake), thrown with a random
+  `vx` (`rand >> 15`, either way), then flapping across the floor (±0x3000
+  a tick, friction 0x1500) for **150 ticks** before he gets up;
+- on the ground in the hard hat: **0x29e16**, the same pin, but he pops out
+  at `vy = -4` into **0x2a199** (slot 69): no sideways push, half gravity
+  (0x2400), and a springy wobble of width and height (`+0x50` kicked by
+  0x28000, `+0x52` by -0x20000, each damped by `-value * 0x8000`) until he
+  lands, back in the hat.
+- holding something (`+0x40 & 0x20`), he drops it (0x1e7d5) and goes to
+  0x256e9, or 0x26539 in the hat.
+
+The same squash handler (0x21a70: hat → 0x2a199 at -4, else 0x29f7a at
+-6) is outcome 2 of a "generic thing" (`.OB` class 26, event 9), which no
+shipped level places.
+
+### What Jack collides with: `.COL` — **Confirmed**
+
+Not every block is solid, and the clone treated every one as if it were.
+The game keeps a **collision kind per object** in `.COL` — the one level
+file these notes used to say `G.EXE` never opens. It does (VA 0x108db
+builds the name, VA 0x6028f reads it whole into 0x3f20c4, 4800 bytes):
+6 bytes per object, three i16, indexed by the object's number, so record
+0 is the "no object" slot and the file holds `N + 1` records — true of
+all 147 levels. Every probe of the tile map reads word 0 of the record
+for the object it finds:
+
+| kind | objects | what the probes do with it |
+|---|---|---|
+| 0 | 24553 | nothing — scenery Jack walks in front of: the buildings he smashes |
+| 1 | 21555 | solid: the only kind that stops him sideways (VA 0x6040a, 0x60513) |
+| 2 | 3220 | a floor only from above — feet over its top (VA 0x607c1); the girders |
+| 4 | 2139 | a ladder: no collision; the ladder probe looks for it |
+| 5 | 407 | a ladder's top: a floor from above, and still a ladder |
+
+Kinds 3 (overhead only, VA 0x60666) and 6 (floor from above) are in the
+code and in no level. In 0A, 328 of 371 objects are kind 0 and only 7 are
+solid. Words 1 (0..9) and 2 (mostly 0) are read by the hammer's code
+(0x1fb66, 0x1fc64, 0x2fc51) and not traced.
+
+### Ladders — **Confirmed**
+
+**The ladder probe** (VA 0x60920, box 0xa0264 = 4, 30) reads the row of
+cells 31 px over his feet, across x ± 4. *Every* cell there must be kind 4
+or 5 — anything else, empty included, answers 0 — and the answer is 5 if
+a top is among them, else 4. So he must stand squarely at the ladder.
+
+**Catching hold**: UP held and the probe non-zero, from standing
+(0x22a99), running (0x22598) or in the air (0x22e16); from the last two
+only while `|vx| < 5 px/tick` (faster goes to the hard landing, 0x29828),
+and in the air only once `+0x15c` has counted down — 15 ticks, set when he
+leaves a ladder any way but the top. Only empty-handed: no state with the
+hammer out leads to it.
+
+**Climbing** (0x25bda, slot 33): UP sets `vy = -2`, DOWN `+2` px/tick,
+nothing steers sideways (the state's tail is a bare return), and the
+frame shown is his height, `(y >> 1) & 15`. BUT2 pressed jumps off
+(0x22b91). Going down, the floor probe 0x606eb with `& 6` — a solid block
+or a platform he is above; a ladder's top he passes through — stands him
+on it, as does the bottom of the level. Going up, if the probe at the new
+height answers 0 but answered 5 where he was, he tops out; any other
+empty answer drops him (0x256e9).
+
+**Topping out** (0x299b6, slot 60): twelve frames two ticks apart; at
+frame `f` he moves `table[f] / 2` px a tick, the table at VA 0xa130e being
+`0, -2, -3, 0, 0, -1, -3, -3, -3, -3, -2, -5` — 25 px up — and then his
+feet are set on the top of the block 30 px over where he started
+(`+0xa6`). **Stepping down** from a top (DOWN pressed, standing on kind 5,
+0x22a05 → 0x29b15, slot 61 — the same frame list backwards): 9 px down at
+once, the table backwards from frame 11, and then 31 px under the top,
+climbing.
+
+### Pushing — **Confirmed**
+
+UP held on the run goes into **0x2820b** (slot 38, sheet 207-222: arms
+out, leaning in), standing into **0x28691** (slot 52, frame 245, the same
+stance still). Neither pushes anything by itself — 0x2820b is a walk with
+movement profile 4 (top 3.05 px/tick, accel 8000, turn 10000) whose frame
+is his x, `(x >> 3) & 15`, run backwards facing left. Pushing back the
+other way faster than 0x2bf20 (2.75 px/tick) skids him; with no direction
+he brakes 5000 a tick and below 10000 stands in 0x28691, and a direction
+from there walks again. BUT2 jumps, BUT1 does what it does from standing.
+
+What makes it pushing is a search both states run while UP is held
+(0x284e5 / 0x28771): sprites whose category has **bit 1** (template
+`+0x10` set to 2 for the call, VA 0x2f0ab), up to the list at 0x3f1670,
+that his box overlaps (0x2ddd6) and that are coming at him — `vx <= 0`
+facing right, `vx > 0` facing left. The first is linked both ways (`jack[4]
+= obj`, `jack+0x41 |= 0x20`; `obj[4] = jack`, `obj+0x41 |= 0x40`); one
+another player holds is taken from him, and he gets a 3-tick wait
+(`+0xa4`). The link lasts while they overlap. A linked sprite copies its
+holder's `vx` every tick (VA 0x27f96) — and then runs its own physics and
+friction on top, so it lags him slightly and he stays against it.
+
+Of the whole cast **only one template has category bit 1: CWHL.SPR**, the
+cannon's wheel. Pushing is for cannons.
+
+### The cannon — **Confirmed**
+
+`.OB` class 6 (constructor VA 0x5f69a, 20-byte payload): `i16 x, y` — the
+wheel's position — then at +14 which way it faces (1 left, 2 right) and at
++18 what it stands on: **2 a wheel** (CWHL, template 0xa4470, category 6 —
+pushable, and hit by the overhead blow) or **1 a fixed carriage** (CFIX,
+0xa448c, category 0, `+0x64 |= 4`). On it the constructor stacks three
+parts of CFIR.SPR that follow it each tick: the barrel with its fuse
+(frame 0, template 0xa441c), and two halves of the breech (frames 10 and
+9, 0xa4438 and 0xa4454 — the second shown only while the first is on 10).
+All four share the one anchor. 46 levels carry 60 of them; in 0H, 0S, 2H
+and 3I among the exported ones.
+
+The wheel (state 0x5f8b0): its frame is `(x >> 1) & 3`, backwards facing
+left; it takes its holder's speed (0x27f96); gravity 0x4800 and friction
+2000 a tick, zeroed below 10000 (0x5fd1e). The overhead blow's hit flag,
+on the ground and on wheels only, throws it up at `vy = -0x30d40` and
+turns it round (`+0x40 ^= 4`, VA 0x5f944).
+
+**It is loaded with a cannonball, from behind.** `.OB` class 7 (VA
+0x20b58, 16-byte payload: `x, y`, and at +14 which ball — 2 is the big
+one) places balls, CFIR.SPR frame 12 or 13 on template 0xa011c: category
+0x841, so Jack can pick one up and throw it. The big ball weighs 50000
+(`+0x4c`), the small one 5, and both strike what they hit (`+0x41 |=
+0x10`). These are the "other dynamite" the Dynamite section mentions.
+
+1. **Taken in.** Every tick a ball comes down (`vy > 0`) it runs a sprite
+   search with mask 0x20 (VA 0x20c26 → 0x2f36b, its event list 0xa0250),
+   which only the barrel answers. Its one outcome, 0x20e13, tests the
+   ball's point against the barrel's hotspot 0xa4518 — centre (-19, -4),
+   half-size 11 x 5, x mirrored facing left (test VA 0x2dfc7): **the bowl
+   at the back of the breech**, not the muzzle. A hit links the two,
+   clears the barrel's category bit 0x20 (no second ball) and plays sound
+   0x2d or 0x2f.
+2. **Rocking.** For 62 ticks the ball sits at `(cannon.x + dx ∓ 19,
+   cannon.y - dy)` from table 0xa0154 (to 1234) — rocking in the bowl,
+   dying away — then is hidden and the breech goes to frame 11 (VA 0x20d4f).
+3. **The fuse.** That frame is what 0xa4438 waits for: it spawns a spark
+   (BLAM.SPR frames 9-14, cycling a tick each, template 0xa44a8), which
+   waits 20 ticks and then steps along the fuse's 29 points (0xa4522, x
+   mirrored facing left) one every `+0x62` ticks — 5 on wheels, 10 on a
+   carriage.
+4. **The shot.** At the end the barrel goes to 0x5f964: a frame every 6
+   ticks (it swells, 1-6, then kicks, 7-8). On frame 6 the ball leaves at
+   `(x ± 20, y - 32)` through 0x6010e at 45° with the speed of the power in
+   `+0x60` — **3 on wheels (9.6 px/tick), 4 on a carriage (12.7)**, table
+   0xa44e0 — and the wheels take half its speed back as recoil. On frame 8,
+   once it has stopped rolling, everything resets and bit 0x20 is back.
+
+A ball in flight is an ordinary physical sprite (0x1f098). Landing on a
+block at 5 px/tick or more it strikes it (VA 0x1f36d) with `mass << (speed
+- 2) >> 1`, both up and down the structure; hitting one sideways at 3 or
+more (0x1f28c), `mass << (speed - 2)` one way. Rubble flies wider for the
+big ball (mask 0x7ffff against 0x3fff).
+
+Sprites land as the probes have it, `& 0x66` (VA 0x1f206): on solid blocks
+and on platforms (kinds 1, 2, 5, 6), and walls are only solid ones.
+
+### The sucker — **Confirmed**
+
+`.OB` class 22 (constructor VA 0x18fba, 12-byte payload `x, y`), in 72
+levels, 154 of them: SUCKER.SPR, a base (frame 0, template 0x96de0, state
+0x19058) and a red cup on it (frame 1, 0x96dfc, state 0x193cb), drawn at
+the base's `+0x5e, +0x5c`. Category 0x1805: it can be carried, and the
+overhead blow reaches it. It is a spring for throwing things up.
+
+- **Landing** (on the ground and not yet wobbling, VA 0x190a9) sets the
+  cup off along table 0x96e18 — a wobble, sound 0x4d.
+- **The overhead blow** (its hit flag, VA 0x19065) arms it: `+0x50 = 64`,
+  category bits 0 and 2 cleared (not to be picked up or struck again),
+  sounds 0x49 and 0x4a, state 0x19105.
+- **Armed, empty**, it searches for category 0x800 each tick (list 0x96e44
+  → 0x1947e). Something in the air and falling (`vy > 0`) that overlaps it
+  is caught: put at its x, 18 above it (`+0x60, +0x62 = 0, -18`), sound
+  0x49. Jack and three other types (event types 0, 0x35, 0x3f, 0x5b) are
+  frozen in place by `+0x40 |= 0x400020`; anything else has its state set
+  aside for 0x1951a while it is held. Category 0x800 is Jack's, the
+  dynamite's and the cannonballs', among others.
+- **The count** steps `+0x50 -= 2` every `+0x6c` ticks — 12 while empty,
+  so a little over six seconds. Holding something it plays the sink (cup
+  table 0x96e54) and then sets `+0x6c = 0`, so the rest goes in a tick a
+  step.
+- **At zero, with a rider** (VA 0x19169): the rider is lifted 10 px and
+  thrown straight up at **`vy = -0xe30d0` (-14.2 px/tick, about 360 px)**,
+  its state given back; the cup springs (0x96ee4) and it resets (0x19347:
+  everything zeroed, category bits 0 and 2 back). **Empty**, it hops
+  instead (0x19264): the cup rises along 0x96e90 while 0x96e64 runs, then
+  it leaves the ground 42 px up at `vy = -0x61a80` (-6.1 px/tick).
+
+### The teleporter — **Confirmed**
+
+`.OB` class 27 (constructor VA 0x347c1, 20-byte payload), 93 in 22
+levels: `x, y`; at +14 bit 0 keeps it on for good (`+0x54 |= 3`); at +16
+its own number, under 8 (`"teleport id exceeds limit"`), which puts it in
+the table at 0x3f20a4; at +18 the number of the pad it sends to (`+0x58`).
+TELLY.SPR, template 0xa4190 (state 0x34890), is a pad — frames 0-9 open
+and close it — and while it is open a beam stands over it, frame 10, a
+sprite of its own (0xa41ac, state 0x34a26). The pad is a physical sprite
+(0x34d3e → 0x1f098, box ± 10): it settles onto what is under it.
+
+- **The cycle** (`+0x54` bits, VA 0x34961-0x34a1c): 2 asks it to open — it
+  makes the beam and steps 0 → 9 on the frame counter's `& 3`, then is
+  open (0x20) for `+0x4a` = 180 ticks; 4 asks it to close — 9 → 0, the beam
+  shrinks away (0x34cda) — and it stays shut (0x40) 180 ticks before
+  asking to open again. Bit 1 skips the open countdown: always on. Every
+  pad in the exported levels has it.
+- **The beam** grows over about 20 ticks (offsets to its width and height,
+  tables 0xa41f6 and 0xa41cc) and shrinks by 0xa4262 / 0xa421e. Each tick
+  it searches for category 0x10000 — Jack's, whose category is the u32
+  0x10804 — and sends on (0x34b5b) what it meets that is **in the air and
+  not carrying** (`+0x40 & 0x30` clear), if the pad it names is open, has
+  more than 30 ticks of it left and room for one more of its eight
+  passengers. Sound 0x37; the passenger is held 8 above the beam.
+- **The far pad** (0x34bcb) squeezes each new passenger — width offset
+  `+0x50` down a pixel a tick, height `+0x52` up — until it is 6 px wide,
+  moves it 12 above itself, and lets it out the same way back.
+- **No ping-pong.** A passenger stays on the far pad's list after it is
+  let out, and the beam leaves it alone until it has left the beam (VA
+  0x34aa4-0x34b15) — it comes out standing in that pad's beam.
+
+### The gits: timmies, spikes, bombs — **Confirmed** (the core; details open)
+
+The game calls its little walkers *gits* — `"spike git has no block to
+lock to"`, `"Bomb git …"`, `"start bonus git"`. Timmies, king timmies,
+Tommy, the spiky `SPK`, the walking bomb `BOM` and the bonus `BON` all
+run on one driver (VA 0x30069) that each tick handles hits by kind and
+then calls the behaviour in the sprite's `+0x54`. Those behaviours were
+not functions to Ghidra (only stores into `+0x54` reach them); they are
+named in `scripts/ghidra/symbols.d/git.txt`.
+
+**What the level places.** Class 14 is a timmy, class 17 a king timmy —
+each in one of two modes (word +0xe): 1, *locked to the block* under
+it — 1440 of the 1449 records; 2, free from the start (nine). A
+locked timmy sits on its block (VA 0x2ff6b) until the block dies, then
+springs free with a random kick (up to 2 px/tick each way, VA 0x3053f).
+**Class 32 is not a timmy at all** — it is a spike git (VA 0x1327e), 551
+in 76 levels: word +0x12 bit 0 a free walker (510), bit 1 locked to a
+block (41). Class
+45 is the bomb git, the same way. The level's rules record caps them:
+bombs at +0x3c, spikes at +0x3e (VA 0x1ae49).
+
+**Walking.** A free git walks the way it faces, speeding up by `+0x5c` to
+`+0x58` — both from its animation's profile, like Jack's (git_set_anim,
+VA 0x30462; profile 0 is 4.34 px/tick, 0.12 a tick; spikes at half). Its
+walk frame is its x: `x >> 2 & 15` into frames 1-16 of the sheet. A wall
+turns it (a skid: `+0x60` a tick until the speed changes sign); no floor
+and it falls; past the right edge of the level it turns back. At the
+level's bottom a timmy hops now and then (vy -4.5, 20 in 4096 a tick).
+
+**Markers.** Where a git walks onto a block, the block's `.COL` word 2 is
+a marker (VA 0x2fbfd, table 0x3f20c8): 1 turns it left, 2 right; 28-30
+are actions only for gits whose `.OB` flags have bit 1. Each marker is a
+list (0xa3dbb) of 8 actions, one picked at random, which index the
+behaviour table 0xa3fc4. In the shipped levels the markers are 0, 1, 2
+and 28-30 — so they pace between their turn marks.
+
+**Collecting.** A free timmy (template category 0x605: carried, hit,
+*hooverable* 0x200) or Tommy is taken by **the hoover**: its box catches
+every sprite of category 0x200 (VA 0x2fc5b), which then trails 40 px
+behind, shrinks, and is credited to the player (BCD `+0x64`, count
+`+0x68`, VA 0x1a036). That is "collect the timmies". The king timmy has
+no 0x200 — it cannot be hoovered.
+
+**Hit.** A spike or bomb the hammer hits stops, swells and is gone with
+a puff and a screen shake (VA 0x32b15). A timmy struck on its feet
+(sprite flag 0x10 is "on the ground", not "in the air" as first read) is
+knocked, and the second knock is its end — below.
+
+What spikes and bombs do — and what that does to Jack — is "What hurts
+Jack" below.
+
+**A timmy knocked, and its end** — **Confirmed**. A timmy (or king, or
+Tommy) on its feet that the hammer's overhead blow reaches (its hit flag
+without the blast bit) jumps at vy -1.5, its speed quartered and jittered
+up to 4 px/tick, and counts the knock (`+0x68`). The game allows **one**
+(0xa3e38):
+- **The first knock** (0x31504, slot 8, sheet frames 18-19): flat on the
+  floor, and meanwhile not to be carried or struck (category bits 0, 2
+  and 0x800 cleared — the hoover still takes it). From tick 160 on the
+  ground it stirs; at 164 it **shakes itself** (0x3172b, slot 9, frames
+  20-23-21 a step every 4 ticks), carryable and strikable again, and after
+  100 ticks on its feet walks on. A knocked **king** gains the hooverable
+  bit, which a king otherwise lacks.
+- **The next one is its end** (0x3193e, slot 10, frames 24-25): it turns
+  into a winged angel that nothing can touch (category 0), hangs for 10
+  ticks, then rises at 0x900 a tick, swaying after a point that drifts
+  away (`vx += (point - x) / 64`), and is gone once off screen.
+- **A blast's shock** within 70 px (0x32413) pushes it by the same table
+  as Jack — vy whole and up if it stood, at most -12; vx halved — and
+  counts as a knock: the first shakes it, the next is its end (0x32164,
+  the same rise).
+- **Dizziness** (`+0x74`): +10 an about-turn, -1 a tick. Over 30 a turn
+  lifts it 5 px; at 500 a timmy dies of it, a spike is done for and a
+  bomb lights.
+- **A falling block** that catches it on the ground (0x31bd8) squashes it
+  with the block; past 20 px — or the block gone — it dies, thrown up at
+  -3.5 px/tick and more.
+
+### What hurts Jack: spikes, needles, bombs, blasts — **Confirmed**
+
+Names in `scripts/ghidra/symbols.d/hurt.txt` and `git.txt`.
+
+**How a touch is told apart.** Jack's template carries an event list
+(VA 0xa2f48): an array of outcomes indexed by the *other* sprite's event
+type, which is its template's word at `+0xa`. A placed spike or bomb
+(templates 0x93904, 0x939ec) is type 0 — nothing; only once walking do
+they get templates of their own: the bomb git 0xa3ecc is **type 10**, the
+spike git 0xa3ee8 **type 11**, and a spike's needle 0x93920 **type 12**.
+The outcomes (not functions to Ghidra — only the table reaches them):
+
+| type | outcome | what |
+|---|---|---|
+| 10 | 0x128c5 | a bomb on the ground starts chasing him — it does not hurt |
+| 11 | 0x12491 | a walking spike hurts him (if its box, raised 24 px, overlaps him); the spike turns about unless it is bristling |
+| 12 | 0x125c1 | a needle hurts him |
+| 5 | 0x1d7e1 | the touch-lit dynamite (see above) |
+
+**Hurt** (0x12491 / 0x125c1, shared). Nothing happens while `+0x7c`, his
+invulnerability, runs. Otherwise for 50 ticks no event reaches him
+(player `+0x15a`), he and the git **trade speeds** — each then held to
+2-4 px/tick across and 2-3 up or down, or with none sent 2 apart
+(0x12b54, 0x12bc1) — he is lifted half a pixel off the floor and drops
+what he carries. Then:
+- **Out of the hat**: invulnerable for **400 ticks** (0x2b9fd), up at
+  **vy -4**, across at least 2, into slot 73 (0x2b152): it **spills
+  eight timmies** (player `+0x15e`; each thrown up at -6 with a random
+  kick, off his count — 0x338d0), slides with friction 2000 a tick, and
+  landing at 1.5 px/tick or faster bounces at an eighth of the speed;
+  slower he lands (0x25dfc). While invulnerable he blinks: the draw mode
+  swaps every other 4 ticks, for the last 100 every 4 of 16 (0x2ba0f).
+- **In the hat**: the hat bounces (0x26539, slot 43 — the hat frame,
+  steerable, landing bounces at a quarter) and no event reaches him for
+  17 ticks. No timmies, no invulnerability. Coming out of the hat (slot
+  13) and at its frame 4 or later, he is counted out of it and just
+  stands.
+
+The UFO's bolt (0x1264b) is the same with speed 3 and no trade: up at 3,
+across at least 3 — backwards if he stood still — and the eight timmies
+the UFO set in `+0x15e`.
+
+**The spike bristles** (spike_tick 0x332ef → spike_bristle 0x32cfb). Its
+`.OB` record picks how often (word +0xe, a radio choice: lowest set bit
+into the masks at 0x93af8) — never (471 of 543), every 1024 ticks (24),
+512 (46) or 64 (2); its age starts at 500 and a bit. When `age & mask`
+is 0 it stops (vx less 8000 a tick), its spines come out a frame every 4
+ticks (slot 19, sheet frames 26-33), it shivers from tick 30, and **at
+tick 50 eight needles fly** (0x12711, table 0x93898): from 12 px above
+it, a fan upward at about 2-4 px/tick, each jittered. A needle falls at
+0x2400 a tick, loses 2000 of vx a tick, turns frame 35 → 42 on its way
+down, passes through everything and is gone below the level. After tick
+100 the spines go back in (0x32f39) and the spike walks on.
+
+**The bomb chases** (0x33a1f, slot 27). Touched on the ground it takes
+its toucher's player number and goes after him: `vx += dx / 32` (`/ 64`
+late in each 256 ticks), less `vx / 8`, at most 8 px/tick; a wall throws
+it back at a quarter; more than 300 px across or 120 up or down and it
+walks again. When it has stayed under 1.125 px/tick for **21 ticks** —
+caught up with him — it **lights** (0x32550: smoke, the fuse a frame
+every 4 ticks) and then **blows** (0x327c8: flickering; at tick 30 two
+`BLAM` flashes, the shock, a shake, and `blow_at(x, y - 15)` with the
+level's own force — rules `+0x44 << +0x46`, 30000 << 3 in most bomb
+levels — rubble mask 0x7ffff, cells 10 across and 16 up and down, four
+of them). The hammer's overhead blow pops a bomb or a spike harmlessly
+(0x32b15: it swells and is gone with a puff and a shake). In the shipped
+levels: 88 bombs in 14 levels (the `M` section, some `I` and `T`), none
+locked to a block; the cap is the rules' `+0x3c`.
+
+**A blast's shock** (blast_light_neighbours, 0x1d8d1 — the dynamite's
+and the bomb's) marks every Jack, timmy and spike within 70 px with the
+hit flag and `+0x4e = 0x4001`. Jack takes it in 0x2bc86: drops what he
+carries, no events for 17 ticks, and — unless invulnerable — is pushed
+by his distance from it each way, along table 0x98c6c (11 px/tick under
+16 px, 6 at 50, none from 76; halved, quartered in the hat, and always
+up when he stands). **Within 30 px** (his middle, 21 px above his feet)
+**he is hurt** as above, losing four timmies. In the hat the hat bounces.
+
+### Bonuses, the dispenser and the panel — **Confirmed**
+
+Classes 33, 8 and 46. Names in `scripts/ghidra/symbols.d/bonus.txt`.
+
+**The bonus git** (class 33, 48 in 20 levels). The record's word +0xe is
+its mode: 1 a bonus git (`BON.SPR`) walking from the start (17), 2 a
+shell — the `BELL.SPR` template — locked in a block (31), which when the
+block dies is thrown up at -6 and becomes the walker. It walks like any
+git and touching it does nothing. **The overhead blow** (0x3333c) sends it
+up at -4, sparkling; when it lands it **swells** (`1 << t/2`) and past 50
+**bursts** into its prize (0x123c0) — the lowest set bit of word +0x12:
+
+| bit | prize | in the levels | Jack touching it |
+|---|---|---|---|
+| 0 | a **clock** (`CLOK`) | 29 | **+25 seconds** on the level's timer (outcome 14) |
+| 1 | **timmies** — word +0x14 of them (5, 10, 30), flung up | 8 | (they are timmies) |
+| 2 | a **super hoover** (`BVAC`) | 5 | for **60 s** the hoover blinks and takes every bit of rubble in a 2048x1024 box, not 32x32 (outcome 13) |
+| 3 | a **bubble** (`BUBBLE`) | 6 | **double points** for rubble, 32 s (outcome 8) |
+
+The clock spins, a frame every 3 ticks, and after ten turns hops about for
+240 ticks; the hammer bursts it into twelve pieces and the time is lost.
+The bubble bounces about at random; the super hoover drops to the floor.
+
+**The dispenser** (class 8, `DIS.SPR`, 20 in 18 levels — first read as a
+sign). It stands on what is under it with ordinary physics (word +0x1a =
+2, all of them). **The overhead blow** wobbles it for 40 ticks — the lid
+opens at 36 — and then it lets out word +0x1c small **cannonballs**, one a
+tick (+0x20 between them, 0 in all), from 17 px left of it and 16 up:
+straight up at the blow's force `>> 5`, held to 3..32 px/tick, across by
+turns at ±0.92, ±1.37, ±1.83, ±2.29 (0xa43f8). Word +0x1e is how many
+times it does so (1, 2, 4; 0 for ever); spent, it rises off the screen.
+
+**The panel** (class 46, `PANEL.SPR` frame 17, one in each of 21 levels).
+A secret — standing free (18), or locked in a block (3, word +0xe = 2)
+until the block dies — drawn with six layers that shift with the
+camera for a 3-D look and a twinkle at random spots. Freed, it sits; Jack
+touching it (outcome 16) takes it — `level_state +0x18` goes up by one,
+a count the game hands back to the front end (F.EXE) — with 32 sparks.
+
+### The seesaw and the weight — **Confirmed**
+
+`.OB` class 0 is a seesaw (`BCSAW.SPR`, or `CSAW.SPR` when the record's
+word at +0x12 is 1 — same behaviour), in 43 levels; class 1 is the
+20-ton weight (`LEAD.SPR`), in 42. Names in
+`scripts/ghidra/symbols.d/seesaw.txt`.
+
+**The seesaw** stands 26 px below its record's y and settles like any
+sprite. Its `+0x44` says which end is down: frame 0 the left, frame 1
+the right (the record's word at +0xe: 1 for frame 0). Each end is
+tested with two boxes, 40x24, 31 px either side of it: one 21 px up
+(table 0x9977c) for what comes down through it, one 3 px up (0x9978e)
+for what stands there. Each end can have one rider (`+0x54` left, `+0x58`
+right).
+
+**Tipping** (VA 0x1ecc9). Something coming down into the *raised* end
+moves it, and the rider of the other end is launched (VA 0x1ed40): lifted
+30 px, then sent up at the speed that came down less 0x7fff — but if that
+is under 0x13880 (1.22 px/tick) the seesaw does not move at all. With no
+rider it always tips. It plays a sound.
+
+- **The weight** falling into a raised end tips it; failing, it bounces
+  off at three quarters of its speed and, if it was barely moving
+  sideways, gets a kick of 4000 + random & 0x3fff toward the other end.
+  Come to rest on a *down* end, it rides it: snapped to x - 33, y - 3
+  (left, frame 2) or x + 47, y (right, frame 1).
+- **Jack** dropping through a raised end tips it too (VA 0x28af9); standing
+  on the down end of an empty seesaw he rides it, turned away from it.
+  So the trick is the original's: stand on the low end and drop the
+  weight on the high one, or jump on the high end to fling the weight.
+- **The overhead blow** tips it from the end it reaches (VA 0x1eba3), with
+  the blow's force from `+0x4e` as the speed — on what scale the sprite
+  force is, not read.
+
+The weight weighs 25 (`+0x4c`), which is what a thrown one hits blocks
+with. Landing, it sets the hit flag on timmies, king timmies and Tommy
+under it (VA 0x1ea81).
+
+### The UFO — **Confirmed**
+
+`.OB` class 31 (`BON/UFO.SPR`), in 36 of the 147 levels — 0C and 0I
+among the first. The clone has none. Names in `scripts/ghidra/symbols.d/ufo.txt`.
+
+**Set-up.** `"set ufo control params"`: a preset (a row of the 16-byte
+table at VA 0x93b58) and then every non-zero `.OB` field overrides one
+value through its own small table. A row is: how many start at once,
+a value copied to a countdown (? the respawn interval), how many may fly
+at once, the bomb/spike mix, and the periods of the four actions below,
+in ticks:
+
+| preset | land | drop | abduct | zap Jack |
+|---|---|---|---|---|
+| 0 | 50 | never (32766) | 2500 | 7500 |
+| 1 | 100 | 2000 | 2000 | 6500 |
+| 2 | 250 | 1500 | 1500 | 5500 |
+| 3 | 500 | 1000 | 1000 | 4500 |
+| 4 | 1000 | 500 | 500 | 3500 |
+| 5 | 1500 | 250 | 250 | 2500 |
+
+**Flying.** It roams toward a random point near the level's centre (kept
+80 px above the bottom), steering like a damped spring: `v += (target -
+pos) / 64`, then `v -= v / 8`, clamped to 5 px/tick. Four countdowns run
+all the time; the first to expire picks the action, and the timer reloads
+from its period (the start values are jittered).
+
+1. **Land** — flies over a random player's Jack (about 100 px up, nudged
+   until clear), drops at 2.5 px/tick braking by 1/32 until it meets
+   floor, sits (frames 0x12-0x16), then takes off. **Landed, it can be
+   hit**: the overhead blow sends it to `ufo_hit`.
+2. **Drop** — hovers 150 px above a Jack and at tick 50 lets go a bomb
+   (`BOM`) or spikes (`SPK`): the mix field 0 is half and half, 1 and 2
+   about a third / two thirds bombs, 3 spikes only, 4 bombs only.
+3. **Abduct** — picks the first `TIMMY.SPR` nobody holds, hovers 120 px
+   over it with a beam (a piece every 8 ticks), and after 30 ticks lifts
+   it a pixel a tick, squashing it thinner. Within 10 px of the UFO the
+   timmy is gone and the UFO's stolen count (`+0x78`) goes up. If Jack
+   picks the timmy up, the beam lets go.
+4. **Zap Jack** — 120 px over a random Jack that is not busy, beam every 4
+   ticks; at tick 15, if he is within 10 px across, his sprite `+0x43`
+   gets bit 0x10 and his player `+0x15e` = 8 (what those do: not read).
+
+**Shot down.** `ufo_hit` halves the stolen count (rounding up) and drops
+one timmy back every 32 ticks, sparking. With none left it shakes for 120
+ticks, then explodes: screen shake, two blasts, the blocks around it, a
+flash, two wreck pieces — and the flying count goes down.
+
+### Level names, sections and the order of play — **Partly confirmed**
+
+A level is not chosen by name. The game is started with a **section and a
+number**, `load_level(section, number)` (VA 0x1074b, which logs `"section
+%d level %d"`), taken from the shared record both programs keep in
+`TRASHIT.DAT` (0x2cc bytes: number at +0x20, section at +0x22; `G.EXE`
+reads it through the pointer at 0x317ca8, `F.EXE` through 0xd6d1c). The
+file name is built from the pair (VA 0x10a46):
+
+    name[0] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[number]
+    name[1] = "JHCSLIATMJHCSLIATMBKDX"[section]
+
+and `parse_level_name()` (VA 0x2c499) does the reverse for a name given on
+the command line (`USAGE: TRASHIT LevelName`). So **the letter is the
+section** and the first character the number in it — which is why `AA`,
+`BK`, `EK` exist: numbers 10-14 of sections A, K and B. Sections 0-8 run
+**J, H, C, S, L, I, A, T, M**; 9-17 repeat those letters (the loader adds
+9 to the section for numbers 12-28 in one case, VA 0x10890 — not traced);
+18-21 are B, K, D and X. Each letter is one look — the wall behind a
+section's levels is the same from 0 to 9.
+
+**The first level is 0J** — section 0, number 0 — on two counts: the
+table's own first section is J, and the shipped `TRASHIT.DAT` holds 0 and
+0 at +0x20/+0x22, the state a new game starts from.
+
+The clone plays them in that order — section by section as numbered,
+numbers ascending within one (`play_order()` in `export_level.py`).
+
+Not traced: how `F.EXE` moves on. It keeps a history of played levels in
+the record (`+0x158 + 4 * +0x10a`, the pair as one dword) and the furthest
+reached at `+0x104`, copied into `+0x20` before a level is run (VA
+0x215b2-0x215f8); the step from one pair to the next is somewhere above
+that. `F.EXE` also names six movies "end of level 1..6" and "game
+complete", so the game is grouped into six parts above the sections. The
+twelve one-object screens (`CC` … `DS`) are numbers 12 and 13 of the
+sections they name.
+
 ### Reading `G.EXE` in Ghidra
 
 Ghidra has no DOS/4GW LE loader, so the image goes in flat
-(`export_flat.py`), seeded with the function entry points
-(`disasm.py … entries`, plus the 47 class constructors) and dumped as one
-C file (`scripts/ghidra/`). That yields 1214 functions, and the
-addresses in it are the ones quoted throughout these notes:
+(`export_flat.py`), seeded with the function entry points and named from
+the symbol map, and is dumped as one C file. One script does all of it,
+in about two minutes:
 
-    python3 scripts/formats/export_flat.py Trash-it-original/G.EXE flat.bin
-    python3 scripts/formats/disasm.py Trash-it-original/G.EXE entries > entries.txt
-    analyzeHeadless <proj-dir> trashit -import flat.bin \
-        -processor x86:LE:32:default \
-        -loader BinaryLoader -loader-baseAddr 0x10000 \
-        -scriptPath scripts/ghidra \
-        -preScript MarkFunctions.java entries.txt \
-        -postScript DumpDecomp.java decomp.c
+    scripts/ghidra/run.sh <work dir>        # -> <work dir>/decomp.c
+
+**The symbol map** (`scripts/ghidra/`) is what makes the dump readable:
+`jack_fly_to_flag(...)` and `current_player` rather than `FUN_0002a2fe`
+and `DAT_0028bf2c`. Three sources, in order of precedence:
+
+- `symbols.txt` — by hand: everything these notes establish, one line a
+  symbol with its address, kind (`f` function, `d` data), name and a
+  one-line meaning; a guess says so with "?".
+- `symbols_lib.txt` — generated from a dump by `symbols.py strings`:
+  the Miles Sound System wrappers, each named after the `AIL_…(` call it
+  logs, and **module helpers** — a function every caller of which belongs
+  to one object or subsystem is `<module>_sub_<addr>`: whose it is is
+  certain, what it does is still to be read.
+- derived from the binary each time by `symbols.py`: the 47 class
+  constructors from the registry (`ob_class_<id>_<sprite>`), every object
+  template by the sprite it draws (`tpl_<sprite>_<addr>`) and the state
+  it starts in (`<sprite>_tick_<addr>`), and every routine installed with
+  `set_state` or stored into an entity's `+0x10` (`state_<addr>`).
+
+`symbols.py coverage decomp.c` counts what has a name and lists the rest,
+most called first — the order to read them in. The game's own code is
+0x10000-0x6cfff; above that are the linked libraries (Miles, the Watcom
+C runtime). Many of the game's error messages name the function they are
+in (`"BUG in 'record_pad_entry'"`), and `symbols.py strings` lists those
+too.
+
+**Field names.** The C reaches every structure through raw offsets —
+`*(int *)(in_EAX + 0x30)`. `fields.py` rewrites the ones it can prove
+into names from `scripts/ghidra/fields.txt` (`in_EAX->vx`), and `run.sh`
+writes that as `decomp_fields.c` next to `decomp.c`. It knows what a
+pointer is from the machine code, not from names: state routines get
+their sprite in EAX (and set_state's are Jack's), `current_player` and
+`last_spawned` are what they say, Jack's `+0x54` is his player, and a
+register keeps its kind until something writes it — Watcom saves every
+register but EAX, and each callee is checked for what it really clobbers.
+Every rewrite is then checked against the instructions: the function must
+really touch that offset, at that size, through that kind of pointer.
+Two things it has to get right that cost a wrong answer otherwise:
+
+- the decompiler types a global afresh in each function, so
+  `current_player + 2` is byte 8 in `play_anim` (an `int *`) and byte 2
+  elsewhere; the scale is settled per function from its unambiguous uses;
+- offsets can be decimal — the sprite sheet pointer is `in_EAX + 200`.
+
+Over the dump: about 2200 accesses named, 72 left alone because the code
+did not confirm them. Blocks reached through a computed pointer are not
+followed yet — only direct `objects[i]` / `&DAT_003f61xx + b` forms are.
 
 One gotcha that costs a run: **no path given to `analyzeHeadless` may
 contain a directory whose name starts with a dot** — it refuses with
@@ -1152,22 +1869,24 @@ same blitter, positioned by the frame's own origin.
 | `pal.py` `scn.py` `g2.py` `spr.py` `obt.py` | per-format decoders |
 | `level.py` | assembles a whole level from `.WAM` + `.I` + `.OBT` + `.G2` |
 | `export_sprites.py` | dumps a `.SPR` to PNG frames with alpha, origin in the filename |
+| `pak.py` | RNC ProPack unpacker for `FSPR/*.PAK`, with CRC check and PNG render |
+| `sound.py` | sample banks → `.wav`, `.XMI` → `.mid`, and the sound scripts from `G.EXE` |
 | `demo_render.py` | runs all of the above and writes PNG proofs |
 
 ## Still open
 
-- `.SDE` field meanings; the `.SCN` 3072-byte lead-in (it holds image
-  indices, not a palette — it reuses the layers' own colours); the `.I`
-  second u16.
-- `.WVL` / `.XMI` audio (XMIDI is a documented format; `.WVL` is not
-  examined at all).
+- The `.I` second u16; the `HEAT` draw mode (-1); which `.SCN` texture
+  each backdrop plane samples.
+- Sound scripts 29–32 are a lone `skip` (op 14) whose five words the
+  interpreter ignores — something else must read them; and the meaning
+  of the level-select points in `LVSPAT`.
 - What sets the swing's starting frame — the operating range of the force
   ramp (see the collapse section; the formula itself is confirmed).
 - What the individual bits of the level's option byte (0x98224, and a
   second at 0x98226) do. `ob.py` lists every field of the rules record
   that sets them; nothing yet traces a reader.
-- What the remaining 45 `.OB` classes are — the enemies and pickups are
-  in there.
+- What the remaining `.OB` classes are — the enemies and pickups are
+  in there (the UFO, class 31, is read).
 - `"event list contains no outcome for object type %d"` (VA 0x90e0c):
   there is an event/outcome table keyed by object type that nothing here
   has looked at.
