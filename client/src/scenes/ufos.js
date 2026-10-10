@@ -74,7 +74,7 @@ export default class Ufos {
    * @param {import('./looseObjects').default} world.loose
    * @param {(x: number, y: number, vx: number, vy: number) => void} world.giveTimmy
    * @param {(x: number, y: number) => void} world.explode
-   * @param {(player: any, vx: number, vy: number) => void} world.knock
+   * @param {(player: any, speed: number, spill: number) => void} world.knock
    */
   constructor(scene, params, world) {
     this._scene = scene;
@@ -392,7 +392,8 @@ export default class Ufos {
   /**
    * ufo_zap_jack (VA 0x1462c): 15 ticks locked over him, a bolt every 4;
    * then, if he is still within 10 px across, he is knocked flying —
-   * 3 px/tick up and 3 the way he faces, his load dropped (VA 0x1264b).
+   * 3 px/tick up, and across at least 3 — backwards from standing — his
+   * load dropped and eight timmies spilt (+0x15e = 8, VA 0x1264b).
    */
   _zap(u) {
     const jack = u.jack;
@@ -409,7 +410,7 @@ export default class Ufos {
     if (u.t === ZAP_AT) {
       if (jack.state === 'caught') { this._go(u, 'roam'); return; }
       if (Math.abs(u.x - jack.x) < ZAP_REACH) {
-        this._w.knock(jack, jack.facingLeft ? -KNOCK : KNOCK, -KNOCK);
+        this._w.knock(jack, KNOCK, 8);
       }
     }
     if (u.t > ZAP_DONE) {

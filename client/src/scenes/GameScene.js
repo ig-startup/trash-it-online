@@ -389,9 +389,30 @@ export default class GameScene extends Phaser.Scene {
         width: levelWidth,
         loose: this._loose,
         shake: () => this.cameras.main.shake(120, 0.006),
+        jack: () => this._player,
+        // The bomb's blast (VA 0x329dc): blocks from 15 px up, its force
+        // the level's (rules +0x44 << +0x46), 10 across and 16 up and
+        // down, four of them; the shock at its feet.
+        bombBlast: (x, y) => {
+          this.cameras.main.shake(300, 0.01);
+          this._blast(x, y - 15, this.time.now, {
+            force: level.bombForce || 0, mask: 0x7ffff, spreadX: 10, spreadY: 16, shockAt: { x, y },
+          });
+        },
       })
       : null;
     if (this._gits) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._gits.destroy());
+    // Hurt, he loses timmies (spill_timmies, VA 0x338d0): each thrown up
+    // at -6 px/tick with a random kick, and off his count.
+    this._player.on('spill', (count) => {
+      if (!this._gits) return;
+      const n = Math.min(count, this._gits.collected);
+      for (let i = 0; i < n; i += 1) {
+        this._gits.spawnFree(this._player.x, this._player.y - 20, (Math.random() * 2 - 1) * 2, -6);
+      }
+      this._gits.collected -= n;
+      this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
+    });
 
     // ── UFOs ──────────────────────────────────────────────────────────────
     // .OB class 31, in 36 levels: they abduct timmies, knock Jack flying,
@@ -409,7 +430,7 @@ export default class GameScene extends Phaser.Scene {
           this.cameras.main.shake(300, 0.01);
           this._blast(x, y, this.time.now);
         },
-        knock: (pl, vx, vy) => pl.knockedBack(vx, vy),
+        knock: (pl, speed, spill) => pl.knockedBack(speed, spill),
       })
       : null;
     if (this._ufos) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._ufos.destroy());
@@ -781,9 +802,15 @@ export default class GameScene extends Phaser.Scene {
    * patch — striking up to four blocks, and travelling both down and up
    * through what they touch. At twenty million it breaks everything it
    * reaches, which is how a stick flattens what a hammer only chips. Then
-   * a shock 70 px either way sets off any stick it catches.
+   * a shock 70 px either way sets off any stick it catches and throws Jack
+   * (VA 0x2bc86). A bomb's blast is the same with its own force, mask and
+   * spread (`opts`), the shock at its feet.
    */
-  _blast(x, y, time) {
+  _blast(x, y, time, opts = {}) {
+    const {
+      force = BLAST_FORCE, mask = BLAST_RUBBLE_MASK, spreadX = BLAST_SPREAD, spreadY = BLAST_SPREAD,
+      shockAt = { x, y },
+    } = opts;
     if (hasProps(this)) {
       const boom = this.add.image(x, y, PROP_ANIMS.blast[0]).setDepth(6);
       applyPropFrame(boom, PROP_ANIMS.blast[0]);
@@ -799,21 +826,26 @@ export default class GameScene extends Phaser.Scene {
       });
     }
     const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
-    const steps = [0, BLAST_SPREAD, -BLAST_SPREAD];
-    let left = BLAST_STRIKES;
-    steps.forEach((sy) => steps.forEach((sx) => {
+    const stepsX = [0, spreadX, -spreadX];
+    const stepsY = [0, spreadY, -spreadY];
+    let left = force > 0 ? BLAST_STRIKES : 0;
+    stepsY.forEach((sy) => stepsX.forEach((sx) => {
       if (left <= 0) return;
       const cx = Math.floor((Math.round(x) + sx) / 8) * 8 + 4;
       const cy = Math.floor((Math.round(y) + sy) / 8) * 8 + 4;
       const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(cx, cy));
       if (!hit) return;
-      this._applyForce(hit, BLAST_FORCE, 0,
-        { tally: new Map(), visits: 0, mask: BLAST_RUBBLE_MASK }, { down: true, up: true });
+      this._applyForce(hit, force, 0,
+        { tally: new Map(), visits: 0, mask }, { down: true, up: true });
       left -= 1;
     }));
 
-    const shock = new Phaser.Geom.Rectangle(x - BLAST_SHOCK, y - BLAST_SHOCK,
+    // The shock (VA 0x1d8d1) reaches Jack too: pushed, and hurt up close.
+    const shock = new Phaser.Geom.Rectangle(shockAt.x - BLAST_SHOCK, shockAt.y - BLAST_SHOCK,
       BLAST_SHOCK * 2, BLAST_SHOCK * 2);
+    if (Phaser.Geom.Intersects.RectangleToRectangle(shock, this._player.getBounds())) {
+      this._player.blasted(shockAt.x, shockAt.y);
+    }
     this._dynamite.forEach((d) => {
       if (d.lit || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(shock, d.sprite.getBounds())) d.lit = time + FUSE_MS;

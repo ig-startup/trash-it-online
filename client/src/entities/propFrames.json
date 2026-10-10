@@ -1400,6 +1400,278 @@
       "ay": 7,
       "src": "SPK.SPR:42"
     },
+    "bom_00": {
+      "file": "sprites/props/bom_00.png",
+      "w": 30,
+      "h": 33,
+      "ax": 17,
+      "ay": 30,
+      "src": "BOM.SPR:0"
+    },
+    "bom_01": {
+      "file": "sprites/props/bom_01.png",
+      "w": 26,
+      "h": 30,
+      "ax": 15,
+      "ay": 28,
+      "src": "BOM.SPR:1"
+    },
+    "bom_02": {
+      "file": "sprites/props/bom_02.png",
+      "w": 23,
+      "h": 30,
+      "ax": 13,
+      "ay": 28,
+      "src": "BOM.SPR:2"
+    },
+    "bom_03": {
+      "file": "sprites/props/bom_03.png",
+      "w": 22,
+      "h": 33,
+      "ax": 12,
+      "ay": 29,
+      "src": "BOM.SPR:3"
+    },
+    "bom_04": {
+      "file": "sprites/props/bom_04.png",
+      "w": 25,
+      "h": 33,
+      "ax": 14,
+      "ay": 30,
+      "src": "BOM.SPR:4"
+    },
+    "bom_05": {
+      "file": "sprites/props/bom_05.png",
+      "w": 28,
+      "h": 31,
+      "ax": 16,
+      "ay": 30,
+      "src": "BOM.SPR:5"
+    },
+    "bom_06": {
+      "file": "sprites/props/bom_06.png",
+      "w": 31,
+      "h": 29,
+      "ax": 17,
+      "ay": 31,
+      "src": "BOM.SPR:6"
+    },
+    "bom_07": {
+      "file": "sprites/props/bom_07.png",
+      "w": 33,
+      "h": 27,
+      "ax": 18,
+      "ay": 31,
+      "src": "BOM.SPR:7"
+    },
+    "bom_08": {
+      "file": "sprites/props/bom_08.png",
+      "w": 34,
+      "h": 27,
+      "ax": 19,
+      "ay": 29,
+      "src": "BOM.SPR:8"
+    },
+    "bom_09": {
+      "file": "sprites/props/bom_09.png",
+      "w": 29,
+      "h": 28,
+      "ax": 18,
+      "ay": 27,
+      "src": "BOM.SPR:9"
+    },
+    "bom_10": {
+      "file": "sprites/props/bom_10.png",
+      "w": 26,
+      "h": 29,
+      "ax": 16,
+      "ay": 28,
+      "src": "BOM.SPR:10"
+    },
+    "bom_11": {
+      "file": "sprites/props/bom_11.png",
+      "w": 23,
+      "h": 31,
+      "ax": 12,
+      "ay": 29,
+      "src": "BOM.SPR:11"
+    },
+    "bom_12": {
+      "file": "sprites/props/bom_12.png",
+      "w": 28,
+      "h": 33,
+      "ax": 16,
+      "ay": 30,
+      "src": "BOM.SPR:12"
+    },
+    "bom_13": {
+      "file": "sprites/props/bom_13.png",
+      "w": 32,
+      "h": 31,
+      "ax": 19,
+      "ay": 30,
+      "src": "BOM.SPR:13"
+    },
+    "bom_14": {
+      "file": "sprites/props/bom_14.png",
+      "w": 32,
+      "h": 29,
+      "ax": 19,
+      "ay": 31,
+      "src": "BOM.SPR:14"
+    },
+    "bom_15": {
+      "file": "sprites/props/bom_15.png",
+      "w": 34,
+      "h": 28,
+      "ax": 19,
+      "ay": 31,
+      "src": "BOM.SPR:15"
+    },
+    "bom_16": {
+      "file": "sprites/props/bom_16.png",
+      "w": 33,
+      "h": 28,
+      "ax": 19,
+      "ay": 29,
+      "src": "BOM.SPR:16"
+    },
+    "bom_17": {
+      "file": "sprites/props/bom_17.png",
+      "w": 40,
+      "h": 29,
+      "ax": 18,
+      "ay": 27,
+      "src": "BOM.SPR:17"
+    },
+    "bom_18": {
+      "file": "sprites/props/bom_18.png",
+      "w": 15,
+      "h": 6,
+      "ax": 6,
+      "ay": 3,
+      "src": "BOM.SPR:18"
+    },
+    "bom_19": {
+      "file": "sprites/props/bom_19.png",
+      "w": 13,
+      "h": 11,
+      "ax": 5,
+      "ay": 4,
+      "src": "BOM.SPR:19"
+    },
+    "bom_20": {
+      "file": "sprites/props/bom_20.png",
+      "w": 6,
+      "h": 14,
+      "ax": 3,
+      "ay": 7,
+      "src": "BOM.SPR:20"
+    },
+    "bom_21": {
+      "file": "sprites/props/bom_21.png",
+      "w": 8,
+      "h": 9,
+      "ax": 4,
+      "ay": 4,
+      "src": "BOM.SPR:21"
+    },
+    "bom_22": {
+      "file": "sprites/props/bom_22.png",
+      "w": 9,
+      "h": 10,
+      "ax": 4,
+      "ay": 5,
+      "src": "BOM.SPR:22"
+    },
+    "bom_23": {
+      "file": "sprites/props/bom_23.png",
+      "w": 4,
+      "h": 7,
+      "ax": 2,
+      "ay": 3,
+      "src": "BOM.SPR:23"
+    },
+    "bom_24": {
+      "file": "sprites/props/bom_24.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": -1,
+      "src": "BOM.SPR:24"
+    },
+    "bom_25": {
+      "file": "sprites/props/bom_25.png",
+      "w": 1,
+      "h": 1,
+      "ax": 0,
+      "ay": -1,
+      "src": "BOM.SPR:25"
+    },
+    "bom_26": {
+      "file": "sprites/props/bom_26.png",
+      "w": 30,
+      "h": 33,
+      "ax": 17,
+      "ay": 30,
+      "src": "BOM.SPR:26"
+    },
+    "bom_27": {
+      "file": "sprites/props/bom_27.png",
+      "w": 29,
+      "h": 32,
+      "ax": 17,
+      "ay": 29,
+      "src": "BOM.SPR:27"
+    },
+    "bom_28": {
+      "file": "sprites/props/bom_28.png",
+      "w": 29,
+      "h": 31,
+      "ax": 17,
+      "ay": 29,
+      "src": "BOM.SPR:28"
+    },
+    "bom_29": {
+      "file": "sprites/props/bom_29.png",
+      "w": 29,
+      "h": 30,
+      "ax": 17,
+      "ay": 28,
+      "src": "BOM.SPR:29"
+    },
+    "bom_30": {
+      "file": "sprites/props/bom_30.png",
+      "w": 29,
+      "h": 29,
+      "ax": 17,
+      "ay": 27,
+      "src": "BOM.SPR:30"
+    },
+    "bom_31": {
+      "file": "sprites/props/bom_31.png",
+      "w": 29,
+      "h": 28,
+      "ax": 17,
+      "ay": 26,
+      "src": "BOM.SPR:31"
+    },
+    "bom_32": {
+      "file": "sprites/props/bom_32.png",
+      "w": 29,
+      "h": 27,
+      "ax": 17,
+      "ay": 25,
+      "src": "BOM.SPR:32"
+    },
+    "bom_33": {
+      "file": "sprites/props/bom_33.png",
+      "w": 29,
+      "h": 26,
+      "ax": 17,
+      "ay": 24,
+      "src": "BOM.SPR:33"
+    },
     "dyna": {
       "file": "sprites/props/dyna.png",
       "w": 28,
@@ -2506,6 +2778,42 @@
       "spk_40",
       "spk_41",
       "spk_42"
+    ],
+    "bom": [
+      "bom_00",
+      "bom_01",
+      "bom_02",
+      "bom_03",
+      "bom_04",
+      "bom_05",
+      "bom_06",
+      "bom_07",
+      "bom_08",
+      "bom_09",
+      "bom_10",
+      "bom_11",
+      "bom_12",
+      "bom_13",
+      "bom_14",
+      "bom_15",
+      "bom_16",
+      "bom_17",
+      "bom_18",
+      "bom_19",
+      "bom_20",
+      "bom_21",
+      "bom_22",
+      "bom_23",
+      "bom_24",
+      "bom_25",
+      "bom_26",
+      "bom_27",
+      "bom_28",
+      "bom_29",
+      "bom_30",
+      "bom_31",
+      "bom_32",
+      "bom_33"
     ],
     "dyna": [
       "dyna"

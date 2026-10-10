@@ -194,6 +194,13 @@ const STATES = {
   hatPop: { slot: 69, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, crushed: true },
   tumble: { slot: 64, anim: 'tumble', ms: 3 * TICK_MS, next: 'stand', locks: true, brakes: true },
 
+  // Hurt — a spike git, its needles, a bomb's or a stick's blast, a UFO's
+  // bolt (see "What hurts Jack" in the README). Out of the hat he is sent
+  // flying through 0x2b152 (slot 73, its four frames a step every four
+  // ticks); in it the hat is, through 0x26539 (slot 43, the hat frame).
+  stung: { slot: 73, anim: 'land', ms: 4 * TICK_MS, hold: true, hurt: true },
+  hatJump: { slot: 43, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, hurt: true },
+
   // Ladders. 0x25bda climbs (slot 33), its frame picked by his height, not
   // a clock; 0x299b6 tops out onto the platform (slot 60) and 0x29b15 steps
   // off a top onto the ladder (slot 61, the same list backwards). Their
@@ -397,6 +404,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._hammerHidden = true;  // in the hat, per the game's list flags
     this._hammerOut = false;    // the hammer mode: out of the hat, in hand
     this._jumpTicks = 0;
+    this._invuln = 0;          // +0x7c: ticks he cannot be hurt, blinking (VA 0x2b9fd)
+    this._noEvents = 0;        // player +0x15a: ticks nothing touches him
+    this._hurtVy = 0;          // vy while hurt and airborne, for the bounce
+    this._hurtAir = false;     // …and whether he has left the floor since
+    this._hurtTicks = 0;
 
     /** What he holds overhead — an opaque handle the scene owns — or null. */
     this.carried = null;
@@ -490,6 +502,12 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     Player._anchor(this.art, JACK_FRAME_INFO[this.art.texture.key + '|' + this.art.frame.name]
       || JACK_FRAME_INFO[this.art.texture.key], flip);
     this.art.setScale(JACK_SCALE * this._squashX, JACK_SCALE * this._squashY);
+    // Hurt, he blinks while he cannot be hurt again — fast, then for the
+    // last 100 ticks slower (VA 0x2ba0f).
+    const clock = Math.floor(this.scene.time.now / TICK_MS);
+    const off = this._invuln > 0
+      && (this._invuln > 100 ? (clock & 7) > 3 : (clock & 15) > 11);
+    this.art.setAlpha(off ? 0.25 : 1);
 
     if (this.vac && this.vac.visible) {
       this.vac.setPosition(this.x, this.y);
@@ -659,6 +677,15 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     this._advanceAnim(now);
     const spec = STATES[this.state] || STATES.stand;
+    const ticks = dt * ORIGINAL_HZ;
+    this._invuln = Math.max(0, this._invuln - ticks);
+    this._noEvents = Math.max(0, this._noEvents - ticks);
+
+    // ── Hurt: flying, or the hat bouncing ─────────────────────────────────
+    if (spec.hurt) {
+      this._hurtTick(body, dt, now, onGround);
+      return;
+    }
 
     // ── Under a falling block ─────────────────────────────────────────────
     if (spec.crushed) {
@@ -1133,19 +1160,155 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   }
 
   /**
-   * Knocked flying, at (vx, vy) px/tick (VA 0x1264b — a UFO's bolt): what
-   * he holds drops. The original tumbles him through slot 73; here he
-   * falls.
+   * Knocked flying by a UFO's bolt (VA 0x1264b, speed 3): up at `speed`,
+   * and across at least that much — backwards, if he was standing still.
+   * Out of the hat he loses `spill` timmies and is hurt; in it the hat
+   * bounces.
    */
-  knockedBack(vx, vy) {
-    if (this.state === 'caught') return;
+  knockedBack(speed, spill = 8) {
+    if (!this._canBeHit()) return;
+    const body = this.body;
+    let vx = body.velocity.x / ORIGINAL_HZ;
+    if (vx === 0) vx = this._facingLeft ? speed : -speed;
+    else if (Math.abs(vx) < speed) vx = Math.sign(vx) * speed;
+    this._dropForHurt();
+    body.setVelocity(vx * ORIGINAL_HZ, -speed * ORIGINAL_HZ);
+    if (this._inHat()) {
+      this._noEvents = 17;
+      this._enter('hatJump', this.scene.time.now);
+      return;
+    }
+    this._sting(spill);
+  }
+
+  /**
+   * Touched by what hurts (Jack's event outcomes 11 and 12, VA 0x12491 /
+   * 0x125c1): a walking spike git, or its needles. The two trade speeds,
+   * each then held to 2-4 px/tick across and 2-3 up or down — or, with no
+   * speed, sent 2 apart. Out of the hat he then flies (vy -4, at least 2
+   * across), loses up to eight timmies and cannot be hurt for 400 ticks;
+   * in it the hat bounces, unless he was all but out of it.
+   *
+   * @param {{x: number, y: number, vx: number, vy: number}} from  px, px/tick
+   * @returns {{vx: number, vy: number}|null} what `from` is left with, or
+   *   null when he could not be hurt
+   */
+  hurt(from) {
+    if (!this._canBeHit() || this._invuln > 0) return null;
+    const body = this.body;
+    const held = (v, away, lo, hi) => (v === 0 ? away * lo
+      : Math.sign(v) * Phaser.Math.Clamp(Math.abs(v), lo, hi));
+    const awayX = this.x < from.x ? -1 : 1;
+    const awayY = this.y < from.y ? -1 : 1;
+    const vx = held(from.vx, awayX, 2, 4);
+    const vy = held(from.vy, awayY, 2, 3);
+    const left = {
+      vx: held(body.velocity.x / ORIGINAL_HZ, -awayX, 2, 4),
+      vy: held(body.velocity.y / ORIGINAL_HZ, -awayY, 2, 3),
+    };
+    this._noEvents = 50;
+    this._dropForHurt();
+    body.y -= 0.5;
+    if (this._inHat()) {
+      this._noEvents = 17;
+      body.setVelocity(vx * ORIGINAL_HZ, vy * ORIGINAL_HZ);
+      if (this.state === 'hatOut' && this._animFrame >= 4) this._enter('stand', this.scene.time.now);
+      else this._enter('hatJump', this.scene.time.now);
+      return left;
+    }
+    body.setVelocity(vx * ORIGINAL_HZ, -4 * ORIGINAL_HZ);
+    this._sting(8);
+    return left;
+  }
+
+  /**
+   * Caught by a blast at (x, y) — a bomb's or a stick's (VA 0x2bc86). It
+   * pushes him by how far he is from it, each way along table 0x98c6c (11
+   * px/tick under 16 px, 6 at 50, none from 76), halved — quartered in the
+   * hat — and always up when he stands. Within 30 px of it, out of the hat,
+   * he is hurt and loses four timmies.
+   */
+  blasted(x, y) {
+    if (!this._canBeHit()) return;
+    const inHat = this._inHat();
+    if (!inHat && this._invuln > 0) return;
+    const body = this.body;
+    const push = (d) => {
+      const a = Math.abs(d);
+      const v = a < 16 ? 11 : a < 50 ? 11 - ((a - 16) / 34) * 5 : a < 76 ? 6 - ((a - 50) / 26) * 6 : 0;
+      return (Math.sign(d) * v) / (inHat ? 4 : 2);
+    };
+    this._noEvents = 17;
+    this._dropForHurt();
+    const py = push(this.y - y);
+    const vy = body.velocity.y / ORIGINAL_HZ + (body.blocked.down ? -Math.abs(py) : py);
+    const vx = body.velocity.x / ORIGINAL_HZ + push(this.x - x);
+    body.y -= 0.5;
+    body.setVelocity(vx * ORIGINAL_HZ, vy * ORIGINAL_HZ);
+    if (inHat) {
+      this._enter('hatJump', this.scene.time.now);
+      return;
+    }
+    if (Math.abs(this.x - x) < 30 && Math.abs(this.y - 21 - y) < 30) this._sting(4);
+    else this._enter('fall', this.scene.time.now);
+  }
+
+  /** Whether anything may touch him now (player +0x15a, and what holds him). */
+  _canBeHit() {
+    if (this._noEvents > 0) return false;
+    const spec = STATES[this.state] || STATES.stand;
+    return !spec.crushed && !spec.caught && !spec.ladder;
+  }
+
+  /** In the hard hat — the game's +0x41 bit 0. */
+  _inHat() {
+    return ['hatIn', 'hat', 'hatOut', 'hatJump'].includes(this.state);
+  }
+
+  /** What he holds drops (VA 0x1e7d5). */
+  _dropForHurt() {
     if (this.carried) {
       this.emit('putdown', { handle: this.carried, ...this._feetAhead() });
       this.carried = null;
     }
-    this.body.setVelocity(vx * ORIGINAL_HZ, vy * ORIGINAL_HZ);
     this._jumpBoost = 0;
-    this._enter('fall', this.scene.time.now);
+  }
+
+  /** Into slot 73: his timmies spill, and for 400 ticks he cannot be hurt. */
+  _sting(spill) {
+    this._invuln = 400;
+    this._enter('stung', this.scene.time.now);
+    if (spill > 0) this.emit('spill', spill);
+  }
+
+  /**
+   * One tick flying hurt, or of the hat bouncing (0x2b152 / 0x26539):
+   * friction 2000 a tick across; landing at 1.5 px/tick or more bounces
+   * him back up — at an eighth of the speed, the hat at a quarter — and
+   * slower lands him: on his feet, or in the hat.
+   */
+  _hurtTick(body, dt, now, onGround) {
+    const ticks = dt * ORIGINAL_HZ;
+    this._hurtTicks += ticks;
+    let vx = body.velocity.x / ORIGINAL_HZ;
+    vx = Math.abs(vx) > 399 / 65536 ? vx - Math.sign(vx) * (2000 / 65536) * ticks : 0;
+    body.setVelocityX(vx * ORIGINAL_HZ);
+    if (!onGround) {
+      // the collision zeroes vy on landing, so keep the speed it came down at
+      this._hurtAir = true;
+      this._hurtVy = body.velocity.y;
+      return;
+    }
+    // On the floor: once he has been off it — or if the hit never lifted him.
+    if (!this._hurtAir && this._hurtTicks < 4) return;
+    const fell = Math.max(0, this._hurtVy) / ORIGINAL_HZ;
+    this._hurtAir = false;
+    this._hurtVy = 0;
+    if (fell < 1.5) {
+      this._enter(this.state === 'hatJump' ? 'hat' : 'land', now);
+      return;
+    }
+    body.setVelocityY((-fell / (this.state === 'hatJump' ? 4 : 8)) * ORIGINAL_HZ);
   }
 
   /** True while he is in the stance that takes hold of what can be pushed. */
@@ -1300,6 +1463,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._strikeCharge = strike ? strike.charge : 0;
     this._animFrame = spec.startFrame || 0;
     this._animTimer = now;
+    if (spec.hurt) {
+      this._hurtTicks = 0;
+      this._hurtAir = false;
+      this._hurtVy = 0;
+    }
     this._showFrame(spec);
   }
 

@@ -40,7 +40,9 @@ window.game = new Phaser.Game({
   type: Phaser.AUTO,
   width: 800,
   height: 600,
+  pixelArt: true,
   backgroundColor: '#1a1a2e',
-  physics: { default: 'arcade', arcade: { gravity: { y: 800 }, debug: false } },
+  // as main.js has it — the original's gravity, see GRAVITY in Player.js
+  physics: { default: 'arcade', arcade: { gravity: { y: 1378 }, debug: false } },
   scene: [DevBoot, GameScene],
 });

@@ -16,6 +16,14 @@ import { COL, floorUnder } from './blockKinds';
  * and they count; a king timmy it cannot take. A spike git walks the same
  * at half speed, and the overhead blow finishes it (VA 0x32b15).
  *
+ * What hurts Jack (README "What hurts Jack"): a walking spike git's touch
+ * (his event outcome 11), and the needles it throws when it bristles —
+ * every 1024, 512 or 64 ticks by its record, eight in a fan (VA 0x32cfb,
+ * outcome 12). A bomb git hurts no one by touch: touched on the ground it
+ * chases whoever did it (VA 0x33a1f), and once it has caught up and
+ * stays put it lights (0x32550) and blows (0x327c8) — a blast that
+ * pushes Jack and breaks blocks with the level's own force.
+ *
  * Units are the game's: px and px/tick, stepped at 60 Hz.
  */
 const HZ = 60;
@@ -37,8 +45,29 @@ const WALK = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const FALL = [6, 7, 8, 9];
 const HOP = [3, 4, 5, 6, 7, 8, 9];
 const TURN = [17, 18, 19, 20, 21, 22, 23, 22, 21, 24, 25];
-const SHEET = { timmy: 'timmy', king: 'ktimmy', spike: 'spk' };
+const SHEET = { timmy: 'timmy', king: 'ktimmy', spike: 'spk', bomb: 'bom' };
 const STRUCK_TICKS = 8;
+/** Slot 19: the spike bristling, the bomb's fuse — the list's index steps. */
+const BRISTLE = [26, 27, 28, 29, 30, 31, 32, 33, 34];
+/** How often a spike bristles: its age masked by 0x93af8[period] is 0. */
+const BRISTLE_MASK = [0x7fffffff, 0x3ff, 0x1ff, 0x3f];
+const BRISTLE_FIRE = 50;                // at tick 50 the needles go (VA 0x32efd)
+const BRISTLE_DONE = 100;               // after 100 it settles back (0x32f39)
+/** The needles (VA 0x12711, table 0x93898): from 12 px up, in a fan. */
+const NEEDLES = [
+  [1.8477, -1.2346], [2, -2], [1.8477, -2.7654], [0.7654, -3.8477],
+  [-0.7654, -3.8477], [-1.8477, -2.7654], [-2, -2], [-1.8477, -1.2346],
+];
+const NEEDLE_GRAVITY = 0x2400 / 65536;  // spk_tick_127e1
+const NEEDLE_FRAME = 35;                // 0x23, stepping to 42 on the way down
+const NEEDLE_JITTER = 0.25;
+/** The chase (git_33a1f): given up past 300 px across or 120 up or down. */
+const CHASE_X = 300;
+const CHASE_Y = 120;
+const CHASE_MAX = 8;
+const CHASE_SETTLE = 0x11fff / 65536;   // slower than this …
+const CHASE_LIGHT = 21;                 // … for 21 ticks, and it lights
+const BLOW_AT = 30;                     // ticks after the fuse (0x329e0)
 
 export default class Gits {
   /**
@@ -53,6 +82,8 @@ export default class Gits {
    * @param {number} world.width
    * @param {import('./looseObjects').default} world.loose
    * @param {() => void} world.shake
+   * @param {() => any} world.jack  the Jack the gits can touch
+   * @param {(x: number, y: number) => void} world.bombBlast
    */
   constructor(scene, level, world) {
     this._scene = scene;
@@ -71,11 +102,24 @@ export default class Gits {
         this._free(g, 0, 0);
       }
     });
+    this.needles = [];
     (level.spikes || []).forEach((s) => {
       const g = this._make('spike', s.x, s.y, 0);
+      g.period = s.period || 0;
+      g.age = 500 + Math.floor(Math.random() * 1024);
       if (s.locked) {
         g.state = 'locked';
         g.block = world.blockIdAt(s.x, s.y);
+        if (g.block === null) this._free(g, 0, 0);
+      } else {
+        this._free(g, 0, 0);
+      }
+    });
+    (level.bombs || []).forEach((b) => {
+      const g = this._make('bomb', b.x, b.y, 0);
+      if (b.locked) {
+        g.state = 'locked';
+        g.block = world.blockIdAt(b.x, b.y);
         if (g.block === null) this._free(g, 0, 0);
       } else {
         this._free(g, 0, 0);
@@ -102,7 +146,7 @@ export default class Gits {
     g.vx = vx;
     g.vy = vy;
     g.marker = -1;
-    if (g.kind !== 'spike' && !g.handle) {
+    if ((g.kind === 'timmy' || g.kind === 'king') && !g.handle) {
       // free timmies and kings can be carried (category bit 0)
       g.handle = this._w.loose.add(g.sprite, 'timmy', true);
     }
@@ -121,10 +165,11 @@ export default class Gits {
       .map((g) => g.sprite);
   }
 
-  /** The overhead blow: a spike git it reaches is done for (VA 0x32b15). */
+  /** The overhead blow: a spike or bomb git it reaches is done for (VA 0x32b15). */
   hit(reach) {
     this.all.forEach((g) => {
-      if (g.kind !== 'spike' || g.state === 'struck' || g.state === 'locked') return;
+      if (g.kind !== 'spike' && g.kind !== 'bomb') return;
+      if (g.state === 'struck' || g.state === 'locked' || g.state === 'blow') return;
       if (!Phaser.Geom.Intersects.RectangleToRectangle(reach, g.sprite.getBounds())) return;
       g.state = 'struck';
       g.t = 0;
@@ -179,17 +224,94 @@ export default class Gits {
         }
         this._step(g);
         g.t += 1;
+        if (g.kind === 'spike') this._spikeTick(g);
+        if (g.sprite.active) this._touchJack(g);
       }
+      this._needlesTick();
     }
     this.all.forEach((g) => {
       if (!g.sprite.active || g.state === 'hoovered' || g.sprite.getData('beamed')) return;
       if (g.handle && (g.handle.carried || g.handle.flying)) return;
-      g.sprite.setPosition(g.x, g.y);
+      g.sprite.setPosition(g.x + (g.jitter || 0), g.y);
       g.sprite.setFlipX(g.left);
       applyPropFrame(g.sprite, g.frames[Math.min(g.frame, g.frames.length - 1)]);
     });
     this.collected += taken;
     return taken;
+  }
+
+  /**
+   * spike_tick (VA 0x332ef): when its age masked by its period comes to 0,
+   * a walking spike stops and bristles.
+   */
+  _spikeTick(g) {
+    g.age += 1;
+    if (g.state === 'bristle' || g.state === 'unbristle' || g.state === 'struck') return;
+    if ((g.age & BRISTLE_MASK[g.period]) !== 0) return;
+    g.state = 'bristle';
+    g.t = 0;
+    g.index = 0;
+  }
+
+  /** What Jack's box overlapping a git does — by its kind (his event list). */
+  _touchJack(g) {
+    const jack = this._w.jack && this._w.jack();
+    if (!jack || !jack.active) return;
+    if (g.state === 'struck' || g.state === 'locked') return;
+    if (!Phaser.Geom.Intersects.RectangleToRectangle(jack.getBounds(), g.sprite.getBounds())) return;
+    if (g.kind === 'spike') {
+      // outcome 11: hurt — and, unless bristling, the spike turns about
+      const left = jack.hurt({ x: g.x, y: g.y, vx: g.vx, vy: g.vy });
+      if (left && g.state === 'walk') {
+        g.vx = 0;
+        g.left = !g.left;
+        g.marker = -1;
+      }
+    } else if (g.kind === 'bomb' && g.state === 'walk') {
+      // outcome 10: on the ground it goes after whoever touched it
+      g.state = 'chase';
+      g.t = 0;
+      g.still = 0;
+      g.target = jack;
+    }
+  }
+
+  /** The needles: falling, turning as they go, gone below the level. */
+  _needlesTick() {
+    const jack = this._w.jack && this._w.jack();
+    for (let i = this.needles.length - 1; i >= 0; i -= 1) {
+      const n = this.needles[i];
+      n.vy += NEEDLE_GRAVITY;
+      n.x += n.vx;
+      n.y += n.vy;
+      n.vx = Math.abs(n.vx) > 9999 / 65536 ? n.vx - Math.sign(n.vx) * AIR_DRAG : 0;
+      n.t += 1;
+      if (n.vy > -1 && (n.t & 3) === 0 && n.frame < 42) n.frame += 1;
+      n.sprite.setPosition(n.x, n.y);
+      applyPropFrame(n.sprite, this._spkFrames[n.frame]);
+      if (jack && jack.active
+        && Phaser.Geom.Intersects.RectangleToRectangle(jack.getBounds(), n.sprite.getBounds())) {
+        jack.hurt({ x: n.x, y: n.y, vx: n.vx, vy: n.vy });   // outcome 12
+      }
+      if (n.y > this._w.groundY) {
+        n.sprite.destroy();
+        this.needles.splice(i, 1);
+      }
+    }
+  }
+
+  /** Eight needles in a fan from 12 px over the spike (VA 0x12711). */
+  _fireNeedles(g) {
+    this._spkFrames = PROP_ANIMS.spk;
+    NEEDLES.forEach(([vx, vy]) => {
+      const sprite = this._scene.add.image(g.x, g.y - 12, this._spkFrames[NEEDLE_FRAME]).setDepth(3);
+      applyPropFrame(sprite, this._spkFrames[NEEDLE_FRAME]);
+      const jitter = () => (Math.random() * 2 - 1) * NEEDLE_JITTER;
+      sprite.setFlipX(vx < 0);
+      this.needles.push({
+        sprite, x: g.x, y: g.y - 12, vx: vx + jitter(), vy: vy + jitter(), frame: NEEDLE_FRAME, t: 0,
+      });
+    });
   }
 
   _drop(g) {
@@ -208,6 +330,18 @@ export default class Gits {
         this._w.shake();
         g.sprite.destroy();
       }
+      return;
+    }
+    if (g.state === 'bristle' || g.state === 'unbristle') {
+      this._bristleStep(g);
+      return;
+    }
+    if (g.state === 'chase') {
+      this._chaseStep(g);
+      return;
+    }
+    if (g.state === 'fuse' || g.state === 'blow') {
+      this._fuseStep(g);
       return;
     }
     if (g.state === 'fall' || g.state === 'hop') {
@@ -269,10 +403,104 @@ export default class Gits {
       if (goRight && g.left) this._turn(g);
     }
     // a hop now and then at the bottom
-    if (g.kind !== 'spike' && Math.abs(g.y - this._w.groundY) < 1 && Math.random() < HOP_CHANCE) {
+    if ((g.kind === 'timmy' || g.kind === 'king')
+      && Math.abs(g.y - this._w.groundY) < 1 && Math.random() < HOP_CHANCE) {
       g.state = 'hop';
       g.t = 0;
       g.vy = HOP_VY;
+    }
+  }
+
+  /**
+   * Bristling (spike_bristle, VA 0x32cfb): it slows to a stop and its
+   * spines come out a frame every 4 ticks; it shivers from tick 30, at 50
+   * the needles fly, and after 100 the spines go back in (0x32f39) and it
+   * walks on the way it faces.
+   */
+  _bristleStep(g) {
+    g.vx = Math.abs(g.vx) > 9999 / 65536 ? g.vx - Math.sign(g.vx) * (8000 / 65536) : 0;
+    if (this._moveX(g)) g.vx = 0;
+    if (g.state === 'bristle') {
+      if ((g.t & 3) === 0 && g.index < 7) g.index += 1;
+      if (g.t > 30 && g.t < BRISTLE_FIRE) g.jitter = (g.t & 1) ? 1 : 0;
+      else g.jitter = 0;
+      if (g.t === BRISTLE_FIRE) {
+        g.index = 8;
+        this._fireNeedles(g);
+      }
+      if (g.t > BRISTLE_DONE) {
+        g.state = 'unbristle';
+        g.t = 0;
+      }
+    } else if ((g.t & 3) === 0) {
+      g.index -= 1;
+      if (g.index <= 0) {
+        g.state = 'walk';
+        g.t = 0;
+        g.marker = -1;
+      }
+    }
+    g.frame = BRISTLE[Math.max(0, Math.min(8, g.index))];
+  }
+
+  /**
+   * After its Jack (git_33a1f): his distance across, a 32nd of it a tick
+   * (a 64th late in each 256), less an eighth of its speed, to 8 px/tick
+   * at most. Too far and it walks again; a wall throws it back at a
+   * quarter; standing all but still 21 ticks, it lights.
+   */
+  _chaseStep(g) {
+    const jack = g.target;
+    if (!jack || !jack.active) { g.state = 'walk'; return; }
+    const dx = jack.x - g.x;
+    if (Math.abs(dx) > CHASE_X || Math.abs(jack.y - g.y) > CHASE_Y) {
+      g.state = 'walk';
+      g.t = 0;
+      return;
+    }
+    g.age = (g.age || 0) + 1;
+    g.vx += (g.age & 0xff) < 0xd3 ? dx / 32 : dx / 64;
+    g.left = g.vx < 0;
+    g.vx -= g.vx / 8;
+    g.vx = Phaser.Math.Clamp(g.vx, -CHASE_MAX, CHASE_MAX);
+    const i = (Math.floor(g.x) >> 2) & 15;
+    g.frame = WALK[g.left ? 15 - i : i];
+    if (this._floor(g.x, g.y - 1, g.y + 1) === null) {
+      g.state = 'fall';
+      g.t = 0;
+      return;
+    }
+    if (this._moveX(g)) g.vx = -g.vx / 4;
+    if (Math.abs(g.vx) > CHASE_SETTLE) {
+      g.still = 0;
+    } else if ((g.still += 1) >= CHASE_LIGHT) {
+      g.state = 'fuse';
+      g.t = 0;
+      g.index = 0;
+    }
+  }
+
+  /**
+   * The bomb's fuse (0x32550): it slows, the fuse runs a frame every 4
+   * ticks, and then (0x327c8) it flickers, and at tick 30 goes off.
+   */
+  _fuseStep(g) {
+    g.vx = Math.abs(g.vx) > 9999 / 65536 ? g.vx - Math.sign(g.vx) * (8000 / 65536) : 0;
+    if (this._moveX(g)) g.vx = 0;
+    if (g.state === 'fuse') {
+      if ((g.t & 3) === 0 && ++g.index > 7) {
+        g.index = 7;
+        g.state = 'blow';
+        g.t = 0;
+      }
+      g.frame = BRISTLE[g.index];
+      return;
+    }
+    g.frame = 33;
+    g.jitter = g.t & 1;
+    if (g.t === BLOW_AT) {
+      g.sprite.destroy();
+      this._w.bombBlast(g.x, g.y);
     }
   }
 
@@ -311,5 +539,6 @@ export default class Gits {
 
   destroy() {
     this.all = [];
+    this.needles = [];
   }
 }

@@ -54,6 +54,7 @@ STREET = 256
 TIMMY_CLASS = 14
 KING_TIMMY_CLASS = 17
 SPIKE_CLASS = 32
+BOMB_CLASS = 45
 RULES_CLASS = 16
 #: Class 15 places a stick of dynamite.
 DYNAMITE_CLASS = 15
@@ -280,10 +281,13 @@ def export(name):
                for x, y in [(w[0], w[1])]
                if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
 
-    # Spike gits. Class 32 (VA 0x1327e) — not a timmy: x, y, and the word
-    # at +0x12 bit 0 a free walker, bit 1 locked to a block. The rules
-    # record caps how many there may be (+0x3e).
-    spikes = [{"x": w[0], "y": w[1] + HEADROOM, "locked": not w[9] & 1}
+    # Spike gits. Class 32 (VA 0x1327e) — not a timmy: x, y, the word at
+    # +0x12 bit 0 a free walker, bit 1 locked to a block, and the lowest bit
+    # set in the word at +0xe how often it bristles (`period`, an index into
+    # the masks at 0x93af8: 0 never, 1 every 1024 ticks, 2 512, 3 64). The
+    # rules record caps how many there may be (+0x3e).
+    spikes = [{"x": w[0], "y": w[1] + HEADROOM, "locked": not w[9] & 1,
+               "period": _lowest_bit(w[7])}
               for cid, _off, payload in placed if cid == SPIKE_CLASS
               for w in [struct.unpack_from("<10h", payload, 0)]
               if 0 <= w[0] <= lv["width"] and 0 <= w[1] <= lv["height"]]
@@ -291,6 +295,21 @@ def export(name):
                   if cid == RULES_CLASS and len(payload) >= 0x40), None)
     spike_max = struct.unpack_from("<h", rules, 0x3e)[0] if rules else 0
     spikes = spikes[:max(0, spike_max)]
+
+    # Bomb gits. Class 45 (VA 0x134af): x, y, and the word at +0xe bit 0 a
+    # free walker, bit 1 locked to a block. Capped by the rules at +0x3c.
+    bombs = [{"x": w[0], "y": w[1] + HEADROOM, "locked": not w[7] & 1}
+             for cid, _off, payload in placed if cid == BOMB_CLASS
+             for w in [struct.unpack_from("<8h", payload, 0)]
+             if 0 <= w[0] <= lv["width"] and 0 <= w[1] <= lv["height"]]
+    bomb_max = struct.unpack_from("<h", rules, 0x3c)[0] if rules else 0
+    bombs = bombs[:max(0, bomb_max)]
+    # The blast's force is the rules' word at +0x44 shifted by the one at
+    # +0x46 (VA 0x1ae49, used at 0x32aec) — 30000 << 3 in the bomb levels.
+    bomb_force = 0
+    if rules and len(rules) >= 0x48:
+        base, shift = struct.unpack_from("<hh", rules, 0x44)
+        bomb_force = base << (shift & 31)
 
     # Dynamite. Class 15, drawn at the record's position plus the offset
     # its constructor applies (VA 0x1d2d5). The word at +14 picks which of
@@ -382,6 +401,8 @@ def export(name):
         "spawnPoints": spawn_pts,
         "timmies": timmies,
         "spikes": spikes,
+        "bombs": bombs,
+        "bombForce": bomb_force,
         "dynamite": dynamite,
         "cannons": cannons,
         "balls": balls,
