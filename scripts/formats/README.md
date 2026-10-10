@@ -1436,12 +1436,13 @@ not functions to Ghidra (only stores into `+0x54` reach them); they are
 named in `scripts/ghidra/symbols.d/git.txt`.
 
 **What the level places.** Class 14 is a timmy, class 17 a king timmy —
-each in one of two modes (word +0xe): 1, the usual (1238 of 1449
-records), *locked to the block* under it; 2, free from the start. A
+each in one of two modes (word +0xe): 1, *locked to the block* under
+it — 1440 of the 1449 records; 2, free from the start (nine). A
 locked timmy sits on its block (VA 0x2ff6b) until the block dies, then
 springs free with a random kick (up to 2 px/tick each way, VA 0x3053f).
 **Class 32 is not a timmy at all** — it is a spike git (VA 0x1327e), 551
-in 76 levels: word +0x12 bit 0 a free walker, bit 1 locked to a block. Class
+in 76 levels: word +0x12 bit 0 a free walker (510), bit 1 locked to a
+block (41). Class
 45 is the bomb git, the same way. The level's rules record caps them:
 bombs at +0x3c, spikes at +0x3e (VA 0x1ae49).
 
