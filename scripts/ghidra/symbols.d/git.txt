@@ -31,12 +31,12 @@
 0x332ef  f  spike_tick                     ; when age & 0x93af8[+0x76] is 0 (never / 1024 / 512 / 64 ticks), into spike_bristle
 0x1a036  f  player_add_timmies             ; BCD +0x64, count +0x68 — what a hoovered timmy scores
 0x1a0b5  f  player_add_gits                ; BCD +0x6c, count +0x70
-0x31504  f  git_31504
-0x3172b  f  git_3172b
-0x3193e  f  git_3193e
-0x31bd8  f  git_31bd8
+0x31504  f  timmy_knocked                  ; slot 8: the hammer's first knock — not carried or struck (category &= 0xf7fa), a puff; flat; at 160 on the ground stirs, 164 → timmy_shaken
+0x3172b  f  timmy_shaken                   ; slot 9: category 0x805 back (a king gains 0x200, hooverable); frames every 4 ticks; after 100 on the ground walks
+0x3193e  f  timmy_angel                    ; slot 10: its end — category 0, still 10 ticks, then up at 0x900 a tick swaying after a drifting point; gone off screen
+0x31bd8  f  timmy_crushed                  ; under a falling block on the ground: squashed with it; past 20 px, or the block gone → timmy_angel at vy -3.5 and up
 0x31d4b  f  git_31d4b
-0x32164  f  git_dizzy                      ; ? where dizziness (+0x74 ≥ 500) sends a timmy
+0x32164  f  timmy_dizzy_angel              ; the same end from dizziness (+0x74 ≥ 500) or a second blast; vy held to ±1.3 first
 0x323b0  f  git_323b0
 0x32550  f  bomb_fuse                      ; slot 19: smoke, the fuse a frame per 4 ticks; past 7 → bomb_blow
 0x327c8  f  bomb_blow                      ; slot 20, flickering; at tick 30 two BLAMs, the shock (70 px), a shake, blow_at(x, y-15) with the level's force
@@ -44,3 +44,5 @@
 0x3333c  f  git_3333c
 0x33559  f  git_33559
 0x33a1f  f  bomb_chase                     ; slot 27, after the Jack in +0x76: vx += dx/32, less vx/8, ±8; past 300/120 px gives up; still 21 ticks → bomb_fuse
+0x32413  f  timmy_blasted                  ; a blast's shock: pushed by 0x98c6c (vy whole, up if standing, ≥ -12; vx half); first → timmy_shaken, then timmy_dizzy_angel
+0xa3e38  d  timmy_knock_limit              ; 1: knocks a timmy takes (+0x68) before the next is its end

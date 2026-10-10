@@ -1469,14 +1469,39 @@ behind, shrinks, and is credited to the player (BCD `+0x64`, count
 no 0x200 — it cannot be hoovered.
 
 **Hit.** A spike or bomb the hammer hits stops, swells and is gone with
-a puff and a screen shake (VA 0x32b15). A timmy struck while airborne is knocked
-(vy -1.5, its speed quartered and jittered) and counts it; past a limit
-it goes to another behaviour (VA 0x31504 / 0x3193e, not read). Turned
-about too fast (`+0x74`, +10 a flip) it hops, and at 500 goes dizzy.
+a puff and a screen shake (VA 0x32b15). A timmy struck on its feet
+(sprite flag 0x10 is "on the ground", not "in the air" as first read) is
+knocked, and the second knock is its end — below.
 
-What spikes and bombs do — and what that does to Jack — is the next
-section. Open: the knocked/dizzy timmy behaviours (0x31504, 0x3193e,
-0x32164) and what a blast's shock does to a timmy (0x32413).
+What spikes and bombs do — and what that does to Jack — is "What hurts
+Jack" below.
+
+**A timmy knocked, and its end** — **Confirmed**. A timmy (or king, or
+Tommy) on its feet that the hammer's overhead blow reaches (its hit flag
+without the blast bit) jumps at vy -1.5, its speed quartered and jittered
+up to 4 px/tick, and counts the knock (`+0x68`). The game allows **one**
+(0xa3e38):
+- **The first knock** (0x31504, slot 8, sheet frames 18-19): flat on the
+  floor, and meanwhile not to be carried or struck (category bits 0, 2
+  and 0x800 cleared — the hoover still takes it). From tick 160 on the
+  ground it stirs; at 164 it **shakes itself** (0x3172b, slot 9, frames
+  20-23-21 a step every 4 ticks), carryable and strikable again, and after
+  100 ticks on its feet walks on. A knocked **king** gains the hooverable
+  bit, which a king otherwise lacks.
+- **The next one is its end** (0x3193e, slot 10, frames 24-25): it turns
+  into a winged angel that nothing can touch (category 0), hangs for 10
+  ticks, then rises at 0x900 a tick, swaying after a point that drifts
+  away (`vx += (point - x) / 64`), and is gone once off screen.
+- **A blast's shock** within 70 px (0x32413) pushes it by the same table
+  as Jack — vy whole and up if it stood, at most -12; vx halved — and
+  counts as a knock: the first shakes it, the next is its end (0x32164,
+  the same rise).
+- **Dizziness** (`+0x74`): +10 an about-turn, -1 a tick. Over 30 a turn
+  lifts it 5 px; at 500 a timmy dies of it, a spike is done for and a
+  bomb lights.
+- **A falling block** that catches it on the ground (0x31bd8) squashes it
+  with the block; past 20 px — or the block gone — it dies, thrown up at
+  -3.5 px/tick and more.
 
 ### What hurts Jack: spikes, needles, bombs, blasts — **Confirmed**
 
