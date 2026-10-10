@@ -147,7 +147,8 @@ const STATES = {
   // 22, 23) still and moving, 0x244c0 (slot 13) to come back out. The
   // states loop among themselves until he does, so Down toggles it.
   hatIn: { slot: 12, anim: 'helmetIn', ms: 45, next: 'hat', locks: true },
-  hat: { slot: 23, anim: 'helmetMove', ms: 60, loop: true, profile: 'slow' },
+  hat: { slot: 22, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, profile: 'slow' },
+  hatWalk: { slot: 23, anim: 'helmetMove', ms: 60, loop: true, profile: 'slow' },
   hatOut: { slot: 13, anim: 'helmetIn', ms: 45, next: 'stand', locks: true, reverse: true },
 
   // The hoover. 0x2a88c draws it in one strip, slot 70: Jack reaches into
@@ -750,13 +751,15 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     // ── The hard hat: Down went in, Up comes out (0x244c0) ────────────────
-    if (this.state === 'hat') {
+    if (this.state === 'hat' || this.state === 'hatWalk') {
       if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
         body.setVelocityX(0);
         this._enter('hatOut', now);
         return;
       }
-      this._steer(cursors, body, dt, PROFILES.slow);
+      // still (0x24727, slot 22) or on the move (0x2498a, slot 23)
+      const moved = this._steer(cursors, body, dt, PROFILES.slow);
+      this._enter(moved ? 'hatWalk' : 'hat', now);
       return;
     }
 
@@ -921,7 +924,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this._enter('stand', now);
       return true;
     }
-    const inHat = this.state === 'hat' || this.state === 'hatIn';
+    const inHat = this.state === 'hat' || this.state === 'hatWalk' || this.state === 'hatIn';
     this._crush = { id: c.id, contact: c.bottom, ticks: 0, w: 0, h: 0, vw: 0, vh: 0 };
     body.setVelocity(0, 0);
     body.setAllowGravity(false);
@@ -1262,7 +1265,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
   /** In the hard hat — the game's +0x41 bit 0. */
   _inHat() {
-    return ['hatIn', 'hat', 'hatOut', 'hatJump'].includes(this.state);
+    return ['hatIn', 'hat', 'hatWalk', 'hatOut', 'hatJump'].includes(this.state);
   }
 
   /** What he holds drops (VA 0x1e7d5). */
