@@ -101,7 +101,8 @@ export default class Bonuses {
     } else if (kind === 2) {
       this.prizes.push({ kind: 'hoover', sprite: this._image('bvac', 0, x, y - 20), x, y: y - 20, vx: 0, vy: HOOVER_VY, t: 0 });
     } else if (kind === 3) {
-      this.prizes.push({ kind: 'bubble', sprite: this._image('bubble', 0, x, y), x, y, vx: 0, vy: 0, t: 0 });
+      const bubble = this._image('bubble', 0, x, y).setBlendMode(Phaser.BlendModes.ADD);
+      this.prizes.push({ kind: 'bubble', sprite: bubble, x, y, vx: 0, vy: 0, t: 0 });
     }
   }
 
@@ -120,7 +121,8 @@ export default class Bonuses {
 
   _addPanel(p) {
     const sprite = this._image('panel', 0, p.x, p.y);
-    const twinkle = this._image('panel', 1, p.x, p.y, 3).setVisible(false);
+    const twinkle = this._image('panel', 1, p.x, p.y, 3).setVisible(false)
+      .setBlendMode(Phaser.BlendModes.ADD);   // template 0x982b8: drawn as added light
     const panel = { sprite, twinkle, x: p.x, y: p.y, vx: 0, vy: 0, block: null, wait: 1 };
     if (p.locked) panel.block = this._w.blockIdAt(p.x, p.y);
     this.panels.push(panel);

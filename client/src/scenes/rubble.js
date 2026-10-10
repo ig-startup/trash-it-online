@@ -1,10 +1,13 @@
+import Phaser from 'phaser';
+
 /**
  * What a destroyed block becomes, and the hoover that clears it.
  *
  * The game does not remove a smashed block: `remove_object_data` (VA
  * 0x68724) keeps it as rubble, drawn see-through — its draw routine
  * switches to one that blends every pixel with what is behind it through a
- * 256x256 table (VA 0x34ed8, table 0xbd4e4). In state 0x60f60 it is given a
+ * 256x256 table (VA 0x34ed8, table 0xbd4e4) — the level's `.STP`, which
+ * gives for two colours the one nearest their *sum*: light, added. In state 0x60f60 it is given a
  * random push, falls at 5000 a tick *through* everything to the bottom of
  * the level, bounces a quarter back, and lies there for 2000 ticks, on the
  * list the hoover reads; then it sinks into the floor a pixel a tick
@@ -23,7 +26,6 @@ const LIFT = 0x4e29 / FX;           // the push up every piece gets
 const STILL = 0x9c40 / FX;          // a bounce slower than this stops it (0xffff63c0)
 const REST_TICKS = 2000;            // +0x60 at destruction
 const GONE = 4;                     // px a sucked piece shrinks to before it goes
-const SEE_THROUGH = 0.55;           // the blend table, as an alpha — ours
 const DEPTH = 0.5;                  // over the wall, under the blocks and Jack
 const MAX_PIECES = 250;             // a guard; the game keeps every one
 
@@ -57,7 +59,7 @@ export default class Rubble {
     const img = src.texture && src.frame && src.texture.key !== '__DEFAULT'
       ? this._scene.add.image(b.x, b.y, src.texture.key, src.frame.name)
       : this._scene.add.rectangle(b.x, b.y, b.width, b.height, 0x8a6a4a);
-    img.setOrigin(0, 0).setAlpha(SEE_THROUGH).setDepth(DEPTH);
+    img.setOrigin(0, 0).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH);
     const vx = (rand() & mask) / FX;
     this._pieces.push({
       img,

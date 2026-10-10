@@ -46,7 +46,9 @@ export default class Tellies {
       applyPropFrame(pad, PROP_ANIMS.telly[0]);
       const beam = scene.add.image(t.x, t.y, PROP_ANIMS.telly[10]).setVisible(false);
       applyPropFrame(beam, PROP_ANIMS.telly[10]);
-      beam.setAlpha(0.85);
+      // drawn added to what is behind it, like all template-flagged light
+      // (template +0x18 bit 0x2000, VA 0x2d552)
+      beam.setBlendMode(Phaser.BlendModes.ADD);
       return {
         ...t, pad, beam,
         // shut → opening → open → closing → shut
