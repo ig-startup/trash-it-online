@@ -374,7 +374,7 @@
 0x2fe70  f  king_timmy_create              ; "King timmy has no block to lock to"
 0x3053f  f  spawn_timmy                    ; "Couldn't 'spawn a timmy()'!"
 0x347f4  f  telly_register                 ; "teleport id exceeds limit"
-0x5f1f7  f  lock_to_block                  ; "No block to lock to??" — class 8's
+0x5f1f7  f  lock_to_block                  ; "No block to lock to??" — the dispenser (class 8) made and set up
 0x697d7  f  group_slot_alloc               ; "don cannot find collective slot"
 0x6a29b  f  load_sprite_file               ; "%s\%s", "Need '%ld' more bytes of sprite_mem"
 0x6b65f  f  read_joypad                    ; "Joypad has been touched"
