@@ -65,6 +65,7 @@ export default class LooseObjects {
       // are locked to their block (VA 0x33ef2's twin), not resting on it.
       anchored,
       inside: null,   // what has taken it in — a cannon — while it does
+      noPick: false,  // set while its owner says it cannot be taken (a knocked timmy)
     };
     this._all.add(h);
     return h;
@@ -87,7 +88,7 @@ export default class LooseObjects {
    */
   find(x, y, jackBounds) {
     for (const h of this._all) {
-      if (h.carried || h.inside || !h.sprite.active) continue;
+      if (h.carried || h.inside || h.noPick || !h.sprite.active) continue;
       const b = h.sprite.getBounds();
       if (b.contains(x, y) && Phaser.Geom.Intersects.RectangleToRectangle(b, jackBounds)) return h;
     }

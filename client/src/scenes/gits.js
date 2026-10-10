@@ -24,6 +24,12 @@ import { COL, floorUnder } from './blockKinds';
  * stays put it lights (0x32550) and blows (0x327c8) — a blast that
  * pushes Jack and breaks blocks with the level's own force.
  *
+ * Timmies can be hurt too (README "A timmy knocked, and its end"). The
+ * overhead blow knocks one on the ground flat (VA 0x31504); it lies there,
+ * shakes itself (0x3172b) and walks on. Hit once more — or caught by a
+ * blast a second time, or turned about too often — it dies: it floats up
+ * out of the level, swaying, and cannot be taken (0x3193e, 0x32164).
+ *
  * Units are the game's: px and px/tick, stepped at 60 Hz.
  */
 const HZ = 60;
@@ -68,6 +74,19 @@ const CHASE_MAX = 8;
 const CHASE_SETTLE = 0x11fff / 65536;   // slower than this …
 const CHASE_LIGHT = 21;                 // … for 21 ticks, and it lights
 const BLOW_AT = 30;                     // ticks after the fuse (0x329e0)
+/** How many knocks a timmy takes before the next one is its end (0xa3e38). */
+const KNOCK_LIMIT = 1;
+const KNOCKED = [18, 19];               // slot 8: flat, then stirring
+const SHAKEN = [20, 21, 22, 23, 22, 21]; // slot 9
+const ANGEL = [24, 25];                 // slot 10, every 4 ticks
+const GROUND_DRAG = 8000 / 65536;       // |vx| over 9999 loses 8000 a tick
+const RISE = 0x900 / 65536;             // the dead one's lift, a tick
+/** Blast push by distance (table 0x98c6c): 11 px/tick under 16, 6 at 50, 0 from 76. */
+const blastPush = (d) => {
+  const a = Math.abs(d);
+  const v = a < 16 ? 11 : a < 50 ? 11 - ((a - 16) / 34) * 5 : a < 76 ? 6 - ((a - 50) / 26) * 6 : 0;
+  return Math.sign(d) * v;
+};
 
 export default class Gits {
   /**
@@ -161,13 +180,22 @@ export default class Gits {
 
   /** The timmy sprites, for whoever wants to find one (a UFO). */
   timmies() {
-    return this.all.filter((g) => g.kind === 'timmy' && g.state !== 'hoovered')
+    return this.all.filter((g) => g.kind === 'timmy' && g.state !== 'hoovered' && g.state !== 'dying')
       .map((g) => g.sprite);
   }
 
-  /** The overhead blow: a spike or bomb git it reaches is done for (VA 0x32b15). */
+  /**
+   * The overhead blow. A spike or bomb git it reaches is done for (VA
+   * 0x32b15); a timmy or king on its feet is knocked (git_tick, VA 0x30069).
+   */
   hit(reach) {
     this.all.forEach((g) => {
+      if (g.kind === 'timmy' || g.kind === 'king') {
+        if (g.state !== 'walk' && g.state !== 'turn' && g.state !== 'shaken') return;
+        if (g.handle && (g.handle.carried || g.handle.flying)) return;
+        if (Phaser.Geom.Intersects.RectangleToRectangle(reach, g.sprite.getBounds())) this._knock(g);
+        return;
+      }
       if (g.kind !== 'spike' && g.kind !== 'bomb') return;
       if (g.state === 'struck' || g.state === 'locked' || g.state === 'blow') return;
       if (!Phaser.Geom.Intersects.RectangleToRectangle(reach, g.sprite.getBounds())) return;
@@ -216,7 +244,8 @@ export default class Gits {
           g.vy = 0;
           g.state = 'walk';
         }
-        if (hooverBox && g.kind === 'timmy' && g.state !== 'struck'
+        if (hooverBox && (g.kind === 'timmy' || g.hooverable)
+          && g.state !== 'struck' && g.state !== 'dying'
           && hooverBox.contains(g.x, g.y - 6)) {
           g.state = 'hoovered';
           g.t = 0;
@@ -251,6 +280,126 @@ export default class Gits {
     g.state = 'bristle';
     g.t = 0;
     g.index = 0;
+  }
+
+  /**
+   * Knocked by the hammer: up at -1.5, its speed quartered and jittered
+   * (up to 4 px/tick either way); flat on the first knock, dead on the next.
+   */
+  _knock(g) {
+    const n = g.knocks || 0;
+    g.knocks = n + 1;
+    g.vy = -1.5;
+    g.vx = g.vx / 4 + (Math.random() * 2 - 1) * 4;
+    this._enter(g, n < KNOCK_LIMIT ? 'knocked' : 'dying');
+  }
+
+  /**
+   * A blast's shock (VA 0x32413), every free timmy within 70 px of it:
+   * pushed by distance — up, if it stood — then shaken on the first, dead
+   * on the next.
+   */
+  blasted(x, y, box) {
+    this.all.forEach((g) => {
+      if (g.kind !== 'timmy' && g.kind !== 'king') return;
+      if (['locked', 'hoovered', 'dying'].includes(g.state)) return;
+      if (g.handle && (g.handle.carried || g.handle.flying)) return;
+      if (!Phaser.Geom.Intersects.RectangleToRectangle(box, g.sprite.getBounds())) return;
+      g.left = !(g.x < x);
+      const py = blastPush(g.y - y);
+      const standing = g.state === 'walk' || g.state === 'turn' || g.state === 'shaken';
+      g.vy = standing ? g.vy - Math.abs(py) - Math.random() * 2 : g.vy + py;
+      g.vy = Math.max(-12, g.vy);
+      g.y -= 0.5;
+      g.vx += blastPush(g.x - x) / 2;
+      const n = g.knocks || 0;
+      g.knocks = n + 1;
+      this._enter(g, n < KNOCK_LIMIT ? 'shaken' : 'dying');
+    });
+  }
+
+  /** Into one of the knocked states, with what each allows. */
+  _enter(g, state) {
+    g.state = state;
+    g.t = 0;
+    g.air = true;
+    if (g.handle) g.handle.noPick = state === 'knocked' || state === 'dying';
+    // a knocked king gains the hooverable bit (0x31504 sets +0xd bit 1)
+    if (g.kind === 'king' && state !== 'dying') g.hooverable = true;
+    if (state === 'dying') {
+      g.anchor = g.x;
+      g.drift = (Math.random() < 0.5 ? -1 : 1) * Math.random() * 2;
+      g.vx = (Math.random() < 0.5 ? -1 : 1) * Math.random() * 4;
+    }
+  }
+
+  /**
+   * Knocked flat (0x31504) or shaking it off (0x3172b): it falls and slides
+   * to a stop; flat, from tick 160 it stirs and at 164 shakes; shaking, a
+   * frame every 4 ticks, after 100 on its feet it walks the way it faces.
+   */
+  _knockedStep(g) {
+    g.vx = Math.abs(g.vx) > 9999 / 65536 ? g.vx - Math.sign(g.vx) * GROUND_DRAG : 0;
+    if (this._moveX(g)) g.vx = 0;
+    if (g.air) {
+      g.vy = Math.min(TERMINAL, g.vy + GRAVITY);
+      const floor = g.vy > 0 ? this._floor(g.x, g.y, g.y + g.vy) : null;
+      if (floor !== null) {
+        g.y = floor;
+        g.vy = 0;
+        g.air = false;
+      } else {
+        g.y += g.vy;
+        if (g.y > this._w.groundY + 200) { g.sprite.destroy(); return; }
+      }
+    } else if (this._floor(g.x, g.y - 1, g.y + 1) === null) {
+      g.air = true;
+    }
+    if (g.state === 'knocked') {
+      g.frame = KNOCKED[!g.air && g.t > 160 ? 1 : 0];
+      if (!g.air && g.t > 164) this._enter(g, 'shaken');
+      return;
+    }
+    g.frame = SHAKEN[(g.t >> 2) % SHAKEN.length];
+    if (g.t > 100 && !g.air) {
+      g.state = 'walk';
+      g.t = 0;
+      g.marker = -1;
+    }
+  }
+
+  /**
+   * The end (0x3193e, 0x32164): out of reach of everything, it stops
+   * rising for 10 ticks, then lifts at 0x900 a tick while it sways after a
+   * point that drifts away; gone once it has left the level above.
+   */
+  _dyingStep(g) {
+    if (g.t < 10) {
+      g.vy = Math.min(0, g.vy + GRAVITY);
+      g.anchor = g.x;
+    } else {
+      g.anchor += g.drift;
+      g.vy -= RISE;
+      g.vx += (g.anchor - g.x) / 64;
+    }
+    g.x += g.vx;
+    g.y += g.vy;
+    g.frame = ANGEL[(g.t >> 2) & 1];
+    if (g.y < -64) g.sprite.destroy();
+  }
+
+  /**
+   * Dizziness (git_tick): every about-turn adds 10, every tick takes 1.
+   * Over 30 a turn makes it hop 5 px; at 500 a timmy dies of it, a spike
+   * is done for and a bomb lights.
+   */
+  _turned(g) {
+    g.dizzy = (g.dizzy || 0) + 10;
+    if (g.dizzy <= 30) return;
+    if (g.dizzy < 500) { g.y -= 5; return; }
+    if (g.kind === 'spike') { g.state = 'struck'; g.t = 0; g.vx = 0; return; }
+    if (g.kind === 'bomb') { g.state = 'fuse'; g.t = 0; g.index = 0; return; }
+    this._enter(g, 'dying');
   }
 
   /** What Jack's box overlapping a git does — by its kind (his event list). */
@@ -332,6 +481,15 @@ export default class Gits {
       }
       return;
     }
+    if (g.dizzy) g.dizzy -= 1;
+    if (g.state === 'knocked' || g.state === 'shaken') {
+      this._knockedStep(g);
+      return;
+    }
+    if (g.state === 'dying') {
+      this._dyingStep(g);
+      return;
+    }
     if (g.state === 'bristle' || g.state === 'unbristle') {
       this._bristleStep(g);
       return;
@@ -370,6 +528,7 @@ export default class Gits {
       if (g.left ? g.vx >= 0 : g.vx <= 0) {
         g.left = !g.left;
         g.state = 'walk';
+        this._turned(g);
       }
       this._moveX(g);
       g.frame = TURN[Math.min(TURN.length - 1, g.t >> 2)];
@@ -384,6 +543,7 @@ export default class Gits {
       g.vx = 0;
       g.left = !g.left;           // a wall turns it at once (VA 0x3000d)
       g.marker = -1;
+      this._turned(g);
     }
     g.frame = WALK[(Math.floor(g.x) >> 2) & 15];
     if (this._floor(g.x, g.y - 1, g.y + 1) === null) {

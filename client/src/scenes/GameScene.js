@@ -846,6 +846,7 @@ export default class GameScene extends Phaser.Scene {
     if (Phaser.Geom.Intersects.RectangleToRectangle(shock, this._player.getBounds())) {
       this._player.blasted(shockAt.x, shockAt.y);
     }
+    if (this._gits) this._gits.blasted(shockAt.x, shockAt.y, shock);
     this._dynamite.forEach((d) => {
       if (d.lit || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(shock, d.sprite.getBounds())) d.lit = time + FUSE_MS;
