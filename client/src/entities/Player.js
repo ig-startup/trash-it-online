@@ -67,6 +67,21 @@ const AT_REST = perS(399);         // below this the shared step stops him
 const SKID_BRAKE = perS2(5000);    // the skid brakes on its own (VA 0x2266d)
 const SKID_STOP = perS(10000);     // …and hands over to standing below this
 const WINDUP_NUDGE = perS(0x8000); // a tap of a direction while winding up
+/**
+ * The roll (VA 0x29072, 0x2930c, 0x29589). A run counts its ticks in
+ * `+0x5a` while the arrow agrees with the way he is going, back to 0 when
+ * it is let go or turned; past 50, Down with the arrow rolls. A frame
+ * every 4 ticks over his hands and on them, every 3 in the somersault.
+ */
+const ROLL = {
+  after: 0x32,              // ticks of running first
+  ready: 7,                 // over his hands: past this frame he may go on
+  onHands: 12,              // …and from this one, the arrow held, cartwheel
+  brake: perS2(5000),       // no arrow: off vx a tick
+  stop: perS(10000),        // …and below this he stands
+  flipKick: perS(-0x58000), // the somersault: -5.5 px/tick up
+  flipGain: 2 + 1 / 8,      // …and vx doubled plus an eighth of that
+};
 const MAX_STEP_MS = 50;         // ignore hitches longer than this
 const FALL_VELOCITY = 80;       // downward speed at which rising becomes falling
 const ANIM_CATCHUP_LIMIT = 8;   // frames one tick may make up after a hitch
@@ -194,6 +209,13 @@ const STATES = {
   flattened: { slot: 65, anim: 'flat', ms: Infinity, hold: true, crushed: true },
   hatPop: { slot: 69, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, crushed: true },
   tumble: { slot: 64, anim: 'tumble', ms: 3 * TICK_MS, next: 'stand', locks: true, brakes: true },
+  // Down with the arrow after a run of 50 ticks (0x22275 → VA 0x2265c):
+  // 0x29072, slot 55, over his hands; 0x2930c, slot 56, cartwheeling on
+  // while the arrow is held; 0x29589, slot 57, the somersault BUT2 turns
+  // either into. Their frames are stepped by _rollTick, not the clock.
+  roll: { slot: 55, anim: 'airRoll', ms: Infinity, hold: true, rolling: true, profile: 'run' },
+  handRoll: { slot: 56, anim: 'handRoll', ms: Infinity, hold: true, rolling: true, profile: 'run' },
+  flip: { slot: 57, anim: 'tumble', ms: Infinity, hold: true, rolling: true, profile: 'run' },
 
   // Hurt — a spike git, its needles, a bomb's or a stick's blast, a UFO's
   // bolt (see "What hurts Jack" in the README). Out of the hat he is sent
@@ -401,6 +423,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._chargeTicks = 0;
     this._chargeStep = 0;
     this._skidVx = 0;          // the skid's speed last tick, for the bounce
+    this._runTicks = 0;        // +0x5a: ticks run with the arrow agreeing
+    this._roll = null;         // the roll's frame clock and readiness
     this._jumpBoost = 0;       // what is left of a held jump's extra lift
     this._hammerHidden = true;  // in the hat, per the game's list flags
     this._hammerOut = false;    // the hammer mode: out of the hat, in hand
@@ -799,6 +823,26 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       return;
     }
 
+    // ── The roll: stepped tick by tick, as the game does ──────────────────
+    if (spec.rolling) {
+      this._rollTick(cursors, body, dt, now, onGround, but2);
+      return;
+    }
+
+    // ── A run long enough, then Down with the arrow: the roll (0x2265c) ───
+    if (this.state === 'walk' && onGround && !this._armed) {
+      const vx = body.velocity.x;
+      const agrees = (cursors.right.isDown && vx >= 0) || (cursors.left.isDown && vx <= 0);
+      this._runTicks = across && agrees ? this._runTicks + ticks : 0;
+      if (this._runTicks > ROLL.after && cursors.down.isDown && across) {
+        this._runTicks = 0;
+        this._startRoll('roll', body, now);
+        return;
+      }
+    } else {
+      this._runTicks = 0;
+    }
+
     // ── Empty-handed: Down ducks into the hat from standing, and picks up
     // when he is still moving with the arrows let go (0x225d7) ─────────
     if (onGround && !this._armed) {
@@ -902,6 +946,115 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       body.setVelocityX(0);
       this._enter('stand', now);
     }
+  }
+
+  /** Into one of the roll's states, its frame clock at the start. */
+  _startRoll(name, body, now) {
+    this._roll = { acc: 0, count: 3, ready: name === 'handRoll', airborne: false };
+    if (name === 'flip') {
+      body.setVelocityX(body.velocity.x * ROLL.flipGain);
+      body.setVelocityY(ROLL.flipKick);
+      this._roll.count = 2;
+    }
+    this._enter(name, now);
+    this._animFrame = 0;
+    this._showFrame(STATES[name]);
+  }
+
+  /**
+   * One frame of the roll. Over his hands (slot 55) and on them (56) it
+   * keeps his speed while the arrow is held, brakes without it, and hands
+   * on — BUT2 to the somersault, the arrow to the cartwheel, the other
+   * arrow to a skid, none back to the run. The somersault (57) is a jump
+   * that lands him running, or standing if he has slowed right down.
+   */
+  _rollTick(cursors, body, dt, now, onGround, but2) {
+    const r = this._roll || { acc: 0, count: 3, ready: false, airborne: false };
+    this._roll = r;
+    const vx = body.velocity.x;
+    const right = cursors.right.isDown;
+    const left = cursors.left.isDown;
+    const agrees = (right && vx >= 0) || (left && vx <= 0);
+    const against = (right && vx < 0) || (left && vx > 0);
+
+    if (this.state === 'flip') {
+      r.acc += dt * ORIGINAL_HZ;
+      while (r.acc >= 1) {
+        r.acc -= 1;
+        if (r.count > 0) r.count -= 1;
+        else {
+          r.count = 2;
+          this._animFrame = (this._animFrame + 1) % 12;
+        }
+      }
+      if ((vx > 0 && body.blocked.right) || (vx < 0 && body.blocked.left)) body.setVelocityX(0);
+      if (!onGround) r.airborne = true;
+      else if (r.airborne && body.velocity.y >= 0) {
+        this._roll = null;
+        this._enter(Math.abs(body.velocity.x) > ROLL.stop ? 'walk' : 'stand', now);
+        return;
+      }
+      this._showFrame(STATES.flip);
+      return;
+    }
+
+    // Hands on: BUT2, the arrow, or neither decides where he goes next.
+    if (r.ready) {
+      if (but2) { this._startRoll('flip', body, now); return; }
+      if (this.state === 'roll') {
+        if (against) { this._roll = null; this._skidVx = vx; this._enter('skid', now); return; }
+        if (agrees && this._animFrame >= ROLL.onHands) { this._startRoll('handRoll', body, now); return; }
+        if (!agrees) { this._roll = null; this._enter('walk', now); return; }
+      } else if (!agrees) {
+        this._roll = null;
+        this._enter('walk', now);
+        return;
+      }
+    }
+
+    r.acc += dt * ORIGINAL_HZ;
+    while (r.acc >= 1) {
+      r.acc -= 1;
+      if (r.count > 0) {
+        r.count -= 1;
+      } else if (this.state === 'roll') {
+        r.count = 3;
+        this._animFrame = Math.min(this._animFrame + 1, ROLL.onHands);
+      } else {
+        r.count = 3;
+        this._animFrame = this._animFrame >= 11 ? 0 : this._animFrame + 1;
+      }
+      if (this.state === 'roll' && r.count === 2 && this._animFrame > ROLL.ready) r.ready = true;
+    }
+
+    // No arrow: he slows by himself, and stands once he has.
+    if (!right && !left) {
+      if (Math.abs(vx) < ROLL.stop) {
+        body.setVelocityX(0);
+        this._roll = null;
+        this._enter('stand', now);
+        return;
+      }
+      body.setVelocityX(vx - Math.sign(vx) * ROLL.brake * dt);
+    } else {
+      body.setVelocityX(vx);  // the roll keeps what the run gave it
+    }
+    // A wall ends it in a run.
+    if ((vx > 0 && body.blocked.right) || (vx < 0 && body.blocked.left)) {
+      this._roll = null;
+      this._enter('walk', now);
+      return;
+    }
+    // Where his hands touch down there must be floor, or he falls.
+    const touching = this.state === 'roll'
+      ? this._animFrame <= 8 || this._animFrame === 12
+      : this._animFrame === 0 || this._animFrame === 6;
+    if (touching && !onGround) {
+      this._roll = null;
+      this._enter('fall', now);
+      return;
+    }
+    this._showFrame(STATES[this.state]);
   }
 
   /**

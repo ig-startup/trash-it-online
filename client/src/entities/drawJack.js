@@ -172,6 +172,7 @@ function drawnJackTextures(scene, playerId, colorHex) {
     helmetIn: [keys.crouch],
     helmetMove: [keys.crouch],
     airRoll: [keys.jump],
+    handRoll: [keys.jump],
   };
 }
 

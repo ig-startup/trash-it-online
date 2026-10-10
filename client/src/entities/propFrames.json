@@ -1,12 +1,36 @@
 {
   "frames": {
-    "bell": {
-      "file": "sprites/props/bell.png",
+    "bell_00": {
+      "file": "sprites/props/bell_00.png",
       "w": 39,
       "h": 17,
       "ax": 19,
       "ay": 16,
       "src": "BELL.SPR:0"
+    },
+    "bell_01": {
+      "file": "sprites/props/bell_01.png",
+      "w": 30,
+      "h": 51,
+      "ax": 15,
+      "ay": 50,
+      "src": "BELL.SPR:1"
+    },
+    "bell_02": {
+      "file": "sprites/props/bell_02.png",
+      "w": 31,
+      "h": 51,
+      "ax": 15,
+      "ay": 50,
+      "src": "BELL.SPR:2"
+    },
+    "bell_03": {
+      "file": "sprites/props/bell_03.png",
+      "w": 32,
+      "h": 27,
+      "ax": 15,
+      "ay": 67,
+      "src": "BELL.SPR:3"
     },
     "hammer_00": {
       "file": "sprites/props/hammer_00.png",
@@ -3155,7 +3179,10 @@
   },
   "anims": {
     "bell": [
-      "bell"
+      "bell_00",
+      "bell_01",
+      "bell_02",
+      "bell_03"
     ],
     "hammer": [
       "hammer_00",

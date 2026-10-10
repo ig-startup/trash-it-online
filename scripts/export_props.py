@@ -2,7 +2,7 @@
 Export the props the client needs — the bell and Jack's sledgehammer —
 from the original game's sprite files.
 
-The bell is BELL.SPR frame 0, the timmies are TIMMY.SPR. The hammer is
+The bell is BELL.SPR frames 0-3, the timmies are TIMMY.SPR. The hammer is
 SPA.SPR, all 61 frames: the game draws the tool as its own entity, standing
 on Jack's own position and picking its frame from a list that runs
 alongside each of Jack's animations (anims.hammer_lists). Those lists are
@@ -36,7 +36,9 @@ OUT_JSON = os.path.join(REPO, "client", "src", "entities", "propFrames.json")
 PREFIX = "sprites/props"
 
 PROPS = {
-    "bell": ("BELL.SPR", [0]),
+    # The bell is three sprites (VA 0x33d1d): the plinth (0), the tower
+    # with its striker (1, and 2 while it rings) and the ball on top (3).
+    "bell": ("BELL.SPR", [0, 1, 2, 3]),
     "hammer": ("SPA.SPR", list(range(61))),   # index = SPA frame number
     # The gits (README "The gits"): every frame of each sheet, index =
     # frame number, since their frame lists (VA 0xa40be) index the sheet

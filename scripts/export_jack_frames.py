@@ -63,7 +63,11 @@ ANIMS = {
     "getUp": list(range(161, 175)),      # slot 38 — jump back onto your feet
     "helmetIn": list(range(91, 101)),    # slot 14 — duck into the hard hat
     "helmetMove": list(range(101, 113)), # slot 16 — travelling as the hat
-    "airRoll": list(range(252, 265)),    # slot 57 — roll for extra distance
+    # Down with the arrow after a run (VA 0x2265c): the roll over his
+    # hands (slot 55), cartwheeling on (56), and — BUT2 from either — the
+    # somersault, whose frames slot 64's tumble shares (57).
+    "airRoll": list(range(252, 265)),    # slot 55
+    "handRoll": list(range(265, 277)),   # slot 56
     # The hoover. Jack reaches into his hard hat (slot 12), pulls it out
     # (slot 11), then carries it: slot 30 is a single standing frame and
     # slot 31 the walk. Those are two of the game's states — 0x256e9 and

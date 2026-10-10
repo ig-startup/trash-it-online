@@ -22,6 +22,7 @@ import Ufos from './ufos';
 import Seesaws from './seesaws';
 import Gits from './gits';
 import Bonuses from './bonuses';
+import Bell from './bell';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -222,25 +223,22 @@ export default class GameScene extends Phaser.Scene {
       this._stampCells(entry);
     });
 
-    // ── Bell (original palette gold) ────────────────────────────────────────────
+    // ── Bell ──────────────────────────────────────────────────────────────
+    // Three sprites that fall like any other (see bell.js). A subtype-8
+    // bell stays hidden until this share of the level is destroyed
+    // (VA 0x340af) — the arcade's "trash NN% to free the bell". The share
+    // is of every object in the level, the unbreakable ones included
+    // (`destroyed_percent`, VA 0x68724).
     const bell = level.bell;
-    if (hasProps(this)) {
-      this._bellGraphics = this.add.image(bell.x, bell.y, PROP_ANIMS.bell[0]);
-      applyPropFrame(this._bellGraphics, PROP_ANIMS.bell[0]);
-    } else {
-      this._bellGraphics = this.add.circle(bell.x, bell.y, 20, WORLD_COLORS.bell);
-    }
-    this.physics.add.existing(this._bellGraphics, true);
-    this._bellHit = false;
-
-    // A subtype-8 bell stays hidden until this share of the level is
-    // destroyed (VA 0x340af) — the arcade's "trash NN% to free the bell".
-    // The share is of every object in the level, the unbreakable ones
-    // included (`destroyed_percent`, VA 0x68724).
+    const bellGround = level.ground ? level.ground.y : levelHeight;
     this._objectTotal = level.destructibles.length;
     this._destroyedCount = 0;
     this._bellTrash = bell.trash || 0;
-    if (this._bellTrash) this._bellGraphics.setVisible(false);
+    this._bell = new Bell(this, bell, (x, from, to) => (to >= bellGround ? bellGround
+      : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)),
+    { hidden: this._bellTrash > 0, fallbackColor: WORLD_COLORS.bell });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bell.destroy());
+    this._bellHit = false;
 
     // ── Dynamite ──────────────────────────────────────────────────────────
     // 202 placements across 42 levels, of two kinds: 63 that a hammer
@@ -676,6 +674,7 @@ export default class GameScene extends Phaser.Scene {
       this._player.bellHit = false; // reset so bell can be hit again after leaving
     }
 
+    this._bell.update(delta);
     this._tickDynamite(time);
     if (this._cannons) this._tickCannons(delta);
     if (this._tellies) {
@@ -1130,15 +1129,9 @@ export default class GameScene extends Phaser.Scene {
     this._trashText.setText(`РАЗНЕСИ ${this._bellTrash}%: ${pct}%`);
   }
 
-  /** The bell pops into view: up 4 px a tick and back down (VA 0x340af). */
+  /** The bell pops into view: kicked up, and down it comes (VA 0x340af). */
   _releaseBell() {
-    const bell = this._bellGraphics;
-    bell.setVisible(true);
-    const y = bell.y;
-    this.tweens.add({
-      targets: bell, y: y - 28, duration: 230, ease: 'Quad.easeOut', yoyo: true,
-      onUpdate: () => bell.body && bell.body.updateFromGameObject(),
-    });
+    this._bell.release();
     this._flashBonus('КОЛОКОЛЬЧИК!');
   }
 
@@ -1169,17 +1162,15 @@ export default class GameScene extends Phaser.Scene {
   }
 
   _checkHammerBell() {
-    if (this._bellHit || !this._bellGraphics || !this._bellGraphics.active) return;
-    if (this._bellTrash) return;      // still waiting for its share of trash
+    if (this._bellHit || !this._bell || this._bell.hidden) return;
 
     const playerBounds = this._player.getBounds();
-    const bellBounds = this._bellGraphics.getBounds();
+    const bellBounds = this._bell.getBounds();
 
     // The bell is the goal, so touching it anywhere counts.
     if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, bellBounds)) {
       this._bellHit = true;
-      if (this._bellGraphics.setFillStyle) this._bellGraphics.setFillStyle(0xffffff);
-      else this._bellGraphics.setTint(0xffffff);
+      this._bell.ring();
       console.log('[GameScene] bell_hit!');
 
       // Send to server only once (flag prevents repeat)
