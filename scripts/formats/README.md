@@ -1884,8 +1884,62 @@ thirty, 12000 to 30000 for the specials. The specials' names are blank
 in the table.
 
 **Arcade** (VA 0x8d6f0, rows `section, number, hammer, picture`): the
-fifteen K levels with their mission lines (above, under "Objectives"),
-then five sets of battle levels on B.
+fifteen K levels with their mission lines (above, under "Objectives").
+The battle sets are a table of their own (VA 0x8d8e0) — see below.
+
+### Playing together: the game types — **Confirmed** (`front.py arcade`)
+
+The record's `+0xde` is the game type; the story above is type 0. Two
+more are for several people, and neither uses the world map.
+
+**The bell takes one ring per player, in every type.** G.EXE sets a ring
+count to `player_count` (VA 0x212d4). A player who touches the bell is
+out of the level — his Jack and its hammer flagged done (`+0x42 |= 0x20`)
+— and the count drops; **the level is won when the count reaches 0**, so
+with two Jacks on a story level both have to get there
+(`bell_touch_tick`, VA 0x34114).
+
+**Clocks.** The time limit is the rules record's +0x38, in minutes and
+seconds as decimal digits (`315` is 3:15; `ob.py`), held as packed BCD
+that carries at 60 (VA 0x19cea); a level with 0 keeps the default 20:00
+(the BCD 0x2000 in the data). A story or battle clock counts down one
+second per 60 ticks (VA 0x19dce); at 0 the level is lost (state 3); under
+0:20 it flashes, from 0:10 it beeps. A clock taken adds 0:25.
+Story limits run 0:11 to 9:00; every B level and all K levels but 0K
+have 0.
+
+**Type 1, battle** (VA 0x212d2, "battle framework"). Up to four players
+at once play a **battle set** — a fixed list of B levels, each with the
+hammer every player gets for it:
+
+| set | levels |
+|---|---|
+| 0 | 1B 2B AB CB DB |
+| 1 | 0B 5B 8B 6B BB |
+| 2 | 3B 4B 7B 9B 6B |
+| 3 | 0B DB 2B 3B 6B 7B 1B BB EB 8B |
+| 4 | 6B 0B 1B 2B 3B 4B 5B DB 7B 8B 9B AB BB EB CB |
+
+The order in which players ring the bell is their **place** (written to
+the record's `+0x34` by VA 0x1a688), and when only one player is left
+his clock is cut to 1:00 if it shows more. After each level every place
+scores **battle points**: 2/1 with two players, 4/2/1 with three, 8/4/2/1
+with four (VA 0x13fa1); a player who never rang scores nothing. After
+the last level of the set the most points win (VA 0x13e80). A tie is
+played off: only the tied players, on the level just played, all with
+hammer 36 — **the guitar** (set 10, VA 0x8d768; the random pick at
+VA 0x13f53 loops until it lands on that same level).
+
+**Type 2, arcade** (VA 0x214c2). Teams (`+0x108` of them, the current
+one at `+0x10a`) take turns on one K level picked from the arcade list,
+each with that row's hammer and its mission line. In this mode the clock
+starts at 0 and **counts up**, one step every 6 ticks (VA 0x19edb, so
+probably tenths of a second); the time a team
+finishes in goes back in the record's `+0x20`, the best time so far is
+kept at `+0x104` (starting at BCD 0x99999, which any time beats) and handed to the next team to
+beat (VA 0x195e5 puts it on the panel). When every team has played,
+VA 0x11df6 runs (not read — presumably the winner) and the menu offers
+to play again.
 
 ### Reading `G.EXE` in Ghidra
 

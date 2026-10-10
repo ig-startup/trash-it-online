@@ -94,13 +94,20 @@ PASSWORDS = 0x8da23
 PASSWORD_HAMMERS = 0x8da1a
 WORLD_NAMES = PASSWORDS + 4 * WORLD_COUNT
 ARCADE = 0x8d6f0
+BATTLE_SETS = 0x8d8e0
+#: Battle points by finishing place, for 2, 3 and 4 players (VA 0x13fa1,
+#: tables at 0x13b81, 0x13b85, 0x13b8b). A place is the order in which
+#: the players rang the bell.
+BATTLE_POINTS = {2: (2, 1), 3: (4, 2, 1), 4: (8, 4, 2, 1)}
 MISSIONS = 0x8d5c4
 SHOP = 0x89860
 SHOP_COUNT = 36
-#: The shop leaves the specials' names blank; these are the films that
-#: hand them out (and `hammers.py` names them the same way).
+#: The shop leaves the specials' names blank. G.EXE's hammer pointers
+#: (VA 0xa2d0c) run in the same order as the shop, so its records name
+#: them: 35 is the spoon, and 36 — past the shop's end, given only by the
+#: tie-break row — the guitar.
 SPECIALS = {30: "bfh", 31: "quality", 32: "galactic", 33: "dragon",
-            34: "moola"}
+            34: "moola", 35: "spoon"}
 #: Secret films that hand player 1 a hammer: movie index -> shop index
 #: (VA 0x12bbb, the five bytes at 0x1263c).
 MOVIE_HAMMERS = {36: 33, 37: 30, 38: 31, 39: 32, 40: 34}
@@ -186,22 +193,28 @@ class Front:
             out.append((name, price))
         return out
 
-    def arcade(self):
-        """
-        The arcade lists: [[(level, hammer, picture), ...], ...], each
-        ended by -1 — the K levels first, then sets of battle levels.
-        """
-        lists, cur, va = [], [], ARCADE
+    def _rows(self, va):
+        """`section, number, hammer, picture` rows up to the -1 that ends them."""
+        out = []
         while True:
-            s, n, ham, pic = struct.unpack("<4h", self.c.read(va, 8))
+            sec, n, ham, pic = struct.unpack("<4h", self.c.read(va, 8))
+            if sec == -1:
+                return out
+            out.append((NUMBERS[n] + SECTIONS[sec], ham, pic))
             va += 8
-            if s == -1:
-                lists.append(cur)
-                cur = []
-            elif s in (18, 19) and 0 <= n < 15:
-                cur.append((NUMBERS[n] + SECTIONS[s], ham, pic))
-            else:
-                return lists
+
+    def arcade(self):
+        """The fifteen K levels the arcade offers: [(level, hammer, picture)]."""
+        return self._rows(ARCADE)
+
+    def battle_sets(self):
+        """
+        The battle sets, VA 0x8d8e0: eleven pointers, picked by record
+        +0xfc. Sets 0..4 are the ones the menu offers (5, 5, 5, 10 and 15
+        levels); 5..9 repeat set 1; set 10 is the tie-break row, whose
+        number F.EXE overwrites with the level just played (VA 0x13f6d).
+        """
+        return [self._rows(self.u32(BATTLE_SETS + 4 * i)) for i in range(11)]
 
     def missions(self, language=0):
         out, va = [], MISSIONS
@@ -312,14 +325,17 @@ def _main(argv):
             print("  %-8s world %d %s (%s), hammer %s"
                   % (word, world, SECTIONS[world], name, shop[ham][0]))
     if what in ("all", "arcade"):
-        k, *battles = f.arcade()
         missions = f.missions()
-        for i, (lvl, ham, pic) in enumerate(k):
-            line = missions[i] if i < len(missions) else "(no mission line)"
-            ham = shop[ham][0] if ham < len(shop) else "#%d" % ham
-            print("  arcade %s  %-28s hammer %s" % (lvl, line, ham))
-        for b in battles:
-            print("  battle set:", " ".join(l for l, _, _ in b))
+        for (lvl, ham, pic), line in zip(f.arcade(), missions):
+            print("  arcade %s  %-28s hammer %s" % (lvl, line, shop[ham][0]))
+        for i, rows in enumerate(f.battle_sets()):
+            if 5 <= i <= 9:
+                continue
+            label = "tie-break" if i == 10 else "battle set %d" % i
+            print("  %-12s" % label, " ".join(
+                "%s(%s)" % (l, shop[h][0] if h < len(shop) else "guitar" if h == 36 else "#%d" % h)
+                for l, h, _ in rows))
+        print("  battle points by place:", BATTLE_POINTS)
     if what in ("all", "shop"):
         print("shop:", ", ".join("%s %d" % s for s in shop if s[0]))
     return 0
