@@ -175,36 +175,33 @@ same *type* (same size/strength) wear different graphics.
 | 4 | u16 height | in tiles — **verified** |
 | 6 | u16 **mass** | forced to 1 when stored as 0; the level loader copies it to the entity's `+0x14`, and the collapse pass sums it up a pile to get the force of an impact (VA 0x69850) — **confirmed by its reader** |
 
-## `.SCN` — background — **Partly wrong in these notes**
+## `.SCN` — background textures, drawn in perspective — **Confirmed**
 
-The layout below is right as far as it goes, and the layers do decode to
-recognisable images. What is wrong is the assumption that a layer *is*
-the backdrop.
+A `.SCN` is 256-pixel-wide textures, one byte a pixel, no header (see
+`scn.py`; the old "3072-byte lead-in and 320x200 layers" reading sheared
+every row and is gone). What the game does with them is a **perspective
+renderer**, not a blit: its camera has a depth (`0x28bf40`, the zoom; the
+sprites are scaled by `0x50000000 / (camera z - sprite z)` too, VA
+0x6ae1e), and the backdrop is drawn row by row through an affine scanline
+mapper (VA 0x18acc, 256x256 source, both indices masked to 8 bits):
 
-| offset | size | field |
-|---|---|---|
-| 0 | 3072 | lead-in |
-| 3072 | 64000 | layer 0 |
-| 67072 | 64000 | layer 1 |
-| 131072 | 64000 | layer 2 (only in 195072-byte files) |
+- **The horizon** (VA 0x1c759): row `100 + (20.0 / (SDE[0] - camera z)) ×
+  camera y`, held to 0..199.
+- **Below it** (VA 0x18f74), from the horizon down to row 199: a plane
+  whose texture scale is `SDE[1]`, offset every tick by `SDE[4]` and
+  `SDE[5]` × 0x1000 — an **auto-scroll**, -5 and -5 in 12 levels (drifting
+  cloud or water), 0 elsewhere.
+- **Above it** (VA 0x1c895), from the horizon up: a farther plane, its
+  step `(SDE[0] - camera z) / 320 >> SDE[2]` a row; it stops once the
+  texture runs out unless `SDE[3]` says to carry on to the top (59
+  levels), and the rest is filled plain (0x6d2ab).
+- Which planes are drawn at all is the **graphics detail** setting
+  (`0x287c70` / `0x287c72`, four presets at VA 0x1c69f-0x1c70d), not the
+  level: at the lowest the backdrop is a plain fill (0x6d2f4).
 
-The renderer (VA 0x18e64 and around) does not blit a layer. It walks the
-buffer as **256-byte units**, addressing them `0x257634 + (index << 8)`
-where the index is derived from a coordinate by a shift, and the shift
-amounts come out of the `.SDE` header — `0x984c4`, which is `.SDE` +4.
-The loop runs ~200 times, once per screen row. So the background is
-composed per scanline, at a scale the level's own settings control, and
-not from a layer taken whole.
-
-Two things support that. Drawing layer 0 as a picture and tiling it
-across a level gives a smear rather than a backdrop — which is what it
-looks like in the clone today. And level 0C's layer 2 is a developer's
-hand-drawn scribble (the words "I'm a" and some doodled shapes), which
-no level would ever display.
-
-Reconstructing the background properly means reading that renderer
-through. Until then anything the clone draws from a `.SCN` is a
-placeholder.
+The clone draws texture 0 flat and tiled — the look of the lowest detail
+level with a texture. Doing it as the game does needs the camera's depth,
+which the clone does not model.
 
 ## `.SDE` — background settings + scene sprites — **Confirmed**
 
@@ -212,7 +209,7 @@ Not a flat settings block: a 0x40-byte header followed by an array.
 
 | offset | size | field |
 |---|---|---|
-| 0x00 | 7 x u32 | background/parallax parameters, unpacked into globals at VA 0x18255; the last two are also split into four bytes each |
+| 0x00 | 8 x i32 | the backdrop (see `.SCN`): [0] the far plane's distance (520-1094), [1] the near plane's texture scale (0-2), [2] the far plane's step shift (1-2), [3] carry the far plane to the top (0/1), [4] [5] auto-scroll a tick (0, or -5 in 12 levels), [6] [7] split into bytes at VA 0x18255 — always 0 |
 | 0x3c | u16 | scene sprite count N (max 40) |
 | 0x40 | N x 44 | scene sprite records |
 
@@ -235,13 +232,50 @@ not gameplay.
 **`.SDE` holds no gameplay placement** — no spawns, no bell. Those are in
 `.OB`.
 
-## `.STP` — **Inferred, not decoded to meaning**
+## `.STP` — the level's additive blend table — **Confirmed**
 
-Always 65536 bytes = 256x256. A debug flag in `G.EXE` — `"/STP [1-3 |
-4] : Write out .STP file, with transparency 1-3 (default is 4)"` —
-shows it is *written* by the game as a debug dump, and it is read back
-into a 64 KB buffer (VA 0x10be9). Rendering it as a bitmap gives a
-structured grid, not a picture. Not needed to reconstruct a level.
+65536 bytes: a 256x256 table read at level load into `blend_table`
+(0xbd4e4, VA 0x10be9) and used as `dst = table[src × 256 + dst]` (VA
+0x34ed8). Row 0 is the identity — colour 0 is see-through. Every other
+entry is the palette colour **nearest to `src + dst`, saturating**: light
+added to what is behind. Checked on 0A, 3C, 7M and EK with the merged
+palette — mean error 16-21 against 11-18 for the best any palette colour
+could do, while "half and half" scores 115 and more. The debug switch
+`/STP [1-3 | 4]` writes one (the "transparency" being its strength; 4,
+full, is what ships).
+
+Drawn through it:
+- **rubble** (VA 0x2d381) — which is why smashed blocks look pale and
+  ghostly;
+- sprites whose template word +0x18 has bits 0x8000 | 0x2000 (VA
+  0x2d552; drawing mode `+0x20 = -2`): the **bubble**, the **panel's**
+  twinkle and layers, the **teleporter's beam**, `VM`;
+- panel icons with the same bits in their frame word (VA 0x2e4b4).
+
+The same template word with 0x8000 alone is a colour remap — table
+`0xa1c28[n]`, 256 bytes: 1-3 are the player colours (Jack, flags, bins);
+with 0x4000 it is mode -1 (`HEAT`, not read). `0xa1b28`, all 255, draws a
+sprite as a flat silhouette — the super hoover's blink.
+
+## `.J` — demo recordings — **Confirmed**
+
+15 files (0D-4D, and the test levels T*, U*): the joypad of up to four
+players, recorded with `/RECORD` and played back with `/PLAYBACK` (VA
+0x177da, 0x17923); the front end runs them as its attract mode ("into demo
+mode with %s seq lev %d"). Four equal blocks, one a player — 4012 bytes
+each (12012 in the larger files):
+
+| offset | size | field |
+|---|---|---|
+| 0 | u16 | ticks recorded |
+| 2 | u16 | events |
+| 4 | u32 | the recorder's write pointer (junk on disk) |
+| 8 | events × (u16, u16) | (ticks, pad bits): the pad held for that many ticks |
+
+Checked on all 15: the events' ticks add up to the header's, exactly.
+0D is one player for 2 minutes; 4D has all four. A run of 1000 ticks is
+split (VA 0x1781c). During playback a real key press ends the demo
+("Joypad has been touched").
 
 ## `.OB` — the level's startup code — **Confirmed**
 
@@ -1841,9 +1875,8 @@ same blitter, positioned by the frame's own origin.
 
 ## Still open
 
-- `.SDE` field meanings; the `.SCN` 3072-byte lead-in (it holds image
-  indices, not a palette — it reuses the layers' own colours); the `.I`
-  second u16.
+- The `.I` second u16; the `HEAT` draw mode (-1); which `.SCN` texture
+  each backdrop plane samples.
 - Sound scripts 29–32 are a lone `skip` (op 14) whose five words the
   interpreter ignores — something else must read them; and the meaning
   of the level-select points in `LVSPAT`.

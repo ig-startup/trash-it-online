@@ -255,7 +255,7 @@
 0x135fc  f  ufo_respawn_tick               ; first call of the frame: while fewer than the most fly, a new UFO every `respawn` ticks
 0x162c7  f  structural_pass_b              ; ?
 0x2bfda  f  structural_pass_c              ; ?
-0x1c821  f  structural_pass_d              ; ?
+0x1c821  f  draw_backdrop                  ; the horizon (0x1c759), the near plane (0x18f74), the far plane (0x1c895)
 
 # ── data: globals ─────────────────────────────────────────────────────────
 0x98224  d  level_options                  ; option bits set by the rules record
@@ -301,7 +301,7 @@
 0x410490 d  destroyed_count
 0x595cc8 d  last_spawned                   ; the entity spawn_from_template made
 0x257634 d  background_buffer
-0xbd4e4  d  blend_table                    ; 256×256, see-through rubble
+0xbd4e4  d  blend_table                    ; the level's .STP: dst = t[src*256 + dst], the colour nearest src + dst
 0x984c4  d  sde_shift
 
 # ── data: tables ──────────────────────────────────────────────────────────
@@ -466,10 +466,25 @@
 0x16c5c  f  random_step_2                  ; the sound module's copy of random_step
 0x16477  f  sound_voice_set_rate           ; AIL_set_sample_playback_rate
 0x6ad80  f  draw_entity                    ; ? blitter set-up from +0xcc/+0xce (screen) and +0xd0 (frame), blit_rle
-0x6ae1e  f  draw_entity_blend              ; ? the same through blit_rle_blend
+0x6ae1e  f  draw_entity_blend              ; a scaled sprite in mode -2 (template +0x18 bits 0xa000): added light
 0x6aebc  f  draw_entity_resized            ; ? the same with the +0x50 / +0x52 size offsets
 0x6b400  f  draw_sprite_layers             ; ? sprite lists from 0x3f down, through the draw_entity family
 0x6b533  f  draw_sprite_layers_2           ; ? its twin
 0x6caf0  f  entity_alloc                   ; from the free list at 0x594d04
 0x2eda0  f  sprite_list_add                ; ? onto the list at 0x3f16f4, flags 0x40000008
 0x2edd3  f  spawn_bare                     ; ? template in 0x3f2064, entity_alloc, sprite_list_add
+
+# ── the backdrop, the blend table, demos (README `.SCN`, `.STP`, `.J`) ──
+0x1c759  f  backdrop_horizon               ; row 100 + 20.0 / (SDE[0] - camera z) × camera y, held to 0..199
+0x18f74  f  backdrop_near_plane            ; horizon..199 at scale SDE[1], scrolled by SDE[4], SDE[5] a tick
+0x1c895  f  backdrop_far_plane             ; horizon..0, step (SDE[0] - z) / 320 >> SDE[2]; SDE[3] carries it to the top
+0x1c69f  f  detail_none                    ; graphics detail presets: which backdrop planes are drawn (0x287c70..76)
+0x1c6bd  f  detail_near
+0x1c6e5  f  detail_both
+0x1c70d  f  detail_most
+0x10be9  f  load_blend_table               ; "%s.STP" into 0xbd4e4
+0x2d50e  f  set_draw_mode                  ; template +0x18: 0x8000|0x4000 → -1, |0x2000 → -2 (added), else remap 0xa1c28[n]
+0x2e4b4  f  draw_panel_icon                ; plain, remapped, or added by its frame word
+0x17923  f  read_pad_or_playback           ; records with /RECORD, plays back with /PLAYBACK
+0xa1c28  d  remap_tables                   ; 256-byte colour remaps: 1-3 the players' colours
+0xa1b28  d  remap_silhouette               ; every colour to 255
