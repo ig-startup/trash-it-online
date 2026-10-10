@@ -1,0 +1,23 @@
+# Names for F.EXE (the front end), by hand.
+#
+# The world map (scripts/formats/front.py, README "The front end").
+0x1e97a  f  find_current_node              ; node pointer for record +0x1b8, logs "could not find node"
+0x1de35  f  map_fire_pressed               ; what fire does on a node: play, refuse, next world
+0x1e1c1  f  map_walk_step                  ; one pixel along the LVSPAT path; stops at untrashed points
+0x1e708  f  map_take_warp                  ; node word 3: jump to the paired node
+0x1e788  f  map_pick_jack_facing           ; looks 32 steps ahead to choose Jack's walking frame
+0x1ff5a  f  map_start_node                 ; record +0x24 = level, +0xdc = film, +0x1b8 = node
+0x1ffe9  f  map_process_node               ; record +0x2a: 1 run the level, 5 world done
+0x20072  f  map_node_trashed               ; +0x188[node] = 1, stage, timmy points
+0x200e8  f  map_enter_world                ; node 1, stage 0, open flags from node word 4
+0x1fcc2  f  map_screen_init                ; the world's row, icons, panel objects
+0x12896  f  play_node_film                 ; record +0xdc != -1 -> play it
+0x12bbb  f  film_gives_hammer              ; films 36..40 hand player 1 a special hammer
+0x12daa  f  play_smacker                   ; D\SMK\<name>.SMK from the film table
+0x15d44  f  password_of_world              ; the word shown for record +0x26
+0x15d55  f  check_password                 ; nine words -> world, 5 lives, nothing in hand
+0x159a2  f  password_screen
+0x167c5  f  world_arrival_screen           ; "password is" in state 5
+0x1a08d  f  arcade_level_select            ; game type 2: the K rows and their mission lines
+0x1b92a  f  hammer_shop                    ; trade-in value at shop record +4
+0x18144  f  level_score_screen             ; score and timmy points, five digits each

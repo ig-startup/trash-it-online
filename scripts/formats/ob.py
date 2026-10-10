@@ -110,6 +110,19 @@ RULES = {
     0x46: '2 or 3                                        (8 levels)',
 }
 
+#: What holds a bell back (VA 0x33e79 picks the routine; the constructor,
+#: VA 0x33d1d, copies payload +16, +18, +20 into the entity). Until it is
+#: let go the bell is hidden and cannot be touched; then it drops in.
+#:   1  nothing — there from the start (90 levels)
+#:   2  until level option 0x800 — set when the last timmy bin is full or
+#:      the last of a crawling kind is gone (VA 0x2f7ea, 0x116c9) — or
+#:      +20 seconds pass (6 levels, all 32767 or 9999: never, in practice)
+#:   4  until some player's counter (+0x28b9d8) reaches +16 (no level)
+#:   8  until `destroyed_percent` reaches +18 (VA 0x340af; 39 levels) —
+#:      the front end's "trash NN% to free the bell"
+#:  16  until the block under it dies (no level)
+BELL_SUBTYPE_TRASH = 8
+
 #: Class 13 draws the bell wherever its record puts it, offset by this.
 #: The constructor adds them before storing the entity position
 #: (VA 0x33d47 and 0x33d5f).
@@ -171,6 +184,14 @@ def bells(records):
             subtype = struct.unpack_from('<H', payload, 14)[0]
             out.append((x + BELL_X_BIAS, y + BELL_Y_BIAS, subtype))
     return out
+
+
+def bell_trash_percent(records):
+    """The share of the level to destroy before the bell shows, or None."""
+    for cid, _off, payload in records:
+        if cid == 13 and struct.unpack_from('<H', payload, 14)[0] == BELL_SUBTYPE_TRASH:
+            return struct.unpack_from('<H', payload, 18)[0]
+    return None
 
 
 def spawns(records):

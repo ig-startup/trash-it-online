@@ -374,9 +374,23 @@ touched it sets `+0x162` on the player who did it and hands off to the
 code that puts the level state at 2. No percentage, no block, no gate.
 
 So a clone that ends the level when a player reaches the bell is right
-for almost every shipped level, and the elaborate locking variant is the
-exception that no level actually ships. Subtypes 2 and 8 are still
-unread.
+for 90 levels, and the elaborate locking variant is the exception that
+no level actually ships.
+
+**The other subtypes hold the bell back** (`ob.py`, `BELL_SUBTYPE_*`).
+The constructor (VA 0x33d1d) copies payload +16 into entity +0x56, +18
+into +0x54 and +20 × 60 into the timer at +0x4a; every subtype but 1
+clears the entity's flag 8, which hides it and keeps it from being
+touched. When the condition comes true the bell gets subtype 1's
+routine, its flag back, a kick of -4 px/tick upward and a hit
+(`queue_hit`) — it pops into view.
+
+| subtype | lets go when | levels |
+|---|---|---|
+| 2 | level option 0x800 is set — by the last timmy bin filling (VA 0x2f7ea) or the last of a crawling kind going (VA 0x116c9) — or the timer runs out | 6: 0L 2D 5L 8K 9L TL; timers 32767 s and 9999 s, so never |
+| 4 | some player's counter at +0x28b9d8 reaches +16 | none |
+| 8 | `destroyed_percent` ≥ +18 (VA 0x340af), with a sound | 39, at 28 to 100% |
+| 16 | the block under it dies | none |
 
 ### Off the map: the street, the posts and the flags — **Confirmed**
 
@@ -412,7 +426,8 @@ the CRC-16 in its header, so the decode is byte-exact.
 - `LVSPAT1..9.PAK` — 640×480 bytes, but not a picture: 255 draws the
   paths of level-select screen N, and single pixels 1..N (13 to 32 a
   screen, 201 in all) number points along them. 201 against 147 levels —
-  not one point per level; what they mean is F.EXE's to tell.
+  not one point per level: they are the nodes of the world maps,
+  levels and path corners alike (see "The front end").
 - `WARNING.PAK` — a 20-byte header (16 bits per pixel, 2 bytes, …, u16
   width 640, u16 height 256) and 640×256 **RGB555** — the anti-piracy
   screen. Read as 8-bit, it looks like two interleaved half-images.
@@ -543,18 +558,25 @@ into it.
 
 ### Objectives — **Confirmed** (from `F.EXE`)
 
-`F.EXE` is the front end, not the editor, and it carries the mission
-text for the level-select screen in five languages:
+`F.EXE` is the front end, not the editor, and it carries mission text in
+five languages — one line for each of the fifteen arcade levels, 0K to
+EK (table at VA 0x8d5c4, picked by the arcade row, VA 0x1a163; see
+"The front end" below):
 
-- `trash NN% to free the bell` — seen with 28, 34, 48, 58, 61, 85, 90
-- `get to the bell`
-- `ring the bell`
-- `hit the bell`
-- `collect the timmies`
+- `trash NN% to free the bell` — 0K 28, 1K 61, 2K 58, 3K 61, 4K 34,
+  AK 90, DK 48, EK 85
+- `get to the bell` — 5K, 9K, BK, CK
+- `ring the bell` — 6K; `hit the bell` — 7K
+- `collect the timmies` — 8K, the one level with a timmy bin
 
-So "run to the bell and win" is not the game for most levels. Which
-objective a level carries, and where the percentage is enforced, is not
-yet traced.
+Each line is the level's bell, said in words. Every "trash NN%" level
+has a subtype-8 bell with NN at payload +18; every "get/ring/hit" level
+a subtype-1 bell; 8K a subtype-2 bell. The percentage **is** enforced:
+a subtype-8 bell stays hidden until `destroyed_percent` reaches it (see
+"The bell" and "The percentage check" below). Story levels carry no
+mission line, but 29 of them have subtype-8 bells all the same — every
+level of worlds A and M and seven of T's eight, at 70 to 100% — and so
+do 1D and 3D.
 
 ### The timmy bin — **Confirmed, and barely used**
 
@@ -613,18 +635,27 @@ zero and the rest sit between 200 and 630.
 What the individual option bits *do* is not traced yet. The field list
 is the map for doing it.
 
-### There is no percentage check — **Confirmed**
+### The percentage check — **Confirmed, and these notes had it wrong**
 
-The mission text promises "trash NN% to free the bell", and the game does
-compute that percentage: when an object is destroyed it increments a
-counter and stores `destroyed * 100 / total_objects` into the word at
-VA 0x410464 (destroyed at 0x410490, the level's object total at 0x41045a).
+The mission text promises "trash NN% to free the bell", and the game
+computes that percentage: when an object is removed (`remove_object_data`,
+VA 0x68724) it increments `destroyed_count` and stores
+`destroyed_count * 100 / level_object_total` in `destroyed_percent`
+(VA 0x410464). The total is the `.WAM` header's object count — every
+object, the unbreakable ones (hit points -1, which `damage_down` and
+`damage_up` skip) included — so a level's ceiling is its breakable share.
 
-**Nothing reads it back.** It is a display value. The gate is the bell's
-locked block and nothing else: demolish the block the bell sits on and the
-bell frees, whatever the percentage happens to be. The NN% in the
-front-end text is authored per level to describe roughly how much has to
-come down to get at that block — not a rule the game enforces.
+The authors knew it: of the 39 subtype-8 bells, most ask for exactly the
+ceiling or a point or two under it (0K 28 of 28, 1K 61/61, 5T 70/70,
+7A 97/97, AA 88/88, 5M 88/88). Three ask for more than the level holds —
+**2T 87 of 81, 4T 100 of 80, BA 100 of 87** — and, as the code reads,
+their bell never shows. Not checked in the running game.
+
+An earlier version of this section said nothing reads it back. **The
+subtype-8 bell does** (VA 0x340af, `state_340af`): it compares its own
++0x54 — payload +18 — with `destroyed_percent` every tick and comes out
+when the share is reached. The search that missed it was looking for the
+locked-block bell, subtype 16, which no level uses.
 
 ### How a structure collapses — **Confirmed, and these notes had it wrong**
 
@@ -1768,14 +1799,93 @@ table's own first section is J, and the shipped `TRASHIT.DAT` holds 0 and
 The clone plays them in that order — section by section as numbered,
 numbers ascending within one (`play_order()` in `export_level.py`).
 
-Not traced: how `F.EXE` moves on. It keeps a history of played levels in
-the record (`+0x158 + 4 * +0x10a`, the pair as one dword) and the furthest
-reached at `+0x104`, copied into `+0x20` before a level is run (VA
-0x215b2-0x215f8); the step from one pair to the next is somewhere above
-that. `F.EXE` also names six movies "end of level 1..6" and "game
-complete", so the game is grouped into six parts above the sections. The
-twelve one-object screens (`CC` … `DS`) are numbers 12 and 13 of the
-sections they name.
+How `F.EXE` moves on is traced now — see the next section. In short:
+world N of the story plays section N, Jack walks a map from level to
+level, and a world is left through its exit node, so **the clone's
+order is the original's main line**. What it leaves out are the side
+nodes: the T/U levels, the C/D one-object screens (numbers 12 and 13 of
+the sections they name), and the branches that let a player skip
+ahead. (The history at `+0x158 + 4 * +0x10a` and `+0x104` copied into
+`+0x20`, VA 0x215b2-0x215f8, belong to the team games, `+0x10a` being
+the current team.)
+
+### The front end: worlds, paths, passwords — **Confirmed** (`front.py`)
+
+`F.EXE` was decompiled with the same pipeline as `G.EXE`
+(`scripts/ghidra/fexe/run.sh`); every address here is `F.EXE`'s. The
+record in `TRASHIT.DAT` is the front end's own: `+0x24` number, `+0x26`
+world, `+0x28` lives, `+0x188` a trashed flag per map node, `+0x1be` the
+timmy points the shop spends. The shipped file is a new game standing on
+world J's first level, with exactly the path nodes trashed.
+
+**Nine worlds, nine screens.** World N (the record's `+0x26`, 0..8) plays
+section N — J H C S L I A T M — and its map is the table at VA 0x8d534:
+a 16-byte row per world, the first word pointing at 40-byte node
+records ending at id -1, the second naming the screen's text file
+`lvslN_e.dat`. N is also the `LVSPATN.PAK` picture, and it is *not* the
+world's index: S is screen 5 and L screen 4, A is 8 and T is 7.
+
+| node word | meaning |
+|---|---|
+| 0 | id = the number of its point in the LVSPAT picture |
+| 1 | level number; -1 for a path corner or junction |
+| 2 | kind: 1 level, 2 side level, 3 world exit, 4 gate |
+| 3 | warp: standing here sends Jack to that node (VA 0x1e708) |
+| 4 | open from the start (path nodes) — copied to `+0x188` on entry, VA 0x200e8 |
+| 6-7 | the map-screen object drawn for it; 8, 9 its x, y |
+| 13 | film played when it is won (VA 0x12896) — `D\SMK\<name>.SMK`, names at VA 0x89180 |
+| 14 | stage, stored as the record's `+0x1bc` when won |
+| 16 | a gate's price — 840, 1400 in T, 600 in M; what it charges is not traced |
+| 17, 18 | no reader found |
+
+Jack moves pixel by pixel along the 255-coloured paths (VA 0x1e1c1) and
+**cannot step over a point that is not trashed**: a level is a stop until
+it is won. Path nodes start trashed. A kind-3 exit that is trashed sends
+the front end to state 5 — next world, the map reset (VA 0x200e8), and
+the new world's password shown. The first six worlds branch, so some
+levels can be walked past once a neighbour is won; A, T and M are
+straight lines. `front.py graph` prints each map as the level pairs its
+paths join.
+
+A won level can be replayed only while the timmy points it paid out are
+still in hand, and a level of a stage below the last one won cannot be
+entered at all (VA 0x1de35) — so going past a world's midpoint shuts its
+first half.
+
+**Films** (node word 13): worlds end with `inter1` … `inter6`, the game
+with `end`. Five secret films give player 1 a special hammer
+(VA 0x12bbb): 8A `bfh`, the A exit `qua` (quality), 3T `gal` (galactic),
+the T exit `dra` (dragon), 3M `moo` (moola).
+
+**Passwords** (VA 0x8da23, checked at VA 0x15d55 against the first nine):
+
+| password | world | name | hammer given |
+|---|---|---|---|
+| fuckit | J | junkyard | sledgehammer v1 |
+| tank | H | haunted | sledgehammer v2 |
+| boggin | C | chemical | piledriver v3 |
+| pleb | S | toy room | spikeball v1 |
+| bostin | L | launchpad | volcanic v1 |
+| minging | I | planet | splitter v2 |
+| shatner | A | city | future v3 |
+| glitter | T | temple | quality |
+| smudge | M | moons lab | dragon |
+
+A password starts its world at node 1 with 5 lives, no score, no timmy
+points, and players 1 and 2 holding the hammer from VA 0x8da1a; a new
+game is the same with world J and the sledgehammer v1. The password of
+a world is shown on arriving there (VA 0x168d5).
+
+**The hammer shop** (VA 0x89860, 36 records): the front end numbers
+hammers its own way — the ten v1s, the ten v2s, the ten v3s, then the
+specials — each record carrying a name and the word the shop adds back
+when a hammer is traded in (VA 0x1b92a), 0 to 3945 for the
+thirty, 12000 to 30000 for the specials. The specials' names are blank
+in the table.
+
+**Arcade** (VA 0x8d6f0, rows `section, number, hammer, picture`): the
+fifteen K levels with their mission lines (above, under "Objectives"),
+then five sets of battle levels on B.
 
 ### Reading `G.EXE` in Ghidra
 
@@ -1878,8 +1988,10 @@ same blitter, positioned by the frame's own origin.
 - The `.I` second u16; the `HEAT` draw mode (-1); which `.SCN` texture
   each backdrop plane samples.
 - Sound scripts 29–32 are a lone `skip` (op 14) whose five words the
-  interpreter ignores — something else must read them; and the meaning
-  of the level-select points in `LVSPAT`.
+  interpreter ignores — something else must read them.
+- `F.EXE`: what a gate node (kind 4) charges; node words 17 and 18; the
+  C/D one-object screens (`G.EXE` VA 0x10c1f builds them).
+- Why 2T, 4T and BA ask for more trashing than they hold.
 - What sets the swing's starting frame — the operating range of the force
   ramp (see the collapse section; the formula itself is confirmed).
 - What the individual bits of the level's option byte (0x98224, and a
