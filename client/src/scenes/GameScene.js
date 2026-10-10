@@ -1069,7 +1069,8 @@ export default class GameScene extends Phaser.Scene {
    */
   _landed(hit, hitter, force) {
     if (force > 0) {
-      this._applyForce(hit, force, 0, undefined, { down: true, up: false });
+      // `hit` is null when it came down on the floor
+      if (hit) this._applyForce(hit, force, 0, undefined, { down: true, up: false });
       if (hitter && hitter.rect.active) {
         this._applyForce(hitter, force, 0, undefined, { down: false, up: true });
       }

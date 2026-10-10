@@ -12,6 +12,9 @@
  * - A group falls as one rigid piece (0x690d6): vy += 10000 a tick,
  *   capped at 4 px, its members riding along — out of the live map while
  *   they move.
+ * - It comes down on a block, or on the bottom of the level: the bottom
+ *   row of the map is what the flood starts from, so below it is floor
+ *   (in every level the ground lies exactly there).
  * - When it lands (0x68b2d) the force is the weight of what it hit and
  *   everything stacked on that, times its speed in whole pixels plus one,
  *   over four — applied down into what was hit and up into what hit it,
@@ -149,13 +152,12 @@ export default class Collapse {
       let hit = null;
       let hitter = null;
       let landAt = null;
-      let fellOut = false;
       g.members.forEach((m) => {
         const fromRow = Math.floor((m.y0 + g.dy) / tile) + m.th;
         const toRow = Math.floor((m.y0 + next) / tile) + m.th;
         for (let row = fromRow; row <= toRow; row += 1) {
-          if (row >= this._rows) { fellOut = fellOut || landAt === null; break; }
-          const under = this._row(m, row).find((id) => !this.falling.has(id));
+          // the floor under the bottom row
+          const under = row >= this._rows ? null : this._row(m, row).find((id) => !this.falling.has(id));
           if (under !== undefined) {
             const snapped = (row - m.th) * tile - m.y0;
             if (landAt === null || snapped < landAt) {
@@ -170,9 +172,6 @@ export default class Collapse {
 
       if (landAt !== null) {
         this._land(g, landAt, hit, hitter);
-        this._groups.splice(i, 1);
-      } else if (fellOut && (g.members[0].y0 + next) / tile > this._rows + 4) {
-        g.members.forEach((m) => { this.falling.delete(m.id); this._s._forgetBlock(m); });
         this._groups.splice(i, 1);
       } else {
         g.dy = next;
@@ -210,8 +209,14 @@ export default class Collapse {
     this._dirty = true;
 
     const map = this._s._destructibleMap;
-    const hit = map.get(hitId);
-    if (!hit) return;
+    const hit = hitId === null ? null : map.get(hitId);
+    if (!hit) {
+      // on the floor: the blow goes only up, into what came down
+      if (hitter && hitter.rect.active) {
+        this._s._landed(null, hitter, Math.floor((this._weightOn(hitter) * speed) / 4));
+      }
+      return;
+    }
     const force = Math.floor((this._weightOn(hit) * speed) / 4);
     this._s._landed(hit, hitter, force);
   }
