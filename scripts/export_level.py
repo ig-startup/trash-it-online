@@ -411,6 +411,11 @@ def export(name):
     if rung:
         bx, by, _subtype = rung[0]
         bell = {"x": clamp_x(bx), "y": by + HEADROOM}
+        # Subtype 8: hidden until this share of the level's objects is
+        # destroyed — every `.WAM` object counts (VA 0x340af, 0x68724).
+        trash = ob.bell_trash_percent(placed)
+        if trash is not None:
+            bell["trash"] = trash
     else:
         top = min(o["y"] for o in lv["objects"]) + HEADROOM
         tower = [o for o in lv["objects"] if o["y"] + HEADROOM == top]
@@ -504,12 +509,14 @@ def write_index(ids):
 
 def main(argv):
     if argv and argv[0] == "--all":
-        # The T* and U* files are test levels: the only twelve without a
-        # bell.
+        # The T* and U* files are the worlds' side levels — numbers 29
+        # and 30 on the F.EXE maps, the only levels with a demo `.J` —
+        # and the only twelve without a bell; the clone leaves them out.
         every = sorted({os.path.splitext(f)[0] for f in os.listdir(LEVELS)
                         if f.upper().endswith(".WAM")})
         # Twelve more (CC, CH, … DS) hold a single object on a 288x160
-        # screen: not levels to play.
+        # screen: the maps' bonus screens (numbers 12 and 13), which
+        # G.EXE builds a round of its own around (VA 0x10c1f).
         def playable(n):
             wam = open(os.path.join(LEVELS, n + ".WAM"), "rb").read()
             return struct.unpack_from("<H", wam, 4)[0] >= MIN_OBJECTS

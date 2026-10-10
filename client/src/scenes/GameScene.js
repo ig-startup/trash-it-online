@@ -233,6 +233,15 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.existing(this._bellGraphics, true);
     this._bellHit = false;
 
+    // A subtype-8 bell stays hidden until this share of the level is
+    // destroyed (VA 0x340af) — the arcade's "trash NN% to free the bell".
+    // The share is of every object in the level, the unbreakable ones
+    // included (`destroyed_percent`, VA 0x68724).
+    this._objectTotal = level.destructibles.length;
+    this._destroyedCount = 0;
+    this._bellTrash = bell.trash || 0;
+    if (this._bellTrash) this._bellGraphics.setVisible(false);
+
     // ── Dynamite ──────────────────────────────────────────────────────────
     // 202 placements across 42 levels, of two kinds: 63 that a hammer
     // lights — the overhead strike, which is the blow that reaches sprites
@@ -579,8 +588,16 @@ export default class GameScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 3,
     }).setOrigin(1, 0).setDepth(10));
+    /** How much is trashed, while a bell waits for it — under the clock. */
+    this._trashText = this._hud(this.add.text(400, panelTop + 52, '', {
+      fontSize: '16px',
+      fill: '#ffcc33',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5, 0).setDepth(10));
+    this._showTrash();
 
-    this._debugText = this._hud(this.add.text(220, this.scale.height - 4, '', {
+    this._debugText =this._hud(this.add.text(220, this.scale.height - 4, '', {
       fontSize: '11px',
       color: '#556655',
     }).setOrigin(0, 1));
@@ -1091,6 +1108,38 @@ export default class GameScene extends Phaser.Scene {
       this._destructibles.remove(entry.rect, true, true);
     }
     this._destructibleMap.delete(entry.id);
+    this._destroyedCount += 1;
+    this._showTrash();
+  }
+
+  /** `destroyed_percent`: what share of the level's objects is gone. */
+  _trashPercent() {
+    return this._objectTotal ? Math.floor(this._destroyedCount * 100 / this._objectTotal) : 0;
+  }
+
+  /** The readout under the clock, and the bell let go once it is earned. */
+  _showTrash() {
+    if (!this._bellTrash || !this._trashText) return;
+    const pct = this._trashPercent();
+    if (pct >= this._bellTrash) {
+      this._bellTrash = 0;
+      this._trashText.setText('');
+      this._releaseBell();
+      return;
+    }
+    this._trashText.setText(`РАЗНЕСИ ${this._bellTrash}%: ${pct}%`);
+  }
+
+  /** The bell pops into view: up 4 px a tick and back down (VA 0x340af). */
+  _releaseBell() {
+    const bell = this._bellGraphics;
+    bell.setVisible(true);
+    const y = bell.y;
+    this.tweens.add({
+      targets: bell, y: y - 28, duration: 230, ease: 'Quad.easeOut', yoyo: true,
+      onUpdate: () => bell.body && bell.body.updateFromGameObject(),
+    });
+    this._flashBonus('КОЛОКОЛЬЧИК!');
   }
 
   /**
@@ -1121,6 +1170,7 @@ export default class GameScene extends Phaser.Scene {
 
   _checkHammerBell() {
     if (this._bellHit || !this._bellGraphics || !this._bellGraphics.active) return;
+    if (this._bellTrash) return;      // still waiting for its share of trash
 
     const playerBounds = this._player.getBounds();
     const bellBounds = this._bellGraphics.getBounds();
