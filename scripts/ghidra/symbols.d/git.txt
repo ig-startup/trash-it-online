@@ -1,0 +1,46 @@
+# The git family — timmies, king timmies, Tommy, spikes (SPK), bombs (BOM),
+# the bonus (BON). See README "The gits". One shared driver runs them all
+# (timmy_tick, VA 0x30069) and calls the behaviour in +0x54 each tick; the
+# behaviours were not functions to Ghidra until named here (found by the
+# stores `mov [reg+0x54], imm32`). Git fields: +0x54 behaviour, +0x58 / +0x5c
+# / +0x60 top speed, acceleration, turn rate (from the anim profile), +0x66
+# the last marker, +0x68 times knocked, +0x6c age, +0x72 the .OB flags,
+# +0x74 dizziness, +0xbc / +0xbe anim slot, +0xc0 / +0xc4 frame list, index.
+0x30069  f  git_tick                       ; the driver: clamps vy, the hits by kind, dizziness, then +0x54; frame = list[+0xc4]
+0x2ff6b  f  timmy_locked                   ; a placed timmy, locked to its block: when the block dies it springs free (spawn_timmy)
+0x2ffbc  f  ktimmy_locked                  ; the same for the king timmy
+0x30462  f  git_set_anim                   ; like play_anim: slot → frames (0xa40be), profile (0xa4030 → 0xa406a); spikes at half
+0x30a35  f  git_walk_right                 ; speed up to +0x58; frame from x (x>>2 & 15); off a floor → fall; a wall turns it; past the right edge → turn
+0x30be6  f  git_walk_left
+0x30d8e  f  git_fall                       ; the airborne step; landing walks it the way it faces
+0x30f43  f  git_hop_left                   ; vy -4.5 — the random hop at the level's bottom (20 in 4096 a tick)
+0x31112  f  git_hop_right
+0x31299  f  git_turn_to_right              ; skids by +0x60 a tick until vx ≥ 0, then walks right
+0x313db  f  git_turn_to_left
+0x31a9b  f  git_hoovered_8                 ; caught by the hoover in slot 8: trails 40 px behind its hoover, shrinks, scores
+0x31bbf  f  git_hoovered_9
+0x322c5  f  git_hoovered                   ; the same from any other slot
+0x32b15  f  git_struck                     ; a spike or bomb hit: stops, swells, is gone with a blast and a shake
+0x32cfb  f  spike_bristle                  ; ? every so often (mask 0x93af8[+0x76] against its age)
+0x33154  f  git_beamed                     ; ? held under a UFO's beam
+0x332c9  f  git_beam_lift                  ; ? lifted by it
+0x2fbfd  f  git_marker_at                  ; the marker under a point: .COL word 2 of the block there (0x3f20c8)
+0x306de  f  git_think                      ; a new marker → its action list (0xa3dbb) picks one of 8; the bottom hop
+0x3000d  f  git_turn_at_wall
+0x2fc5b  f  hoover_catch_gits              ; the hoover's box takes every sprite of category 0x200 and gives it a hoovered behaviour
+0x332ef  f  spike_tick                     ; ? the spike's timer into spike_bristle
+0x1a036  f  player_add_timmies             ; BCD +0x64, count +0x68 — what a hoovered timmy scores
+0x1a0b5  f  player_add_gits                ; BCD +0x6c, count +0x70
+0x31504  f  git_31504
+0x3172b  f  git_3172b
+0x3193e  f  git_3193e
+0x31bd8  f  git_31bd8
+0x31d4b  f  git_31d4b
+0x32164  f  git_dizzy                      ; ? where dizziness (+0x74 ≥ 500) sends a timmy
+0x323b0  f  git_323b0
+0x32550  f  git_32550
+0x327c8  f  git_327c8
+0x32f39  f  git_32f39
+0x3333c  f  git_3333c
+0x33559  f  git_33559
+0x33a1f  f  git_33a1f
