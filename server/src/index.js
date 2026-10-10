@@ -33,6 +33,21 @@ function loadLevel(id) {
 }
 
 /**
+ * Move the whole room on to the next level once the result overlay has
+ * had its moment.
+ * @param {object} room
+ */
+function moveOn(room) {
+  const next = nextLevelId(room.levelId);
+  setTimeout(() => {
+    if (!rooms.findRoom(room.code)) return; // room closed in the meantime
+    room.startGame(loadLevel(next));
+    io.to(room.code).emit(EVENTS.GAME_STARTED, { levelId: next });
+    console.log(`[next_level] room=${room.code} level=${next}`);
+  }, NEXT_LEVEL_DELAY);
+}
+
+/**
  * @param {string} id
  * @returns {string} the level after `id`, wrapping around at the end
  */
@@ -195,18 +210,9 @@ io.on('connection', (socket) => {
   socket.on(EVENTS.BELL_HIT, () => {
     const room = rooms.getPlayerRoom(socket.id);
     if (!room) return;
-    room.handleBellHit(socket.id);
-    console.log(`[bell_hit] room=${room.code} socket=${socket.id}`);
-
-    // Move the whole room on to the next level once the result overlay
-    // has had its moment.
-    const next = nextLevelId(room.levelId);
-    setTimeout(() => {
-      if (!rooms.findRoom(room.code)) return; // room closed in the meantime
-      room.startGame(loadLevel(next));
-      io.to(room.code).emit(EVENTS.GAME_STARTED, { levelId: next });
-      console.log(`[next_level] room=${room.code} level=${next}`);
-    }, NEXT_LEVEL_DELAY);
+    const done = room.handleBellHit(socket.id);
+    console.log(`[bell_hit] room=${room.code} socket=${socket.id} done=${done}`);
+    if (done) moveOn(room);
   });
 
   // --- object_hit ---
@@ -233,6 +239,8 @@ io.on('connection', (socket) => {
     }
 
     rooms.removePlayer(socket.id);
+    // The bell may have been waiting for nobody but them.
+    if (room && room.players.size > 0 && room.finishIfAllRang()) moveOn(room);
     console.log(`[disconnect] socket=${socket.id}`);
   });
 });

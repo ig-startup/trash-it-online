@@ -99,8 +99,9 @@ RULES = {
     0x2e: 'bit 1 -> option 0x1000                       (10 levels)',
     0x32: 'bit 1 -> option 0x2000, and sets 0x9385c      (10 levels)',
     0x36: '== 2 -> option 0x400000                      (0 in 84, 2 in 39, 1 in 23)',
-    0x38: 'a score, added in fives through a packed-BCD add (VA 0x19b9d) — '
-          '0 in 40 levels, otherwise 200..630',
+    0x38: 'the time limit, minutes and seconds as decimal digits (315 = 3:15), '
+          'made packed BCD five at a time (VA 0x19b9d); 0 keeps 20:00 — '
+          'see time_limit()',
     0x3a: 'overwrites a pointer-table word when non-zero (1 level)',
     0x3c: 'a count, 5..20                                (17 levels)',
     0x3e: 'a count, 4..30                                (77 levels)',
@@ -184,6 +185,25 @@ def bells(records):
             subtype = struct.unpack_from('<H', payload, 14)[0]
             out.append((x + BELL_X_BIAS, y + BELL_Y_BIAS, subtype))
     return out
+
+
+#: The clock a level starts on when its rules record leaves it at 0, or has
+#: none: G.EXE's own initial BCD 0x2000, twenty minutes (VA 0x96fb0).
+DEFAULT_TIME = 20 * 60
+
+
+def time_limit(records):
+    """
+    The level's clock in seconds. Rules record +0x38 holds minutes and
+    seconds as decimal digits — 315 is 3:15 — which the constructor turns
+    into the packed BCD the clock counts down in (VA 0x1ae49, 0x19cea).
+    """
+    for cid, _off, payload in records:
+        if cid == 16:
+            v = struct.unpack_from('<H', payload, 0x38)[0]
+            if v:
+                return (v // 100) * 60 + v % 100
+    return DEFAULT_TIME
 
 
 def bell_trash_percent(records):

@@ -71,7 +71,6 @@ TELLY_CLASS = 27
 UFO_CLASS = 31
 SEESAW_CLASS = 0
 WEIGHT_CLASS = 1
-TIME_LIMIT = 240
 MIN_OBJECTS = 10
 PAD = 1  # transparent gutter between packed shapes
 
@@ -427,7 +426,9 @@ def export(name):
         "source": "LEVELS/%s" % name,
         "widthTiles": lv["tiles_w"], "heightTiles": lv["tiles_h"] + HEADROOM // 8,
         "tileSize": 8,
-        "timeLimit": TIME_LIMIT,
+        # The level's own clock (rules record +0x38, m:ss), 20:00 when it
+        # has none (ob.time_limit).
+        "timeLimit": ob.time_limit(placed),
         "background": background,
         "shapeAtlas": {"image": "%s/shapes.png" % prefix,
                        "data": "%s/shapes.json" % prefix},

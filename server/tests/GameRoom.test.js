@@ -40,6 +40,7 @@ describe('GameRoom', () => {
     jest.useFakeTimers();
     io = makeMockIo();
     room = new GameRoom({ code: 'ABCD', mode: 'coop', hostId: 'host-1', io });
+    room.addPlayer({ id: 'player-1' });
   });
 
   afterEach(() => {
@@ -97,7 +98,33 @@ describe('GameRoom', () => {
     room.handleBellHit('player-1');
     const complete = io._emitted.find((e) => e.event === EVENTS.LEVEL_COMPLETE);
     expect(complete).toBeDefined();
-    expect(complete.data).toMatchObject({ winnerId: null });
+    expect(complete.data).toMatchObject({ winnerId: null, places: ['player-1'] });
+  });
+
+  // The bell takes one ring per player (G.EXE VA 0x212d4, 0x34114).
+  test('the level waits until every player has rung', () => {
+    room.addPlayer({ id: 'player-2' });
+    room.startGame(LEVEL_DATA);
+    expect(room.handleBellHit('player-2')).toBe(false);
+    expect(room.handleBellHit('player-2')).toBe(false);      // once each
+    const rang = io._emitted.filter((e) => e.event === EVENTS.PLAYER_RANG);
+    expect(rang).toEqual([{ event: EVENTS.PLAYER_RANG, data: { playerId: 'player-2', place: 1 } }]);
+    expect(io._emitted.find((e) => e.event === EVENTS.LEVEL_COMPLETE)).toBeUndefined();
+    expect(room.state).toBe('playing');
+
+    expect(room.handleBellHit('player-1')).toBe(true);
+    const complete = io._emitted.find((e) => e.event === EVENTS.LEVEL_COMPLETE);
+    expect(complete.data.places).toEqual(['player-2', 'player-1']);
+    expect(room.state).toBe('ended');
+  });
+
+  test('a player who leaves is not waited for', () => {
+    room.addPlayer({ id: 'player-2' });
+    room.startGame(LEVEL_DATA);
+    room.handleBellHit('player-1');
+    room.players.delete('player-2');
+    expect(room.finishIfAllRang()).toBe(true);
+    expect(io._emitted.find((e) => e.event === EVENTS.LEVEL_COMPLETE)).toBeDefined();
   });
 
   // -----------------------------------------------------------------------
@@ -105,6 +132,7 @@ describe('GameRoom', () => {
   // -----------------------------------------------------------------------
   test('should handle bell_hit in race mode', () => {
     const raceRoom = new GameRoom({ code: 'RACE', mode: 'race', hostId: 'host-1', io });
+    raceRoom.addPlayer({ id: 'player-2' });
     raceRoom.startGame(LEVEL_DATA);
     raceRoom.handleBellHit('player-2');
     const complete = io._emitted.find((e) => e.event === EVENTS.LEVEL_COMPLETE);

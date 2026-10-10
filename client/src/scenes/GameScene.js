@@ -34,7 +34,6 @@ const TILE = 8;              // px — the original's collision-map cell
 const VIEW_WIDTH = 320;      // px of the level on screen at once, as in the original
 const VIEW_HEIGHT = 200;
 /** Player states during which a swing connects (see STATES in Player.js). */
-const STRIKE_STATES = new Set(['strikeSide', 'strikeOver']);
 // The debris masks a blow throws rubble with: the sledge v1's record
 // +0x34 / +0x38 for the hammer, 0x3ffff for the blast (VA 0x1f8c5).
 const HAMMER_RUBBLE_MASK = 4095;
@@ -533,7 +532,9 @@ export default class GameScene extends Phaser.Scene {
       this.scale.width, panelH, 0x111122));
 
     // Timer — centered in the panel
-    this.timerText = this._hud(this.add.text(400, panelTop + 10, '3:00', {
+    const limit = level.timeLimit || 0;
+    this.timerText = this._hud(this.add.text(400, panelTop + 10,
+      `${Math.floor(limit / 60)}:${String(limit % 60).padStart(2, '0')}`, {
       fontSize: '32px',
       fill: '#ffffff',
       stroke: '#000000',
@@ -628,6 +629,10 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (!this._player || !this._cursors) return;
+    if (this._rang) {
+      this._bell.update(delta);
+      return;
+    }
 
     // A tap shorter than a frame still counts: JustDown latches it, where
     // testing isDown would miss a key that was already back up by the time
@@ -665,14 +670,12 @@ export default class GameScene extends Phaser.Scene {
       this._rubbleText.setText(`МУСОР ${this._rubbleTaken}`);
     }
 
-    // ── Hammer interactions ───────────────────────────────────────────────────
+    // ── The bell ──────────────────────────────────────────────────────────
     // Blocks take the blow once, on the frame it lands (the player's
-    // `hammer_impact`, wired in create). The bell only needs a touch.
-    if (STRIKE_STATES.has(this._player.state)) {
-      this._checkHammerBell();
-    } else {
-      this._player.bellHit = false; // reset so bell can be hit again after leaving
-    }
+    // `hammer_impact`, wired in create). The bell only needs a touch — by
+    // Jack or by his hammer, which bell_touch_tick (VA 0x34114) traces back
+    // to the same Jack.
+    this._checkHammerBell();
 
     this._bell.update(delta);
     this._tickDynamite(time);
@@ -1177,12 +1180,27 @@ export default class GameScene extends Phaser.Scene {
       const sm = SocketManager.getInstance();
       if (sm.socket) {
         sm.emit(EVENTS.BELL_HIT, { playerId: this._myPlayerId });
+        // Whoever rings is out of the level (Jack and hammer flagged done,
+        // VA 0x34114); the level ends when everyone has rung.
+        this._leaveLevel();
       } else {
         // Solo / offline: nobody else is going to advance the level.
         this.showResultOverlay('УРОВЕНЬ ПРОЙДЕН', 'Колокольчик твой',
           { nextLevel: nextLevelId(this._levelId) });
       }
     }
+  }
+
+  /** This player has rung: Jack leaves the level and the others go on. */
+  _leaveLevel() {
+    this._rang = true;
+    this._player.setVisible(false);
+    this._player.body.setVelocity(0, 0);
+    this._player.body.enable = false;
+    if (this._player.art) this._player.art.setVisible(false);
+    if (this._player.hammer) this._player.hammer.setVisible(false);
+    if (this._player.vac) this._player.vac.setVisible(false);
+    if (this.remotePlayers.size > 0) this._flashBonus('ЖДЁМ ОСТАЛЬНЫХ');
   }
 
   /**
@@ -1292,7 +1310,7 @@ export default class GameScene extends Phaser.Scene {
     // with it — otherwise each level would add another copy.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       [EVENTS.PLAYER_UPDATE, EVENTS.PLAYER_JOINED, EVENTS.PLAYER_LEFT,
-        EVENTS.OBJECT_DESTROYED, EVENTS.GAME_STARTED, EVENTS.LEVEL_COMPLETE,
+        EVENTS.OBJECT_DESTROYED, EVENTS.GAME_STARTED, EVENTS.LEVEL_COMPLETE, EVENTS.PLAYER_RANG,
         EVENTS.LEVEL_FAILED, EVENTS.TIMER_TICK].forEach((e) => sm.off(e));
     });
 
@@ -1312,6 +1330,14 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // A player disconnected
+    // Someone else rang: their Jack is out of the level.
+    sm.on(EVENTS.PLAYER_RANG, ({ playerId } = {}) => {
+      if (playerId === this._myPlayerId) return;
+      const rp = this.remotePlayers.get(playerId);
+      if (rp) rp.setVisible(false);
+      if (this._bell) this._bell.ring();
+    });
+
     sm.on(EVENTS.PLAYER_LEFT, ({ playerId } = {}) => {
       const rp = this.remotePlayers.get(playerId);
       if (rp) {
@@ -1367,8 +1393,9 @@ export default class GameScene extends Phaser.Scene {
       const mins = Math.floor(timeLeft / 60);
       const secs = timeLeft % 60;
       this.timerText.setText(`${mins}:${secs.toString().padStart(2, '0')}`);
-      if (timeLeft <= 30) {
-        this.timerText.setStyle({ fill: '#ff4444', stroke: '#000000', strokeThickness: 4 });
+      // Under 0:20 the original's clock flashes (VA 0x19e8b).
+      if (timeLeft < 20) {
+        this.timerText.setStyle({ fill: timeLeft % 2 ? '#ff4444' : '#ffffff', stroke: '#000000', strokeThickness: 4 });
       }
     });
 

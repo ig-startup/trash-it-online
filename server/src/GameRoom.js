@@ -28,6 +28,9 @@ class GameRoom {
     this.timer = null;
 
     this.timeLeft = 0;
+
+    /** Socket ids in the order they rang the bell this level. */
+    this.rung = [];
   }
 
   // ---------------------------------------------------------------------------
@@ -79,6 +82,7 @@ class GameRoom {
 
     this.levelId = levelData.id || null;
     this.timeLeft = levelData.timeLimit || 180;
+    this.rung = [];
     this.state = 'playing';
 
     // Tick every second
@@ -95,17 +99,39 @@ class GameRoom {
   }
 
   /**
-   * Handle a bell hit — ends the game immediately.
-   * @param {string} socketId — the player who hit the bell
+   * A player rang the bell. In the original the bell takes one ring per
+   * player (G.EXE sets its count to player_count, VA 0x212d4): whoever
+   * rings is out of the level, and the level is won when everyone has
+   * (bell_touch_tick, VA 0x34114). The order of the rings is kept — it
+   * is the battle's placing.
+   * @param {string} socketId — the player who rang
+   * @returns {boolean} true when this ring finished the level
    */
   handleBellHit(socketId) {
-    if (this.state !== 'playing') return;
+    if (this.state !== 'playing' || this.rung.includes(socketId)) return false;
+    if (!this.players.has(socketId)) return false;
+
+    this.rung.push(socketId);
+    this._emit(EVENTS.PLAYER_RANG, { playerId: socketId, place: this.rung.length });
+    return this.finishIfAllRang();
+  }
+
+  /**
+   * Ends the level once every player still here has rung — also after
+   * someone leaves, who may have been the last one it waited for.
+   * @returns {boolean} true when it ended the level
+   */
+  finishIfAllRang() {
+    if (this.state !== 'playing' || this.rung.length === 0) return false;
+    const waiting = [...this.players.keys()].filter((id) => !this.rung.includes(id));
+    if (waiting.length > 0) return false;
 
     this._clearTimer();
     this.state = 'ended';
 
-    const winnerId = this.mode === 'race' ? socketId : null;
-    this._emit(EVENTS.LEVEL_COMPLETE, { winnerId });
+    const winnerId = this.mode === 'race' ? this.rung[0] : null;
+    this._emit(EVENTS.LEVEL_COMPLETE, { winnerId, places: [...this.rung] });
+    return true;
   }
 
   /**

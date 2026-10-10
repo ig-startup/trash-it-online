@@ -21,6 +21,7 @@ export const EVENTS = {
   PLAYER_READY_CHANGED: 'player_ready_changed',
   GAME_STARTED: 'game_started',
   OBJECT_DESTROYED: 'object_destroyed',
+  PLAYER_RANG: 'player_rang',    // one player has rung the bell and is out of the level
   LEVEL_COMPLETE: 'level_complete',
   LEVEL_FAILED: 'level_failed',
   TIMER_TICK: 'timer_tick',

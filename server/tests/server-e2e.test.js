@@ -168,10 +168,14 @@ describe('room lifecycle over the real server', () => {
     expect(typeof tick.timeLeft).toBe('number');
   });
 
-  test('the bell ends the level and the room moves on to the next one', async () => {
-    const complete = once(guest, 'level_complete');
+  test('the level ends once both have rung, and the room moves on', async () => {
+    const rang = once(guest, 'player_rang');
     host.emit('bell_hit');
-    expect(await complete).toHaveProperty('winnerId', null); // coop: nobody "wins"
+    expect(await rang).toMatchObject({ playerId: host.id, place: 1 });
+
+    const complete = once(guest, 'level_complete');
+    guest.emit('bell_hit');
+    expect(await complete).toMatchObject({ winnerId: null, places: [host.id, guest.id] });
 
     const next = await once(guest, 'game_started', 9000);
     expect(next.levelId).toBeTruthy();
