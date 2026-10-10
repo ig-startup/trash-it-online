@@ -38,13 +38,41 @@ function loadLevel(id) {
  * @param {object} room
  */
 function moveOn(room) {
-  const next = nextLevelId(room.levelId);
   setTimeout(() => {
     if (!rooms.findRoom(room.code)) return; // room closed in the meantime
-    room.startGame(loadLevel(next));
-    io.to(room.code).emit(EVENTS.GAME_STARTED, { levelId: next });
-    console.log(`[next_level] room=${room.code} level=${next}`);
+    if (room.battle) {
+      const step = room.nextBattleStep();
+      if (step.over) {
+        io.to(room.code).emit(EVENTS.BATTLE_OVER, { winners: step.winners, points: step.points });
+        room.state = 'lobby';
+        console.log(`[battle_over] room=${room.code} winners=${step.winners.join(',')}`);
+        return;
+      }
+      startLevel(room, step.level, step);
+      return;
+    }
+    startLevel(room, nextLevelId(room.levelId));
   }, NEXT_LEVEL_DELAY);
+}
+
+/**
+ * Start a level for the whole room.
+ * @param {object} room
+ * @param {string} levelId
+ * @param {{hammer?: number, active?: string[]|null}} [step] a battle's
+ */
+function startLevel(room, levelId, step = {}) {
+  room.startGame(loadLevel(levelId), step.active || null);
+  const b = room.battle;
+  io.to(room.code).emit(EVENTS.GAME_STARTED, {
+    levelId,
+    active: step.active || null,
+    battle: b ? {
+      set: b.set, level: b.index + 1, of: b.levels.length, tieBreak: b.tieBreak,
+      hammer: step.hammer, points: { ...b.points },
+    } : null,
+  });
+  console.log(`[start_level] room=${room.code} level=${levelId}`);
 }
 
 /**
@@ -176,17 +204,25 @@ io.on('connection', (socket) => {
   });
 
   // --- start_game --- (host only)
-  socket.on(EVENTS.START_GAME, () => {
+  socket.on(EVENTS.START_GAME, (data = {}) => {
     const room = rooms.getPlayerRoom(socket.id);
     if (!room) return;
     if (socket.id !== room.hostId) return; // only host can start
+    if (room.state === 'playing') return;
 
     // Use a minimal level descriptor; client sends full level data later
     // level_0A is converted straight from the original game's own files
     // (scripts/export_level.py); 'level_01' is the hand-built MVP level.
-    room.startGame(loadLevel(DEFAULT_LEVEL_ID));
-    io.to(room.code).emit(EVENTS.GAME_STARTED, { levelId: DEFAULT_LEVEL_ID });
-    console.log(`[start_game] room=${room.code} host=${socket.id}`);
+    room.onLevelEnd = () => moveOn(room);
+    if (room.mode === 'battle') {
+      // The host picks one of the original's five battle sets.
+      const first = room.startBattle(data.set);
+      startLevel(room, first.level, first);
+    } else {
+      room.battle = null;
+      startLevel(room, DEFAULT_LEVEL_ID);
+    }
+    console.log(`[start_game] room=${room.code} host=${socket.id} mode=${room.mode}`);
   });
 
   // --- player_update ---

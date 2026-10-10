@@ -24,6 +24,7 @@ export const EVENTS = {
   PLAYER_RANG: 'player_rang',    // one player has rung the bell and is out of the level
   LEVEL_COMPLETE: 'level_complete',
   LEVEL_FAILED: 'level_failed',
+  BATTLE_OVER: 'battle_over',      // the set is played: everyone's points, and who won
   TIMER_TICK: 'timer_tick',
 };
 

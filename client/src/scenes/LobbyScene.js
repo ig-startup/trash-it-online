@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import SocketManager from '../network/SocketManager.js';
+import BATTLES from '../../../shared/battles.json';
 
 const EVENTS = {
   PLAYER_READY: 'player_ready',
@@ -60,11 +61,30 @@ export default class LobbyScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // ── Mode label ────────────────────────────────────────────────────────────
-    const modeLabel = this._mode === 'race' ? 'ГОНКА' : 'КООП';
+    const modeLabel = this._mode === 'battle' ? 'БИТВА' : 'КООП';
     this.add.text(cx, 80, `Режим: ${modeLabel}`, {
       fontSize: '16px',
       color: '#aaaaaa',
     }).setOrigin(0.5);
+
+    // ── Battle set: the host picks one of the original's five ────────────────
+    this._battleSet = 0;
+    if (this._mode === 'battle') {
+      const label = () => `Набор ${this._battleSet + 1} из ${BATTLES.sets.length}: `
+        + `${BATTLES.sets[this._battleSet].length} уровней`;
+      this._setText = this.add.text(cx, 102, label(), {
+        fontSize: '15px',
+        color: '#ffdd44',
+        backgroundColor: '#333355',
+        padding: { x: 10, y: 4 },
+      }).setOrigin(0.5);
+      if (SocketManager.getInstance().isHost) {
+        this._setText.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+          this._battleSet = (this._battleSet + 1) % BATTLES.sets.length;
+          this._setText.setText(label());
+        });
+      }
+    }
 
     // ── Room code ─────────────────────────────────────────────────────────────
     this.add.text(cx, 125, 'Код комнаты:', {
@@ -143,6 +163,8 @@ export default class LobbyScene extends Phaser.Scene {
       this._cleanup();
       this.scene.start('GameScene', {
         levelId: data.levelId,
+        active: data.active || null,
+        battle: data.battle || null,
         players: this._players,
         mode: this._mode,
         hostId: this._hostId,
@@ -218,7 +240,7 @@ export default class LobbyScene extends Phaser.Scene {
     if (!sm.isHost) return;
     const allReady = this._players.length > 0 && this._players.every((p) => p.ready);
     if (!allReady) return;
-    sm.emit(EVENTS.START_GAME);
+    sm.emit(EVENTS.START_GAME, { set: this._battleSet });
   }
 
   _updateStartButton() {

@@ -1,0 +1,233 @@
+{
+ "source": "F.EXE VA 0x8d8e0 (sets), 0x13b81 (points), 0x8d768 (tie-break)",
+ "sets": [
+  [
+   {
+    "level": "level_1B",
+    "hammer": 1,
+    "hammerName": "ball-pein v1"
+   },
+   {
+    "level": "level_2B",
+    "hammer": 23,
+    "hammerName": "piledriver v3"
+   },
+   {
+    "level": "level_AB",
+    "hammer": 25,
+    "hammerName": "bio hammer v3"
+   },
+   {
+    "level": "level_CB",
+    "hammer": 28,
+    "hammerName": "future v3"
+   },
+   {
+    "level": "level_DB",
+    "hammer": 31,
+    "hammerName": "quality"
+   }
+  ],
+  [
+   {
+    "level": "level_0B",
+    "hammer": 20,
+    "hammerName": "sledgehammer v3"
+   },
+   {
+    "level": "level_5B",
+    "hammer": 24,
+    "hammerName": "spikeball v3"
+   },
+   {
+    "level": "level_8B",
+    "hammer": 22,
+    "hammerName": "warhammer v3"
+   },
+   {
+    "level": "level_6B",
+    "hammer": 24,
+    "hammerName": "spikeball v3"
+   },
+   {
+    "level": "level_BB",
+    "hammer": 8,
+    "hammerName": "future v1"
+   }
+  ],
+  [
+   {
+    "level": "level_3B",
+    "hammer": 27,
+    "hammerName": "splitter v3"
+   },
+   {
+    "level": "level_4B",
+    "hammer": 4,
+    "hammerName": "spikeball v1"
+   },
+   {
+    "level": "level_7B",
+    "hammer": 30,
+    "hammerName": "bfh"
+   },
+   {
+    "level": "level_9B",
+    "hammer": 26,
+    "hammerName": "volcanic hammer v3"
+   },
+   {
+    "level": "level_6B",
+    "hammer": 24,
+    "hammerName": "spikeball v3"
+   }
+  ],
+  [
+   {
+    "level": "level_0B",
+    "hammer": 20,
+    "hammerName": "sledgehammer v3"
+   },
+   {
+    "level": "level_DB",
+    "hammer": 31,
+    "hammerName": "quality"
+   },
+   {
+    "level": "level_2B",
+    "hammer": 23,
+    "hammerName": "piledriver v3"
+   },
+   {
+    "level": "level_3B",
+    "hammer": 27,
+    "hammerName": "splitter v3"
+   },
+   {
+    "level": "level_6B",
+    "hammer": 24,
+    "hammerName": "spikeball v3"
+   },
+   {
+    "level": "level_7B",
+    "hammer": 30,
+    "hammerName": "bfh"
+   },
+   {
+    "level": "level_1B",
+    "hammer": 1,
+    "hammerName": "ball-pein v1"
+   },
+   {
+    "level": "level_BB",
+    "hammer": 8,
+    "hammerName": "future v1"
+   },
+   {
+    "level": "level_EB",
+    "hammer": 35,
+    "hammerName": "spoon"
+   },
+   {
+    "level": "level_8B",
+    "hammer": 22,
+    "hammerName": "warhammer v3"
+   }
+  ],
+  [
+   {
+    "level": "level_6B",
+    "hammer": 24,
+    "hammerName": "spikeball v3"
+   },
+   {
+    "level": "level_0B",
+    "hammer": 20,
+    "hammerName": "sledgehammer v3"
+   },
+   {
+    "level": "level_1B",
+    "hammer": 1,
+    "hammerName": "ball-pein v1"
+   },
+   {
+    "level": "level_2B",
+    "hammer": 23,
+    "hammerName": "piledriver v3"
+   },
+   {
+    "level": "level_3B",
+    "hammer": 27,
+    "hammerName": "splitter v3"
+   },
+   {
+    "level": "level_4B",
+    "hammer": 4,
+    "hammerName": "spikeball v1"
+   },
+   {
+    "level": "level_5B",
+    "hammer": 24,
+    "hammerName": "spikeball v3"
+   },
+   {
+    "level": "level_DB",
+    "hammer": 31,
+    "hammerName": "quality"
+   },
+   {
+    "level": "level_7B",
+    "hammer": 30,
+    "hammerName": "bfh"
+   },
+   {
+    "level": "level_8B",
+    "hammer": 22,
+    "hammerName": "warhammer v3"
+   },
+   {
+    "level": "level_9B",
+    "hammer": 26,
+    "hammerName": "volcanic hammer v3"
+   },
+   {
+    "level": "level_AB",
+    "hammer": 25,
+    "hammerName": "bio hammer v3"
+   },
+   {
+    "level": "level_BB",
+    "hammer": 8,
+    "hammerName": "future v1"
+   },
+   {
+    "level": "level_EB",
+    "hammer": 35,
+    "hammerName": "spoon"
+   },
+   {
+    "level": "level_CB",
+    "hammer": 28,
+    "hammerName": "future v3"
+   }
+  ]
+ ],
+ "tieBreakHammer": 36,
+ "points": {
+  "2": [
+   2,
+   1
+  ],
+  "3": [
+   4,
+   2,
+   1
+  ],
+  "4": [
+   8,
+   4,
+   2,
+   1
+  ]
+ }
+}

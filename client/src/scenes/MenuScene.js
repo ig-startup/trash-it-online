@@ -11,7 +11,7 @@ const EVENTS = {
 
 /**
  * MenuScene — main menu screen.
- * Allows the player to choose a game mode (coop / race),
+ * Allows the player to choose a game mode (coop / battle),
  * enter a player name, create or join a room.
  */
 export default class MenuScene extends Phaser.Scene {
@@ -55,7 +55,9 @@ export default class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this._btnCoop = this._makeButton(cx - 75, 195, 'КООП', () => this._setMode('coop'));
-    this._btnRace = this._makeButton(cx + 75, 195, 'ГОНКА', () => this._setMode('race'));
+    // The original's battle: a set of levels, places by the order of the
+    // rings, battle points (F.EXE's game type 1).
+    this._btnRace = this._makeButton(cx + 75, 195, 'БИТВА', () => this._setMode('battle'));
     this._updateModeButtons();
 
     // ── Player name ───────────────────────────────────────────────────────────
@@ -211,7 +213,7 @@ export default class MenuScene extends Phaser.Scene {
       this._btnCoop._bgColor = isCoop ? activeColor : inactiveColor;
     }
     if (this._btnRace) {
-      const isRace = this._selectedMode === 'race';
+      const isRace = this._selectedMode === 'battle';
       this._btnRace.setStyle({ backgroundColor: isRace ? activeColor : inactiveColor });
       this._btnRace._bgColor = isRace ? activeColor : inactiveColor;
     }

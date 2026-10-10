@@ -70,6 +70,11 @@ export default class GameScene extends Phaser.Scene {
     this._level = null;
     this._myPlayerId = data.myPlayerId || (data.players && data.players[0] ? data.players[0].id : 'local');
     this._hostId = data.hostId || null;
+    /** Who plays this level (a tie-break narrows it); null is everyone. */
+    this._active = data.active || null;
+    /** In a battle: set, level k of n, the points so far, the hammer. */
+    this._battle = data.battle || null;
+    this._rang = false;
   }
 
   preload() {
@@ -542,7 +547,7 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(0.5, 0).setDepth(10));
 
     // Mode label — panel right
-    const modeLabel = this._mode === 'race' ? 'ГОНКА' : 'КООП';
+    const modeLabel = this._modeLabel();
     this._modeLabelText = this._hud(this.add.text(784, panelTop + 10, modeLabel, {
       fontSize: '20px',
       fill: '#ffff00',
@@ -567,7 +572,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Small room/mode debug line — panel bottom right
     this._modeText = this._hud(this.add.text(784, this.scale.height - 4,
-      `${this._mode === 'race' ? 'ГОНКА' : 'КООП'} | ${this._roomCode}`, {
+      `${this._modeLabel()} | ${this._roomCode}`, {
         fontSize: '11px',
         color: '#555555',
       }).setOrigin(1, 1));
@@ -616,6 +621,12 @@ export default class GameScene extends Phaser.Scene {
 
     // ── Socket event handlers ─────────────────────────────────────────────────
     this._initSocketHandlers();
+
+    // A tie-break is for those sharing the top; the rest look on.
+    if (this._active && !this._active.includes(this._myPlayerId)) {
+      this._leaveLevel();
+      this._flashBonus(`ТАЙ-БРЕЙК: ${this._active.map((id) => this._nameOf(id)).join(' и ')}`);
+    }
 
     console.log('[GameScene] created', {
       levelId: this._levelId,
@@ -1200,7 +1211,7 @@ export default class GameScene extends Phaser.Scene {
     if (this._player.art) this._player.art.setVisible(false);
     if (this._player.hammer) this._player.hammer.setVisible(false);
     if (this._player.vac) this._player.vac.setVisible(false);
-    if (this.remotePlayers.size > 0) this._flashBonus('ЖДЁМ ОСТАЛЬНЫХ');
+    if (this.remotePlayers.size > 0 && !this._active) this._flashBonus('ЖДЁМ ОСТАЛЬНЫХ');
   }
 
   /**
@@ -1227,7 +1238,7 @@ export default class GameScene extends Phaser.Scene {
    * Restarts this scene on another level, keeping the room's players.
    * @param {string} levelId
    */
-  _startLevel(levelId) {
+  _startLevel(levelId, extra = {}) {
     this.scene.restart({
       roomCode: this._roomCode,
       players: this._players,
@@ -1235,7 +1246,23 @@ export default class GameScene extends Phaser.Scene {
       levelId,
       myPlayerId: this._myPlayerId,
       hostId: this._hostId,
+      active: extra.active || null,
+      battle: extra.battle || null,
     });
+  }
+
+  /** The heading of the panel's mode label: КООП, or the battle's progress. */
+  _modeLabel() {
+    if (this._mode !== 'battle') return 'КООП';
+    const b = this._battle;
+    if (!b) return 'БИТВА';
+    return b.tieBreak ? 'ТАЙ-БРЕЙК' : `БИТВА ${b.level}/${b.of}`;
+  }
+
+  /** A player's name from the room's list. */
+  _nameOf(id) {
+    const p = this._players.find((q) => q.id === id);
+    return p ? (p.name || p.id) : id;
   }
 
   /**
@@ -1263,18 +1290,30 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(101));
 
     // Subtitle text
-    this._hud(this.add.text(cx, cy, subtitle, {
-      fontSize: '24px',
+    const lines = String(subtitle).split('\n').length;
+    this._hud(this.add.text(cx, cy + (lines > 1 ? 10 * lines : 0), subtitle, {
+      fontSize: lines > 1 ? '18px' : '24px',
+      align: 'center',
+      lineSpacing: 6,
       color: '#cccccc',
       stroke: '#000000',
       strokeThickness: 2,
     }).setOrigin(0.5).setDepth(101));
 
-    // Countdown text
-    const { nextLevel } = options;
+    // Countdown text. Online the server moves the room on by itself (its
+    // game_started restarts this scene), so the overlay only waits for it;
+    // leaving for the menu here dropped the player out of the room.
+    const { nextLevel, waitServer, toLobby } = options;
+    if (waitServer) {
+      this._hud(this.add.text(cx, height - 40, 'Следующий уровень…', {
+        fontSize: '18px',
+        color: '#aaaaaa',
+      }).setOrigin(0.5).setDepth(101));
+      return;
+    }
     const label = (n) => (nextLevel
       ? `Следующий уровень через ${n}...`
-      : `Возврат в меню через ${n}...`);
+      : `Возврат ${toLobby ? 'в лобби' : 'в меню'} через ${n}...`);
     let countdown = 3;
     const countdownText = this._hud(this.add.text(cx, cy + 60, label(countdown), {
       fontSize: '18px',
@@ -1290,6 +1329,11 @@ export default class GameScene extends Phaser.Scene {
           countdownText.setText(label(countdown));
         } else if (nextLevel) {
           this._startLevel(nextLevel);
+        } else if (toLobby) {
+          timer.remove();
+          this.scene.start('LobbyScene', {
+            players: this._players, mode: this._mode, hostId: this._hostId, roomCode: this._roomCode,
+          });
         } else {
           timer.remove();
           this.scene.start('MenuScene');
@@ -1311,7 +1355,7 @@ export default class GameScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       [EVENTS.PLAYER_UPDATE, EVENTS.PLAYER_JOINED, EVENTS.PLAYER_LEFT,
         EVENTS.OBJECT_DESTROYED, EVENTS.GAME_STARTED, EVENTS.LEVEL_COMPLETE, EVENTS.PLAYER_RANG,
-        EVENTS.LEVEL_FAILED, EVENTS.TIMER_TICK].forEach((e) => sm.off(e));
+        EVENTS.LEVEL_FAILED, EVENTS.TIMER_TICK, EVENTS.BATTLE_OVER].forEach((e) => sm.off(e));
     });
 
     // Another player moved
@@ -1361,26 +1405,34 @@ export default class GameScene extends Phaser.Scene {
 
     // The room moved on to another level
     sm.on(EVENTS.GAME_STARTED, (data = {}) => {
-      if (data.levelId) this._startLevel(data.levelId);
+      if (data.levelId) this._startLevel(data.levelId, data);
+    });
+
+    // The battle set is played (F.EXE VA 0x13e80): points and the winner.
+    sm.on(EVENTS.BATTLE_OVER, ({ winners = [], points = {} } = {}) => {
+      const table = Object.entries(points).sort((a, b) => b[1] - a[1])
+        .map(([id, pts]) => `${this._nameOf(id)} — ${pts}`).join('\n');
+      const title = winners.includes(this._myPlayerId) ? 'ВЫ ПОБЕДИЛИ!' : `ПОБЕДИЛ ${this._nameOf(winners[0])}`;
+      this.showResultOverlay(title, table, { toLobby: true });
     });
 
     // Level outcome overlays
     sm.on(EVENTS.LEVEL_COMPLETE, (data = {}) => {
-      const { winnerId } = data;
-      const myPlayerId = SocketManager.getInstance().playerId;
-
-      if (winnerId === null || winnerId === undefined) {
-        // Coop mode — everyone wins together
-        this.showResultOverlay('КОМАНДА ПОБЕДИЛА!', 'Уровень пройден');
-      } else if (winnerId === myPlayerId) {
-        // Race mode — this player won
-        this.showResultOverlay('ВЫ ПОБЕДИЛИ!', 'Первый у колокольчика');
-      } else {
-        // Race mode — another player won
-        const winner = this._players.find((p) => p.id === winnerId);
-        const winnerName = winner ? (winner.name || winner.id) : winnerId;
-        this.showResultOverlay('ПОРАЖЕНИЕ', `Победил ${winnerName}`);
+      const { places = [], award, points, battle } = data;
+      if (!battle) {
+        this.showResultOverlay('КОМАНДА ПОБЕДИЛА!', 'Уровень пройден', { waitServer: true });
+        return;
       }
+      // A battle level: who rang in what order, and what it scored.
+      const lines = Object.keys(points)
+        .sort((a, b) => points[b] - points[a])
+        .map((id) => {
+          const place = places.indexOf(id);
+          const at = place >= 0 ? `${place + 1}-й` : 'не дозвонился';
+          return `${this._nameOf(id)}: ${at}, +${award[id] || 0} = ${points[id]}`;
+        });
+      const title = battle.tieBreak ? 'ТАЙ-БРЕЙК' : `УРОВЕНЬ ${battle.level} ИЗ ${battle.of}`;
+      this.showResultOverlay(data.timeout ? `${title}: ВРЕМЯ ВЫШЛО` : title, lines.join('\n'), { waitServer: true });
     });
 
     sm.on(EVENTS.LEVEL_FAILED, () => {

@@ -128,19 +128,6 @@ describe('GameRoom', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Test 6: bell_hit in race → level_complete with winnerId=socketId
-  // -----------------------------------------------------------------------
-  test('should handle bell_hit in race mode', () => {
-    const raceRoom = new GameRoom({ code: 'RACE', mode: 'race', hostId: 'host-1', io });
-    raceRoom.addPlayer({ id: 'player-2' });
-    raceRoom.startGame(LEVEL_DATA);
-    raceRoom.handleBellHit('player-2');
-    const complete = io._emitted.find((e) => e.event === EVENTS.LEVEL_COMPLETE);
-    expect(complete).toBeDefined();
-    expect(complete.data).toMatchObject({ winnerId: 'player-2' });
-  });
-
-  // -----------------------------------------------------------------------
   // Test 7: object_hit decreases hp; at hp=0 emits object_destroyed
   // -----------------------------------------------------------------------
   test('should handle object_hit', () => {
@@ -203,6 +190,82 @@ describe('GameRoom', () => {
     jest.advanceTimersByTime(5000);
     const emitCountAfterAdvance = io._room.emit.mock.calls.length;
     expect(emitCountAfterAdvance).toBe(emitCountAfterEnd);
+  });
+
+  // -----------------------------------------------------------------------
+  // Battles (F.EXE VA 0x212d2, 0x13fa1, 0x13e80)
+  // -----------------------------------------------------------------------
+  describe('a battle', () => {
+    let battle;
+    const level = { id: 'level_1B', timeLimit: 600, destructibles: [] };
+    const ring = (...ids) => ids.forEach((id) => battle.handleBellHit(id));
+    const completes = () => io._emitted.filter((e) => e.event === EVENTS.LEVEL_COMPLETE);
+
+    beforeEach(() => {
+      battle = new GameRoom({ code: 'BATL', mode: 'battle', hostId: 'a', io });
+      ['a', 'b'].forEach((id) => battle.addPlayer({ id }));
+    });
+
+    test('plays the set the host picked, in its order', () => {
+      expect(battle.startBattle(0)).toMatchObject({ level: 'level_1B', hammer: 1 });
+      battle.startGame(level);
+      ring('b', 'a');
+      expect(battle.nextBattleStep()).toMatchObject({ level: 'level_2B', hammer: 23, active: null });
+    });
+
+    test('scores the places 2 and 1 between two', () => {
+      battle.startBattle(0);
+      battle.startGame(level);
+      ring('b', 'a');
+      expect(completes()[0].data).toMatchObject({ places: ['b', 'a'], award: { b: 2, a: 1 }, points: { a: 1, b: 2 } });
+    });
+
+    test('cuts the clock of the last one left to a minute', () => {
+      battle.addPlayer({ id: 'c' });
+      battle.startBattle(1);
+      battle.startGame(level);
+      ring('a');
+      expect(battle.timeLeft).toBe(600);
+      ring('b');
+      expect(battle.timeLeft).toBe(60);
+    });
+
+    test('a player who never rings scores nothing when the time runs out', () => {
+      battle.startBattle(0);
+      battle.startGame({ ...level, timeLimit: 2 });
+      battle.onLevelEnd = jest.fn();
+      ring('a');
+      jest.advanceTimersByTime(2000);
+      expect(battle.onLevelEnd).toHaveBeenCalled();
+      expect(completes()[0].data).toMatchObject({ places: ['a'], award: { a: 2 }, timeout: true });
+    });
+
+    test('a shared top is played off, on the last level, with guitars', () => {
+      battle.startBattle(0);
+      for (let i = 0; i < 5; i += 1) {
+        battle.startGame(level);
+        ring(i % 2 ? 'a' : 'b', i % 2 ? 'b' : 'a');   // b 2,1,2,1,2 = 8; a 1,2,1,2,1 = 7
+        if (i < 4) battle.nextBattleStep();
+      }
+      // one more swing to a: 7 + 1 = 8 against 8 — make it level
+      battle.battle.points.a = 8;
+      const step = battle.nextBattleStep();
+      expect(step).toMatchObject({ level: 'level_DB', hammer: 36 });
+      expect(step.active.sort()).toEqual(['a', 'b']);
+
+      battle.startGame(level, step.active);
+      ring('a', 'b');
+      expect(battle.nextBattleStep()).toMatchObject({ over: true, winners: ['a'] });
+    });
+
+    test('a tie-break waits only for those in it', () => {
+      battle.addPlayer({ id: 'c' });
+      battle.startBattle(0);
+      battle.startGame(level, ['a', 'b']);
+      expect(battle.handleBellHit('c')).toBe(false);
+      ring('a');
+      expect(battle.handleBellHit('b')).toBe(true);
+    });
   });
 
   // -----------------------------------------------------------------------

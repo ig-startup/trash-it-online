@@ -42,7 +42,7 @@ class RoomManager {
 
   /**
    * Create a new room. The host is automatically added as the first player.
-   * @param {string} mode - 'coop' | 'race'
+   * @param {string} mode - 'coop' | 'battle'
    * @param {string} hostSocketId
    * @param {string} playerName
    * @param {object} [io] - Socket.io Server instance passed to GameRoom
