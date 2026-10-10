@@ -1,0 +1,24 @@
+# What hurts Jack — see README "What hurts Jack". His event outcomes are an
+# array by the other sprite's event type (template +0xa) at 0xa2f48; the
+# ones here were not functions to Ghidra (no call reaches them). Jack's
+# fields: +0x7c the ticks he cannot be hurt; player +0x15a the ticks no
+# event reaches him (Jack +0x42 bit 0x20 meanwhile), +0x15e timmies to spill.
+0x12491  f  jack_touch_spike               ; outcome 11: a walking spike git (when its box raised 24 px overlaps): hurt; the spike turns unless bristling
+0x125c1  f  jack_touch_needle              ; outcome 12: a spike's needle: hurt
+0x128c5  f  jack_touch_bomb                ; outcome 10: a bomb git on the ground takes his player number and chases him (bomb_chase)
+0x1264b  f  jack_zapped                    ; a UFO's bolt (Jack +0x43 bit 0x10): up at edx, across at least edx — backwards from still; hat → jack_hat_jump
+0x2bc86  f  jack_blasted                   ; a blast's shock (hit flag with +0x4e bit 0x4000): pushed by 0x98c6c by distance, /2 (/4 in the hat); within 30 px hurt, 4 timmies
+0x2b9fd  f  jack_set_invulnerable          ; +0x7c = 400, +0x43 |= 4
+0x2ba0f  f  jack_blink                     ; while +0x7c runs: draw mode +0x84 every other 4 ticks, the last 100 every 4 of 16
+0x12b54  f  trade_vx                       ; two sprites swap vx, each then held to [ebx, ecx] in size; 0 → ebx apart
+0x12bc1  f  trade_vy                       ; the same for vy
+0x12b31  f  clamp_magnitude                ; |*eax| into [edx, ebx], sign kept
+0x12711  f  spike_fire_needles             ; from table edx (0x93898: dx, dy, vx, vy, to 0x1234): children of 0x93920, frame 0x23, jittered
+0x12cc9  f  git_struck_puff                ; a BLAM at the git, 30 ticks, and a sound
+0x2b152  f  jack_hurt_flying               ; slot 73: spills player +0x15e timmies, sound 0x6f; friction 2000; lands at vy < 1.5 → jack_long_fall, else bounces -vy/8
+0x2f553  f  overlap_raised                 ; frames_overlap with the first box's top moved by ebx (-24 for the spike)
+0x1a06f  f  player_lose_timmies            ; BCD +0x64 less up to ecx, count +0x68; returns how many
+0x98c6c  d  blast_push_table               ; (distance, push): <16 → 11 px/tick, 50 → 6, 76 → 0 (table_lookup_linear)
+0x93898  d  spike_needle_fan               ; eight needles from 12 px up, at 2 px/tick and more, upward
+0x93af8  d  spike_bristle_masks            ; by the .OB radio choice: 0x7fffffff, 0x3ff, 0x1ff, 0x3f
+0x9393c  d  bomb_force                     ; rules +0x44, shifted by +0x46 (0x9393e) — the bomb's blow_at force
