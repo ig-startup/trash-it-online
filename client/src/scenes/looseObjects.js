@@ -70,6 +70,11 @@ export default class LooseObjects {
     return h;
   }
 
+  /** Every registered handle. */
+  handles() {
+    return [...this._all];
+  }
+
   /** True while a sprite is in someone's hands or in the air. */
   isBusy(sprite) {
     for (const h of this._all) if (h.sprite === sprite) return h.carried || h.flying;

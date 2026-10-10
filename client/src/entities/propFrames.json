@@ -1144,6 +1144,62 @@
       "ay": 72,
       "src": "TELLY.SPR:10"
     },
+    "bcsaw_00": {
+      "file": "sprites/props/bcsaw_00.png",
+      "w": 94,
+      "h": 39,
+      "ax": 38,
+      "ay": 37,
+      "src": "BCSAW.SPR:0"
+    },
+    "bcsaw_01": {
+      "file": "sprites/props/bcsaw_01.png",
+      "w": 93,
+      "h": 37,
+      "ax": 38,
+      "ay": 34,
+      "src": "BCSAW.SPR:1"
+    },
+    "csaw_00": {
+      "file": "sprites/props/csaw_00.png",
+      "w": 88,
+      "h": 35,
+      "ax": 41,
+      "ay": 32,
+      "src": "CSAW.SPR:0"
+    },
+    "csaw_01": {
+      "file": "sprites/props/csaw_01.png",
+      "w": 89,
+      "h": 35,
+      "ax": 39,
+      "ay": 30,
+      "src": "CSAW.SPR:1"
+    },
+    "lead_00": {
+      "file": "sprites/props/lead_00.png",
+      "w": 39,
+      "h": 28,
+      "ax": 18,
+      "ay": 25,
+      "src": "LEAD.SPR:0"
+    },
+    "lead_01": {
+      "file": "sprites/props/lead_01.png",
+      "w": 42,
+      "h": 35,
+      "ax": 20,
+      "ay": 28,
+      "src": "LEAD.SPR:1"
+    },
+    "lead_02": {
+      "file": "sprites/props/lead_02.png",
+      "w": 35,
+      "h": 26,
+      "ax": 15,
+      "ay": 26,
+      "src": "LEAD.SPR:2"
+    },
     "ufo_00": {
       "file": "sprites/props/ufo_00.png",
       "w": 55,
@@ -1580,6 +1636,19 @@
       "telly_08",
       "telly_09",
       "telly_10"
+    ],
+    "bcsaw": [
+      "bcsaw_00",
+      "bcsaw_01"
+    ],
+    "csaw": [
+      "csaw_00",
+      "csaw_01"
+    ],
+    "lead": [
+      "lead_00",
+      "lead_01",
+      "lead_02"
     ],
     "ufo": [
       "ufo_00",

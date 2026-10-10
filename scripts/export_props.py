@@ -69,6 +69,13 @@ PROPS = {
     # The teleporter (.OB class 27, VA 0x347c1): the pad opening and
     # closing (0-9) and the beam that rises over it while it is on (10).
     "telly": ("TELLY.SPR", list(range(11))),
+    # The seesaw (.OB class 0, VA 0x1eb0d) in its two looks, BCSAW and
+    # CSAW: frame 0 the left end down, 1 the right. And the 20-ton weight
+    # (.OB class 1, VA 0x1e6c3): 0 on its own, 1 and 2 riding the right
+    # and the left end.
+    "bcsaw": ("BCSAW.SPR", [0, 1]),
+    "csaw": ("CSAW.SPR", [0, 1]),
+    "lead": ("LEAD.SPR", [0, 1, 2]),
     # The UFO (.OB class 31, VA 0x13079): 0-8 leaning with its speed (4
     # level), 9-17 legs coming out, 18-22 rocking on them, 23 a ring of the
     # tractor beam, 24 the wreck, 25-30 chips, 31 the bolt it zaps Jack with.

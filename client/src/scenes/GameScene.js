@@ -19,6 +19,7 @@ import Cannons from './cannons';
 import Suckers from './suckers';
 import Tellies from './tellies';
 import Ufos from './ufos';
+import Seesaws from './seesaws';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -318,6 +319,7 @@ export default class GameScene extends Phaser.Scene {
       levelHeight + 120, {
         // A ball coming down into a cannon's bowl is taken in (VA 0x20c15).
         falling: (h) => {
+          if (this._seesaws && this._seesaws.fallingLoose(h, this._seesawHooks)) return true;
           const taken = (h.kind === 'ball' && this._cannons && this._cannons.tryLoad(h))
             || (this._suckers && this._suckers.catchLoose(h));
           if (!taken) return false;
@@ -338,6 +340,27 @@ export default class GameScene extends Phaser.Scene {
       ? new Suckers(this, level.suckers || [], this._loose)
       : null;
     if (this._suckers) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._suckers.destroy());
+
+    // ── Seesaws and the 20-ton weights ────────────────────────────────────
+    // .OB classes 0 and 1, in 43 and 42 levels. See seesaws.js.
+    this._seesawHooks = {
+      launchJack: (pl, x, y, vy) => pl.thrownUp(x, y, vy),
+    };
+    (level.weights || []).forEach((w) => {
+      if (!hasProps(this) || !PROP_ANIMS.lead) return;
+      const sprite = this.add.image(w.x, w.y, PROP_ANIMS.lead[0]).setDepth(2);
+      applyPropFrame(sprite, PROP_ANIMS.lead[0]);
+      this._loose.add(sprite, 'lead');
+    });
+    this._seesaws = hasProps(this) && PROP_ANIMS.bcsaw && (level.seesaws || []).length
+      ? new Seesaws(this, level.seesaws, this._loose,
+        (x, y) => {
+          const ground = level.ground ? level.ground.y : levelHeight;
+          const top = floorUnder((bx, by) => this._blockAt(bx, by), x, y - 1, Math.min(y + 64, ground));
+          return top ?? (y + 64 >= ground ? ground : y);
+        })
+      : null;
+    if (this._seesaws) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._seesaws.destroy());
     this._player.findPickup = (x, y) => this._loose.find(x, y, this._player.getBounds());
     this._player.findCrusher = () => {
       if (!this._collapse) return null;
@@ -557,6 +580,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     if (this._ufos) this._ufos.update(delta);
+    if (this._seesaws) this._seesaws.update(this._player, this._seesawHooks);
 
     // A stick that goes off in his hands is gone from them.
     const held = this._player.carried;
@@ -690,6 +714,7 @@ export default class GameScene extends Phaser.Scene {
     if (this._cannons) this._cannons.hit(reach);
     if (this._suckers) this._suckers.hit(reach);
     if (this._ufos) this._ufos.hit(reach);
+    if (this._seesaws) this._seesaws.hit(reach, this._seesawHooks);
     this._dynamite.forEach((d) => {
       if (d.lit || d.litBy !== 'hammer' || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {
@@ -886,10 +911,11 @@ export default class GameScene extends Phaser.Scene {
    * 50000 to the small one's 5, and throws its rubble wider.
    */
   _ballImpact(h, { x, y, speed, side, dir }) {
-    if (h.kind !== 'ball') return;
+    if (h.kind !== 'ball' && h.kind !== 'lead') return;
     const sp = Math.floor(speed);
     if (sp < (side ? 3 : 5)) return;
-    const mass = h.big ? 50000 : 5;
+    // the weight's mass is its +0x4c, 25 (VA 0x1e6c3)
+    const mass = h.kind === 'lead' ? 25 : h.big ? 50000 : 5;
     const force = side ? mass * 2 ** (sp - 2) : (mass * 2 ** (sp - 2)) / 2;
     const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
     const entry = id === undefined ? null : this._destructibleMap.get(id);

@@ -62,6 +62,8 @@ SUCKER_CLASS = 22
 #: Class 27 places a teleporter pad (TELLY.SPR).
 TELLY_CLASS = 27
 UFO_CLASS = 31
+SEESAW_CLASS = 0
+WEIGHT_CLASS = 1
 TIME_LIMIT = 240
 MIN_OBJECTS = 10
 PAD = 1  # transparent gutter between packed shapes
@@ -315,6 +317,21 @@ def export(name):
                for x, y in [(w[0], w[1])]
                if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
 
+    # Seesaws. Class 0, 20 bytes: x, y — the seesaw stands 26 below it —
+    # the word at +0xe 1 for the left end down (frame 0), and at +0x12 1
+    # for the CSAW look, else BCSAW (VA 0x1eb0d).
+    seesaws = [{"x": w[0], "y": w[1] + 0x1a + HEADROOM,
+                "tilt": 0 if w[7] == 1 else 1, "big": w[9] != 1}
+               for cid, _off, payload in placed if cid == SEESAW_CLASS
+               for w in [struct.unpack_from("<10h", payload, 0)]
+               if 0 <= w[0] <= lv["width"] and 0 <= w[1] <= lv["height"]]
+
+    # The 20-ton weights. Class 1: x, y as given (VA 0x1e6c3).
+    weights = [{"x": x, "y": y + HEADROOM}
+               for cid, _off, payload in placed if cid == WEIGHT_CLASS
+               for x, y in [struct.unpack_from("<hh", payload, 0)]
+               if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
+
     # The UFO. The record's x, y go unused: each starts 100 px above a
     # random Jack (VA 0x13634). One record per level sets them all up.
     ufo = next((ufo_params(payload) for cid, _off, payload in placed
@@ -348,6 +365,8 @@ def export(name):
         "suckers": suckers,
         "tellies": tellies,
         "ufo": ufo,
+        "seesaws": seesaws,
+        "weights": weights,
         # The bottom edge of a level is solid ground in the original. It is
         # not made of objects — in 0B all 179 are destructible and nothing
         # sits under the start at all — but every level's authored start is

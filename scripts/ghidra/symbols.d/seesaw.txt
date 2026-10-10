@@ -1,0 +1,17 @@
+# The seesaw (.OB class 0, BCSAW/CSAW.SPR) and the 20-ton weight (class 1,
+# LEAD.SPR) — see README "The seesaw and the weight". Seesaw fields: +0x44
+# which end is down (0 left, 1 right), +0x54 / +0x58 the rider of the left /
+# right end. Hotspot tables: 0x9977c (ends 21 up — what comes down) and
+# 0x9978e (ends 3 up — what stands there).
+0x1e746  f  lead_tick                      ; start state of the weight: carried → the carry code; else lead_step, friction, then lead_on_seesaw
+0x1e895  f  lead_step                      ; the weight's own sprite step: walls bounce it back at a quarter, gravity, landing
+0x1ea81  f  lead_lands_on                  ; landing: sprites under it of TIMMY/KTIMMY/TOMMY and a few others get the hit flag, force = its speed
+0x1eb85  f  seesaw_set_tilt                ; record word +0xe: 1 → frame 0 (left end down), else frame 1
+0x1eba3  f  seesaw_tick                    ; the overhead blow tips it from the end it lands on, force from +0x4e; a puff each tip
+0x1ecc9  f  seesaw_tip                     ; onto end bx: only the raised end moves it, and only if seesaw_launch lets it
+0x1ed40  f  seesaw_launch                  ; the other end's rider goes up at speed - 0.5 px/tick, lifted 30 first; under 1.22 px/tick nothing moves
+0x1edc2  f  lead_on_seesaw                 ; falling into a raised end: tip it or bounce (3/4, kicked aside); at rest on a down end: ride it
+0x1f072  f  seesaw_physics                 ; sprite_physics and friction — it settles like any sprite
+0x2e058  f  hotspot_overlapping            ; like point_in_hotspot, but a box against each hotspot (rects_overlap)
+0x28af9  f  jack_tip_seesaw                ; Jack dropping through a raised end tips it
+0x28b6f  f  jack_ride_seesaw               ; Jack standing on the down end of an empty seesaw rides it, facing away from it
