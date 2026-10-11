@@ -1,10 +1,9 @@
 /**
  * Props lifted from the original game's sprite files — the bell Jack has to
- * reach and the sledgehammer he swings (see scripts/export_props.py).
+ * reach, the gits, the cannons and the rest (see scripts/export_props.py).
+ * The hammers have sheets of their own (entities/hammers.js).
  *
- * Like Jack's own frames these carry the sheet's anchor point. The hammer's
- * is Jack's own feet — the game stands the hammer on his position — so its
- * frames reach out from there to wherever the head is.
+ * Like Jack's own frames these carry the sheet's anchor point.
  */
 import manifest from './propFrames.json';
 
@@ -21,8 +20,8 @@ export const PROP_FRAME_INFO = Object.fromEntries(
 );
 
 /**
- * For each of Jack's animation slots, the hammer frame (an index into
- * PROP_ANIMS.hammer, which is SPA.SPR's own numbering) to show at each of
+ * For each of Jack's animation slots, the hammer frame (an index into his
+ * hammer's sheet — every hammer numbers its 61 frames alike) to show at each of
  * his frames — the game's list at VA 0x9ff88, with its top two bits
  * (0x4000 hide, 0x8000 show) left on. Missing slots carry none.
  */

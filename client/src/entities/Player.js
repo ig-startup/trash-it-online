@@ -7,6 +7,9 @@ import {
 } from './props';
 import { JACK_FRAME_INFO, JACK_SCALE } from './jackSprites';
 import { MAX_CHARGE } from '../../../shared/constants.mjs';
+import {
+  hammerAt, hammerKey, hammerFrameInfo, FIRST_HAMMER,
+} from './hammers';
 
 /**
  * The original's physics, in its own units: pixels per frame, and pixels
@@ -362,7 +365,7 @@ const OVER_STRIKES = [
   },
 ];
 
-// A hammer-list word: the SPA.SPR frame, and two sticky switches.
+// A hammer-list word: the frame of his hammer's sheet, and two sticky switches.
 const HAMMER_FRAME = 0x3fff;
 const HAMMER_HIDE = 0x4000;
 const HAMMER_SHOW = 0x8000;
@@ -398,8 +401,9 @@ export default class Player extends Phaser.Physics.Arcade.Image {
    * @param {string} color  hex color, e.g. '#ff4444' — the overalls colour
    * @param {string} playerId
    * @param {boolean} isLocal
+   * @param {{hammer?: number}} [opts] which of the 37 hammers he swings
    */
-  constructor(scene, x, y, color, playerId, isLocal = true) {
+  constructor(scene, x, y, color, playerId, isLocal = true, opts = {}) {
     ensureHitboxTexture(scene);
     super(scene, x, y, HITBOX_TEXTURE);
 
@@ -408,6 +412,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.playerId = playerId;
     this.playerColor = color;
     this.isLocal = isLocal;
+    /** His hammer's record (shared/hammers.json): its blow and its look. */
+    this.hammerStats = hammerAt(opts.hammer ?? FIRST_HAMMER);
 
     /** Current state — a key of STATES, named after the game's own. */
     this.state = 'stand';
@@ -488,8 +494,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     // list for the current animation names (see HAMMER_BY_SLOT).
     this.hammer = null;
     this._hammerKey = null;
-    if (hasProps(scene)) {
-      this.hammer = scene.add.image(x, y, PROP_ANIMS.hammer[0]).setScale(JACK_SCALE);
+    if (scene.textures.exists(hammerKey(this.hammerStats))) {
+      this.hammer = scene.add.image(x, y, hammerKey(this.hammerStats), '0').setScale(JACK_SCALE);
       this.hammer.setVisible(false);
     }
     // So is the hoover (VAC.SPR, VA 0x615ca): it follows him and shows the
@@ -543,7 +549,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     if (!this.hammer || !this.hammer.visible) return;
     this.hammer.setPosition(this.x, this.y);
     this.hammer.setFlipX(flip);
-    Player._anchor(this.hammer, PROP_FRAME_INFO[this._hammerKey], flip);
+    Player._anchor(this.hammer, hammerFrameInfo(this.scene, this.hammerStats, this._hammerKey), flip);
   }
 
   /** Puts a frame's anchor on the object's position, mirrored if `flip`. */
@@ -553,7 +559,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   }
 
   /**
-   * The SPA.SPR frame the hammer shows now, or null where the game's
+   * The frame of his hammer's sheet shown now, or null where the game's
    * animation carries no hammer list (the hoover's).
    */
   _hammerFrame(spec) {
@@ -1690,8 +1696,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         if (word & HAMMER_HIDE) this._hammerHidden = true;
         if (word & HAMMER_SHOW) this._hammerHidden = false;
         if (spec.slot === 12 && (word & HAMMER_FRAME) <= 15) this._hammerHidden = true;
-        this._hammerKey = PROP_ANIMS.hammer[word & HAMMER_FRAME];
-        this.hammer.setTexture(this._hammerKey);
+        this._hammerKey = String(word & HAMMER_FRAME);
+        this.hammer.setFrame(this._hammerKey);
       }
       this.hammer.setVisible(word !== null && !this._hammerHidden);
     }

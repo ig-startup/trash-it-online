@@ -22,6 +22,7 @@ const levelId = new URLSearchParams(window.location.search).get('level')
   || DEFAULT_LEVEL_ID;
 
 // ?local=N plays N Jacks at this keyboard, each on his own key set.
+const hammer = new URLSearchParams(window.location.search).get('hammer');
 const local = Number(new URLSearchParams(window.location.search).get('local')) || 0;
 const players = PLAYER_COLORS.slice(0, local || PLAYER_COLORS.length).map((color, i) => ({
   id: `p${i}`, name: `Jack ${i + 1}`, color,
@@ -33,6 +34,8 @@ class DevBoot extends Phaser.Scene {
   create() {
     this.scene.start('GameScene', {
       roomCode: 'DEV', players, mode: 'coop', levelId, myPlayerId: 'p0', local: local > 0,
+      // ?hammer=N swings hammer N of the catalogue (36 is the guitar)
+      battle: hammer === null ? null : { hammer: Number(hammer) },
     });
   }
 }

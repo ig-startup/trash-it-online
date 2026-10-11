@@ -3,8 +3,9 @@ import Player from '../entities/Player.js';
 import RemotePlayer from '../entities/RemotePlayer.js';
 import SocketManager from '../network/SocketManager.js';
 import {
-  EVENTS, PLAYER_COLORS, HAMMER, hammerForce,
+  EVENTS, PLAYER_COLORS, hammerForce,
 } from '../../../shared/constants.mjs';
+import { preloadHammer, hammerAt, hammerStrikes, FIRST_HAMMER } from '../entities/hammers';
 import {
   BUNDLED, levelIdOr, levelUrl, nextLevelId, DEFAULT_LEVEL_ID,
 } from '../levels';
@@ -43,11 +44,11 @@ const VIEW_MAX = 0x27ff;
 const CAM_EASE = 1 / 8;
 const CAM_ZOOM_EASE = 1 / 4;
 const CAM_LOWEST = 90;       // the centre stays this far over the ground (VA 0x2c198)
-const BACKDROP_PAD = 1024;
-const DEFAULT_TIME = 20 * 60; // a level with no limit keeps 20:00 (BCD 0x2000)   // px of wall past the level, for a camera drawn back
+const BACKDROP_PAD = 1024;   // px of wall past the level, for a camera drawn back
+const DEFAULT_TIME = 20 * 60; // a level with no limit keeps 20:00 (BCD 0x2000)
 /** Player states during which a swing connects (see STATES in Player.js). */
-// The debris masks a blow throws rubble with: the sledge v1's record
-// +0x34 / +0x38 for the hammer, 0x3ffff for the blast (VA 0x1f8c5).
+// The debris masks a blow throws rubble with: a hammer's own (record +0x34,
+// the sledge v1's where none is given), 0x3ffff for the blast (VA 0x1f8c5).
 const HAMMER_RUBBLE_MASK = 4095;
 const BLAST_RUBBLE_MASK = 0x3ffff;
 // Dynamite, all from the original (see "Dynamite" in scripts/formats/README.md).
@@ -99,6 +100,11 @@ export default class GameScene extends Phaser.Scene {
   preload() {
     preloadRealJackFrames(this);
     preloadProps(this);
+    // Every Jack swings the same hammer: a battle level names its own
+    // (the guitar in a tie-break); the story starts on the sledge v1.
+    this._hammerIndex = this._battle && Number.isInteger(this._battle.hammer)
+      ? this._battle.hammer : FIRST_HAMMER;
+    preloadHammer(this, hammerAt(this._hammerIndex));
 
     // A converted level is served, not bundled: its data comes first, and
     // then the artwork it names — one texture of building blocks plus the
@@ -329,7 +335,8 @@ export default class GameScene extends Phaser.Scene {
     this._jacks = here.map((pd, i) => {
       const spawnIndex = Math.max(0, this._players.findIndex((p) => p.id === pd.id));
       const spawn = level.spawnPoints[spawnIndex] || level.spawnPoints[0];
-      const player = new Player(this, spawn.x, spawn.y, pd.color || '#ff4444', pd.id, true);
+      const player = new Player(this, spawn.x, spawn.y, pd.color || '#ff4444', pd.id, true,
+        { hammer: this._hammerIndex });
       const set = keySets[pd.pad ?? i] || keySets[0];
       const pad = this._keys.pad(set, here.length === 1 ? SOLO_EXTRA : {});
       const j = {
@@ -928,7 +935,7 @@ export default class GameScene extends Phaser.Scene {
    * @returns {{x: number, y: number}[]} cell centres, level pixels
    */
   _hammerCells(pl) {
-    const { dx, dy, w, h } = HAMMER.reach;
+    const { dx, dy, w, h } = pl.hammerStats.reach;
     const dir = pl.facingLeft ? -1 : 1;
     const ox = Math.round(pl.x) + dir * dx;
     const oy = Math.round(pl.y) + dy;
@@ -948,11 +955,11 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
-   * The overhead strike's box: from Jack's feet, `HAMMER.overBox` ahead
+   * The overhead strike's box: from Jack's feet, his hammer's `overBox` ahead
    * and down, mirrored when he faces left (VA 0x2f1d7).
    */
   _overheadBox(pl) {
-    const { dx, dy, w, h } = HAMMER.overBox;
+    const { dx, dy, w, h } = pl.hammerStats.overBox;
     const x = Math.round(pl.x);
     const left = pl.facingLeft ? x - dx - w + 1 : x + dx;
     return new Phaser.Geom.Rectangle(left, Math.round(pl.y) + dy, w, h);
@@ -961,7 +968,7 @@ export default class GameScene extends Phaser.Scene {
   /**
    * A blow landing. The sideways blow carries the hammer's ramp at the
    * charge it was let go with into the blocks under its cells, until
-   * `HAMMER.strikes` have been struck. The overhead blow strikes no blocks
+   * his hammer's `strikes` have been struck. The overhead blow strikes no blocks
    * — in the game it goes to sprites only (VA 0x1fd94) — so here it only
    * reaches what is not a block.
    * @param {{charge: number, overhead: boolean}} blow
@@ -972,15 +979,16 @@ export default class GameScene extends Phaser.Scene {
     if (overhead) {
       reach = this._overheadBox(pl);
     } else {
-      const force = hammerForce(charge);
+      const stats = pl.hammerStats;
+      const force = hammerForce(charge, stats);
       const cells = this._hammerCells(pl);
       const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
-      let left = HAMMER.strikes;
+      let left = hammerStrikes(stats);
       for (const c of cells) {
         if (left <= 0) break;
         const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(c.x, c.y));
         if (!hit) continue;
-        this._applyForce(hit, force, 0);
+        this._applyForce(hit, force, 0, { tally: new Map(), visits: 0, mask: stats.mask });
         left -= 1;
       }
       const xs = cells.map((c) => c.x);
