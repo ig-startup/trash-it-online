@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import MenuScene from './scenes/MenuScene.js';
 import LobbyScene from './scenes/LobbyScene.js';
 import GameScene from './scenes/GameScene.js';
+import KeysScene from './scenes/KeysScene.js';
 
 class BootScene extends Phaser.Scene {
   constructor() {
@@ -35,7 +36,7 @@ const config = {
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, LobbyScene, GameScene],
+  scene: [BootScene, MenuScene, LobbyScene, GameScene, KeysScene],
 };
 
 const game = new Phaser.Game(config);

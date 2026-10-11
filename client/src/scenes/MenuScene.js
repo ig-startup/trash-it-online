@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import SocketManager from '../network/SocketManager.js';
+import { PLAYER_COLORS } from '../../../shared/constants.mjs';
 
 const EVENTS = {
   CREATE_ROOM: 'create_room',
@@ -19,6 +20,7 @@ export default class MenuScene extends Phaser.Scene {
     super({ key: 'MenuScene' });
 
     this._selectedMode = 'coop';
+    this._localCount = 2;
     this._playerName = 'Player';
     this._roomCode = '';
 
@@ -60,13 +62,35 @@ export default class MenuScene extends Phaser.Scene {
     this._btnRace = this._makeButton(cx + 75, 195, 'БИТВА', () => this._setMode('battle'));
     this._updateModeButtons();
 
-    // ── Player name ───────────────────────────────────────────────────────────
-    this.add.text(cx, 255, 'Имя игрока:', {
+    // ── At one keyboard ───────────────────────────────────────────────────────
+    // The original's way of playing together: up to four at one computer,
+    // each on his own six keys.
+    const lx = cx - 190;
+    const rx = cx + 190;
+    this.add.text(lx, 255, '— За одним компьютером —', {
+      fontSize: '15px',
+      color: '#888888',
+    }).setOrigin(0.5);
+    this.add.text(lx, 290, 'Игроков:', {
       fontSize: '16px',
       color: '#aaaaaa',
     }).setOrigin(0.5);
+    this._countButtons = [1, 2, 3, 4].map((n, i) => this._makeButton(lx - 90 + i * 60, 330, String(n),
+      () => this._setCount(n)));
+    this._updateCountButtons();
+    this._makeButton(lx, 400, 'ИГРАТЬ', () => this._playLocal());
+    this._makeButton(lx, 460, 'КЛАВИШИ', () => {
+      this._cleanup();
+      this.scene.start('KeysScene');
+    });
 
-    const nameHint = this.add.text(cx, 285, `[ ${this._playerName} ]`, {
+    // ── Online ────────────────────────────────────────────────────────────────
+    this.add.text(rx, 255, '— По сети —', {
+      fontSize: '15px',
+      color: '#888888',
+    }).setOrigin(0.5);
+
+    const nameHint = this.add.text(rx, 295, `[ ${this._playerName} ]`, {
       fontSize: '18px',
       color: '#ffffff',
       backgroundColor: '#333355',
@@ -81,21 +105,9 @@ export default class MenuScene extends Phaser.Scene {
       nameHint.setText(`[ ${this._playerName} ]`);
     });
 
-    // ── Create room ───────────────────────────────────────────────────────────
-    this.add.text(cx, 355, '— Создать комнату —', {
-      fontSize: '14px',
-      color: '#888888',
-    }).setOrigin(0.5);
+    this._makeButton(rx, 350, 'СОЗДАТЬ КОМНАТУ', () => this._createRoom());
 
-    this._makeButton(cx, 390, 'СОЗДАТЬ КОМНАТУ', () => this._createRoom());
-
-    // ── Join room ─────────────────────────────────────────────────────────────
-    this.add.text(cx, 450, '— Войти по коду —', {
-      fontSize: '14px',
-      color: '#888888',
-    }).setOrigin(0.5);
-
-    const codeHint = this.add.text(cx, 480, '[ ____ ]', {
+    const codeHint = this.add.text(rx, 410, '[ ____ ]', {
       fontSize: '18px',
       color: '#ffffff',
       backgroundColor: '#333355',
@@ -110,10 +122,10 @@ export default class MenuScene extends Phaser.Scene {
       codeHint.setText(this._roomCode ? `[ ${this._roomCode} ]` : '[ ____ ]');
     });
 
-    this._makeButton(cx, 530, 'ВОЙТИ', () => this._joinRoom());
+    this._makeButton(rx, 460, 'ВОЙТИ ПО КОДУ', () => this._joinRoom());
 
     // ── Error text ────────────────────────────────────────────────────────────
-    this._errorText = this.add.text(cx, 580, '', {
+    this._errorText = this.add.text(cx, 540, '', {
       fontSize: '16px',
       color: '#ff4444',
     }).setOrigin(0.5);
@@ -217,6 +229,30 @@ export default class MenuScene extends Phaser.Scene {
       this._btnRace.setStyle({ backgroundColor: isRace ? activeColor : inactiveColor });
       this._btnRace._bgColor = isRace ? activeColor : inactiveColor;
     }
+  }
+
+  _setCount(n) {
+    this._localCount = n;
+    this._updateCountButtons();
+  }
+
+  _updateCountButtons() {
+    (this._countButtons || []).forEach((btn, i) => {
+      const color = i + 1 === this._localCount ? '#aa44aa' : '#444466';
+      btn.setStyle({ backgroundColor: color });
+      btn._bgColor = color;
+    });
+  }
+
+  /** Straight into the game, everyone at this keyboard — no server. */
+  _playLocal() {
+    const players = PLAYER_COLORS.slice(0, this._localCount).map((color, i) => ({
+      id: `p${i + 1}`, name: `ИГРОК ${i + 1}`, color, pad: i,
+    }));
+    this._cleanup();
+    this.scene.start('GameScene', {
+      players, mode: this._selectedMode, myPlayerId: players[0].id, local: true,
+    });
   }
 
   _createRoom() {

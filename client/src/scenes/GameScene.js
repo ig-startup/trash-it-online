@@ -43,7 +43,8 @@ const VIEW_MAX = 0x27ff;
 const CAM_EASE = 1 / 8;
 const CAM_ZOOM_EASE = 1 / 4;
 const CAM_LOWEST = 90;       // the centre stays this far over the ground (VA 0x2c198)
-const BACKDROP_PAD = 1024;   // px of wall past the level, for a camera drawn back
+const BACKDROP_PAD = 1024;
+const DEFAULT_TIME = 20 * 60; // a level with no limit keeps 20:00 (BCD 0x2000)   // px of wall past the level, for a camera drawn back
 /** Player states during which a swing connects (see STATES in Player.js). */
 // The debris masks a blow throws rubble with: the sledge v1's record
 // +0x34 / +0x38 for the hammer, 0x3ffff for the blast (VA 0x1f8c5).
@@ -477,7 +478,11 @@ export default class GameScene extends Phaser.Scene {
         timmy: (x, y, vx, vy) => { if (this._gits) this._gits.spawnFree(x, y, vx, vy); },
         addTime: (seconds) => {
           const sm = SocketManager.getInstance();
-          if (sm.socket) sm.emit(EVENTS.TIME_BONUS, { seconds });
+          if (this._online()) sm.emit(EVENTS.TIME_BONUS, { seconds });
+          else {
+            this._timeLeft += seconds;
+            this._showClock(this._timeLeft);
+          }
           this._flashBonus(`+${seconds} СЕК`);
         },
         superHoover: (ticks) => { this._superHoover = ticks; },
@@ -568,15 +573,19 @@ export default class GameScene extends Phaser.Scene {
     this._hud(this.add.rectangle(this.scale.width / 2, panelTop + panelH / 2,
       this.scale.width, panelH, 0x111122));
 
-    // Timer — centered in the panel
-    const limit = level.timeLimit || 0;
-    this.timerText = this._hud(this.add.text(400, panelTop + 10,
-      `${Math.floor(limit / 60)}:${String(limit % 60).padStart(2, '0')}`, {
+    // Timer — centered in the panel. Online the server keeps the clock; at
+    // one keyboard this scene does, a second per 60 ticks (VA 0x19dce) from
+    // the level's own limit (rules +0x38; 20:00 where it has none).
+    this.timerText = this._hud(this.add.text(400, panelTop + 10, '', {
       fontSize: '32px',
       fill: '#ffffff',
       stroke: '#000000',
       strokeThickness: 4,
     }).setOrigin(0.5, 0).setDepth(10));
+    this._timeLeft = level.timeLimit || DEFAULT_TIME;
+    this._clockMs = 0;
+    this._over = false;
+    this._showClock(this._timeLeft);
 
     // Mode label — panel right
     const modeLabel = this._modeLabel();
@@ -674,6 +683,7 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (!this._jacks) return;
+    this._tickClock(delta);
     const live = this._liveJacks();
     if (live.length === 0) {
       this._bell.update(delta);
@@ -798,6 +808,40 @@ export default class GameScene extends Phaser.Scene {
     this._debugText.setText(
       `x:${Math.round(pl.x)} y:${Math.round(pl.y)} state:${pl.state} vx:${Math.round(b.velocity.x)} vy:${Math.round(b.velocity.y)}`,
     );
+  }
+
+  /** The clock on the panel; under 0:20 it flashes (VA 0x19e8b). */
+  _showClock(timeLeft) {
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+    this.timerText.setText(`${mins}:${secs.toString().padStart(2, '0')}`);
+    if (timeLeft < 20) {
+      this.timerText.setStyle({ fill: timeLeft % 2 ? '#ff4444' : '#ffffff', stroke: '#000000', strokeThickness: 4 });
+    }
+  }
+
+  /** The clock run here, when no server does: down a second a second. */
+  _tickClock(delta) {
+    if (this._online() || this._over) return;
+    this._clockMs += delta;
+    while (this._clockMs >= 1000 && this._timeLeft > 0) {
+      this._clockMs -= 1000;
+      this._timeLeft -= 1;
+      this._showClock(this._timeLeft);
+    }
+    if (this._timeLeft <= 0) this._timeUp();
+  }
+
+  /** Out of time at one keyboard: the level is lost (state 3) — play it again. */
+  _timeUp() {
+    this._over = true;
+    this._jacks.forEach((j) => { if (!j.rang) this._leaveLevel(j); });
+    this.showResultOverlay('ВРЕМЯ ВЫШЛО', 'Попробуйте ещё раз', { nextLevel: this._levelId });
+  }
+
+  /** Whether this game goes through the server: not when played at one keyboard. */
+  _online() {
+    return !this._local && !!SocketManager.getInstance().socket;
   }
 
   /** The Jacks still in the level: not yet rung, not looking on. */
@@ -1140,7 +1184,7 @@ export default class GameScene extends Phaser.Scene {
    */
   _reportBlow(blow) {
     const sm = SocketManager.getInstance();
-    if (!sm.socket) return;
+    if (!this._online()) return;
     blow.tally.forEach((force, objectId) => {
       sm.emit(EVENTS.OBJECT_HIT, { objectId, force });
     });
@@ -1304,7 +1348,7 @@ export default class GameScene extends Phaser.Scene {
       this._leaveLevel(j);
 
       const sm = SocketManager.getInstance();
-      if (sm.socket) {
+      if (this._online()) {
         sm.emit(EVENTS.BELL_HIT, { playerId: j.data.id });
         return;
       }
@@ -1313,6 +1357,7 @@ export default class GameScene extends Phaser.Scene {
         return;
       }
       // Offline, at one keyboard: nobody else is going to advance the level.
+      this._over = true;
       const order = this._rung.length > 1
         ? this._rung.map((k, i) => `${i + 1}. ${this._nameOf(k.data.id)}`).join('\n')
         : 'Колокольчик твой';
@@ -1340,7 +1385,7 @@ export default class GameScene extends Phaser.Scene {
   _emitPlayerUpdate() {
     if (!this._player) return;
     const sm = SocketManager.getInstance();
-    if (!sm.socket) return; // not connected — skip silently
+    if (!this._online()) return; // not connected, or playing at one keyboard
     sm.sendPlayerUpdate(
       this._player.x,
       this._player.y,
@@ -1469,7 +1514,7 @@ export default class GameScene extends Phaser.Scene {
    */
   _initSocketHandlers() {
     const sm = SocketManager.getInstance();
-    if (!sm.socket) return; // offline / solo play — no-op
+    if (!this._online()) return; // offline, or everyone at this keyboard — no-op
 
     // This scene restarts on every new level, so its handlers have to go
     // with it — otherwise each level would add another copy.
@@ -1561,16 +1606,7 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // Timer tick — update HUD timer display
-    sm.on(EVENTS.TIMER_TICK, (data) => {
-      const timeLeft = data?.timeLeft ?? 0;
-      const mins = Math.floor(timeLeft / 60);
-      const secs = timeLeft % 60;
-      this.timerText.setText(`${mins}:${secs.toString().padStart(2, '0')}`);
-      // Under 0:20 the original's clock flashes (VA 0x19e8b).
-      if (timeLeft < 20) {
-        this.timerText.setStyle({ fill: timeLeft % 2 ? '#ff4444' : '#ffffff', stroke: '#000000', strokeThickness: 4 });
-      }
-    });
+    sm.on(EVENTS.TIMER_TICK, (data) => this._showClock(data?.timeLeft ?? 0));
 
     // An object was destroyed on the server side
     sm.on(EVENTS.OBJECT_DESTROYED, ({ objectId } = {}) => {
