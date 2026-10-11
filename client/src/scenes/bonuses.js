@@ -53,7 +53,7 @@ export default class Bonuses {
    * @param {(x: number, y: number) => (number|null)} world.blockIdAt
    * @param {(id: number) => boolean} world.blockAlive
    * @param {number} world.groundY
-   * @param {() => any} world.jack
+   * @param {() => any[]} world.jacks
    * @param {(x: number, y: number, vx: number, vy: number) => void} world.ball
    * @param {(x: number, y: number, vx: number, vy: number) => void} world.timmy
    * @param {(seconds: number) => void} world.addTime
@@ -171,9 +171,13 @@ export default class Bonuses {
   }
 
   _tick() {
-    const jack = this._w.jack();
-    const jackBox = jack && jack.active ? jack.getBounds() : null;
-    const touches = (s) => jackBox && Phaser.Geom.Intersects.RectangleToRectangle(jackBox, s.getBounds());
+    const boxes = this._w.jacks()
+      .filter((j) => j && j.active && j.body && j.body.enable)
+      .map((j) => j.getBounds());
+    const touches = (s) => {
+      const b = s.getBounds();
+      return boxes.some((box) => Phaser.Geom.Intersects.RectangleToRectangle(box, b));
+    };
 
     for (let i = this.prizes.length - 1; i >= 0; i -= 1) {
       const p = this.prizes[i];

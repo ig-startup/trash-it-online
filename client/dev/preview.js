@@ -21,7 +21,9 @@ import { PLAYER_COLORS } from '../../shared/constants.mjs';
 const levelId = new URLSearchParams(window.location.search).get('level')
   || DEFAULT_LEVEL_ID;
 
-const players = PLAYER_COLORS.map((color, i) => ({
+// ?local=N plays N Jacks at this keyboard, each on his own key set.
+const local = Number(new URLSearchParams(window.location.search).get('local')) || 0;
+const players = PLAYER_COLORS.slice(0, local || PLAYER_COLORS.length).map((color, i) => ({
   id: `p${i}`, name: `Jack ${i + 1}`, color,
 }));
 
@@ -30,7 +32,7 @@ class DevBoot extends Phaser.Scene {
 
   create() {
     this.scene.start('GameScene', {
-      roomCode: 'DEV', players, mode: 'coop', levelId, myPlayerId: 'p0',
+      roomCode: 'DEV', players, mode: 'coop', levelId, myPlayerId: 'p0', local: local > 0,
     });
   }
 }

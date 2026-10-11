@@ -81,11 +81,12 @@ export default class Rubble {
    * Steps everything a tick at a time, and returns how much the hoover took
    * this frame — the game counts a piece as its area / 16 (VA 0x61327).
    * @param {number} delta ms
-   * @param {Phaser.Geom.Rectangle|null} box the hoover's box, if it is on
-   * @param {{x: number, y: number}} nozzle where it draws things to
+   * @param {{box: Phaser.Geom.Rectangle, nozzle: {x: number, y: number}, who: any}[]} hoovers
+   *   every hoover that is on: its box, where it draws things to, whose it is
+   * @returns {Map<any, number>} what each hoover's owner took
    */
-  update(delta, box, nozzle) {
-    let taken = 0;
+  update(delta, hoovers = []) {
+    const taken = new Map();
     this._acc = Math.min(this._acc + delta, 100);
     const tick = 1000 / HZ;
     while (this._acc >= tick) {
@@ -93,13 +94,23 @@ export default class Rubble {
       for (let i = this._pieces.length - 1; i >= 0; i -= 1) {
         const p = this._pieces[i];
         if (!p.img.active) { this._pieces.splice(i, 1); continue; }
-        if (!p.sucked && p.resting && box
-          && box.x < p.x + p.w && p.x < box.right && box.y < p.y + p.h && p.y < box.bottom) {
-          p.sucked = true;
+        if (!p.sucked && p.resting) {
+          const by = hoovers.find(({ box }) => box.x < p.x + p.w && p.x < box.right
+            && box.y < p.y + p.h && p.y < box.bottom);
+          if (by) {
+            p.sucked = true;
+            p.into = by.who;
+          }
         }
-        const done = p.sucked ? this._suck(p, nozzle) : this._fall(p);
+        if (p.sucked) {
+          const h = hoovers.find((k) => k.who === p.into);
+          if (h) p.nozzle = h.nozzle;
+        }
+        const done = p.sucked ? this._suck(p, p.nozzle) : this._fall(p);
         if (done) {
-          if (p.sucked) taken += Math.floor((p.w0 * p.h0) / 16);
+          if (p.sucked) {
+            taken.set(p.into, (taken.get(p.into) || 0) + Math.floor((p.w0 * p.h0) / 16));
+          }
           p.img.destroy();
           this._pieces.splice(i, 1);
         }

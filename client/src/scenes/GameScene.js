@@ -26,6 +26,7 @@ import Bell from './bell';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
+import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
@@ -33,6 +34,16 @@ const FORCE_MAX_VISITS = 600; // guard: a blow decays fast, but not in one frame
 const TILE = 8;              // px — the original's collision-map cell
 const VIEW_WIDTH = 320;      // px of the level on screen at once, as in the original
 const VIEW_HEIGHT = 200;
+// The camera keeps every Jack on screen (VA 0x2c22f): a box round them all,
+// 60 px out either side and below, 102 above, widened to the screen's 320:200,
+// never narrower than 320 nor wider than 0x27ff (VA 0x2be4e). It eases there
+// an eighth of the way a tick, the zoom a quarter (VA 0x2c198).
+const CAM_MARGIN = { side: 60, top: 102, bottom: 60 };
+const VIEW_MAX = 0x27ff;
+const CAM_EASE = 1 / 8;
+const CAM_ZOOM_EASE = 1 / 4;
+const CAM_LOWEST = 90;       // the centre stays this far over the ground (VA 0x2c198)
+const BACKDROP_PAD = 1024;   // px of wall past the level, for a camera drawn back
 /** Player states during which a swing connects (see STATES in Player.js). */
 // The debris masks a blow throws rubble with: the sledge v1's record
 // +0x34 / +0x38 for the hammer, 0x3ffff for the blast (VA 0x1f8c5).
@@ -74,7 +85,14 @@ export default class GameScene extends Phaser.Scene {
     this._active = data.active || null;
     /** In a battle: set, level k of n, the points so far, the hammer. */
     this._battle = data.battle || null;
-    this._rang = false;
+    /**
+     * Everyone in `players` plays at this keyboard, each Jack on the key set
+     * the player's `pad` names (or its place in the list) — the original's
+     * way of playing together. Otherwise only `myPlayerId` is played here.
+     */
+    this._local = !!data.local;
+    /** Local players in the order they rang the bell. */
+    this._rung = [];
   }
 
   preload() {
@@ -134,16 +152,23 @@ export default class GameScene extends Phaser.Scene {
       // scale. It is only the wall: the floor strip along the bottom of
       // the `.SCN` screen is cropped off by the exporter, because tiling
       // it laid a grey band across the level every 200 pixels.
+      // It runs well past the level every way, for the camera draws back
+      // to keep every player in view.
       const src = this.textures.get(this._bgKey(level)).getSourceImage();
-      const x0 = Math.floor(streetLeft / src.width) * src.width;
-      for (let y = 0; y < levelHeight; y += src.height) {
-        for (let x = x0; x < streetRight; x += src.width) {
-          this.add.image(x, y, this._bgKey(level)).setOrigin(0, 0).setDepth(-10);
-        }
-      }
+      const x0 = Math.floor((streetLeft - BACKDROP_PAD) / src.width) * src.width;
+      const y0 = -Math.ceil(BACKDROP_PAD * 2 / src.height) * src.height;
+      this.add.tileSprite(x0, y0, streetRight + BACKDROP_PAD - x0, levelHeight + BACKDROP_PAD - y0,
+        this._bgKey(level)).setOrigin(0, 0).setDepth(-10);
     } else {
       buildBackground(this, levelWidth, levelHeight);
     }
+    // Below the street the original draws its backdrop's floor in
+    // perspective (see backdrop_horizon in scripts/formats/README.md); until
+    // the clone does, that floor is the wall in shadow.
+    const groundY = level.ground ? level.ground.y : levelHeight;
+    this.add.rectangle(streetLeft - BACKDROP_PAD, groundY, streetRight - streetLeft + BACKDROP_PAD * 2,
+      levelHeight - groundY + BACKDROP_PAD, 0x000000, 0.6).setOrigin(0, 0).setDepth(-9);
+    this._street = { left: streetLeft, right: streetRight, ground: groundY };
 
     // ── Platforms (concrete, original palette) ──────────────────────────────────
     this._platforms = this.physics.add.staticGroup();
@@ -242,7 +267,6 @@ export default class GameScene extends Phaser.Scene {
       : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)),
     { hidden: this._bellTrash > 0, fallbackColor: WORLD_COLORS.bell });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bell.destroy());
-    this._bellHit = false;
 
     // ── Dynamite ──────────────────────────────────────────────────────────
     // 202 placements across 42 levels, of two kinds: 63 that a hammer
@@ -290,25 +314,32 @@ export default class GameScene extends Phaser.Scene {
     });
     if (this._cannons) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._cannons.destroy());
 
-    // ── Local player ─────────────────────────────────────────────────────────
-    const myPlayerData = this._players.find((p) => p.id === this._myPlayerId)
+    // ── The Jacks played at this keyboard ─────────────────────────────────
+    // Each starts on his own start position of the level (the `.OB` record's
+    // players 1-4) and reads his own six keys.
+    const mine = this._players.find((p) => p.id === this._myPlayerId)
       || this._players[0]
       || { id: 'local', color: '#ff4444' };
-
-    const spawnIndex = this._players.findIndex((p) => p.id === myPlayerData.id);
-    const spawn = level.spawnPoints[Math.max(0, spawnIndex)] || level.spawnPoints[0];
-
-    this._spawn = spawn;
+    const here = this._local && this._players.length ? this._players : [mine];
     this._levelHeight = levelHeight;
-    this._player = new Player(
-      this,
-      spawn.x,
-      spawn.y,
-      myPlayerData.color || '#ff4444',
-      myPlayerData.id,
-      true,
-    );
-    this._player.on('hammer_impact', (blow) => this._checkHammerDestructibles(blow));
+    this._keys = new LocalKeys();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._keys.destroy());
+    const keySets = loadKeySets();
+    this._jacks = here.map((pd, i) => {
+      const spawnIndex = Math.max(0, this._players.findIndex((p) => p.id === pd.id));
+      const spawn = level.spawnPoints[spawnIndex] || level.spawnPoints[0];
+      const player = new Player(this, spawn.x, spawn.y, pd.color || '#ff4444', pd.id, true);
+      const set = keySets[pd.pad ?? i] || keySets[0];
+      const pad = this._keys.pad(set, here.length === 1 ? SOLO_EXTRA : {});
+      const j = {
+        player, pad, data: pd, spawn, rang: false, movedVx: 0,
+      };
+      player.on('hammer_impact', (blow) => this._checkHammerDestructibles(blow, player));
+      return j;
+    });
+    /** The Jack this browser sends to the server, when there is one. */
+    this._player = this._jacks[0].player;
+    this._spawn = this._jacks[0].spawn;
 
     // ── What can be picked up ─────────────────────────────────────────────
     this._loose = new LooseObjects(this,
@@ -357,24 +388,26 @@ export default class GameScene extends Phaser.Scene {
         })
       : null;
     if (this._seesaws) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._seesaws.destroy());
-    this._player.findPickup = (x, y) => this._loose.find(x, y, this._player.getBounds());
-    this._player.findCrusher = () => {
-      if (!this._collapse) return null;
-      const b = this._player.body;
-      return this._collapse.over(b.left, b.right, b.top, b.bottom);
-    };
     // Ladders: the probes his climbing states make of the tile map.
     const blockAt = (x, y) => this._blockAt(x, y);
     const bottom = level.ground ? level.ground.y : levelHeight;
-    this._player.ladder = {
-      at: (x, feet) => ladderAt(blockAt, x, feet),
-      topUnder: (x, feet) => ladderTopUnder(blockAt, x, feet),
-      topAt: (x, y) => { const b = blockAt(x, y); return b ? b.top : null; },
-      floor: (x, from, to) => (to >= bottom ? bottom : floorUnder(blockAt, x, from, to)),
-    };
-    this._player.on('pickup', (h) => this._loose.pick(h));
-    this._player.on('putdown', ({ handle, x, y }) => this._loose.place(handle, x, y));
-    this._player.on('throw', ({ handle, x, y, vx, vy }) => this._loose.throw(handle, x, y, vx, vy));
+    this._jacks.forEach(({ player }) => {
+      player.findPickup = (x, y) => this._loose.find(x, y, player.getBounds());
+      player.findCrusher = () => {
+        if (!this._collapse) return null;
+        const b = player.body;
+        return this._collapse.over(b.left, b.right, b.top, b.bottom);
+      };
+      player.ladder = {
+        at: (x, feet) => ladderAt(blockAt, x, feet),
+        topUnder: (x, feet) => ladderTopUnder(blockAt, x, feet),
+        topAt: (x, y) => { const b = blockAt(x, y); return b ? b.top : null; },
+        floor: (x, from, to) => (to >= bottom ? bottom : floorUnder(blockAt, x, from, to)),
+      };
+      player.on('pickup', (h) => this._loose.pick(h));
+      player.on('putdown', ({ handle, x, y }) => this._loose.place(handle, x, y));
+      player.on('throw', ({ handle, x, y, vx, vy }) => this._loose.throw(handle, x, y, vx, vy));
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._loose.destroy());
 
     // ── Gits: timmies, king timmies, spike gits ──────────────────────────
@@ -401,7 +434,7 @@ export default class GameScene extends Phaser.Scene {
         width: levelWidth,
         loose: this._loose,
         shake: () => this.cameras.main.shake(120, 0.006),
-        jack: () => this._player,
+        jacks: () => this._liveJacks().map((j) => j.player),
         // The bomb's blast (VA 0x329dc): blocks from 15 px up, its force
         // the level's (rules +0x44 << +0x46), 10 across and 16 up and
         // down, four of them; the shock at its feet.
@@ -432,7 +465,7 @@ export default class GameScene extends Phaser.Scene {
           return !!(e && e.rect.active);
         },
         groundY: bottom,
-        jack: () => this._player,
+        jacks: () => this._liveJacks().map((j) => j.player),
         ball: (x, y, vx, vy) => {
           const key = PROP_ANIMS.ball[0];
           const sprite = this.add.image(x, y, key).setDepth(2);
@@ -461,15 +494,15 @@ export default class GameScene extends Phaser.Scene {
 
     // Hurt, he loses timmies (spill_timmies, VA 0x338d0): each thrown up
     // at -6 px/tick with a random kick, and off his count.
-    this._player.on('spill', (count) => {
+    this._jacks.forEach(({ player }) => player.on('spill', (count) => {
       if (!this._gits) return;
       const n = Math.min(count, this._gits.collected);
       for (let i = 0; i < n; i += 1) {
-        this._gits.spawnFree(this._player.x, this._player.y - 20, (Math.random() * 2 - 1) * 2, -6);
+        this._gits.spawnFree(player.x, player.y - 20, (Math.random() * 2 - 1) * 2, -6);
       }
       this._gits.collected -= n;
       this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
-    });
+    }));
 
     // ── UFOs ──────────────────────────────────────────────────────────────
     // .OB class 31, in 36 levels: they abduct timmies, knock Jack flying,
@@ -479,7 +512,7 @@ export default class GameScene extends Phaser.Scene {
         bounds: { left: 0, right: levelWidth, top: 0, bottom },
         blockAt,
         groundY: bottom,
-        jacks: () => [this._player],
+        jacks: () => this._liveJacks().map((j) => j.player),
         timmies: () => (this._gits ? this._gits.timmies() : []),
         loose: this._loose,
         giveTimmy: (x, y, vx, vy) => { if (this._gits) this._gits.spawnFree(x, y, vx, vy); },
@@ -492,19 +525,18 @@ export default class GameScene extends Phaser.Scene {
       : null;
     if (this._ufos) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._ufos.destroy());
 
-    // Colliders
-    this.physics.add.collider(this._player, this._platforms);
-    this.physics.add.collider(this._player, this._destructibles);
+    // Colliders. Jacks pass through one another, as in the original.
+    this._jacks.forEach(({ player }) => {
+      this.physics.add.collider(player, this._platforms);
+      this.physics.add.collider(player, this._destructibles);
+    });
 
     // ── Input ─────────────────────────────────────────────────────────────────
     // The game's six keys are LEFT RIGHT UP DOWN BUT1 BUT2 (VA 0x912c9), and
     // on the keyboard every action is a combination of them: BUT1 takes the
     // hammer out of the hat and puts it back (with UP held, the hoover), BUT2
-    // jumps empty-handed and swings the hammer when it is out. Z and X stand
-    // in for the two buttons; Space is BUT2 too. See Player.update.
-    this._cursors = this.input.keyboard.createCursorKeys();
-    this._but1Key = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
-    this._but2Key = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
+    // jumps empty-handed and swings the hammer when it is out. Each Jack has
+    // his own six (see input/keySets.js and Player.update).
 
     // ── Camera ────────────────────────────────────────────────────────────────
     // The original's screen is 320x240 "mode X" with the play field clipped
@@ -515,9 +547,9 @@ export default class GameScene extends Phaser.Scene {
     const zoom = this.scale.width / VIEW_WIDTH;
     this.cameras.main
       .setViewport(0, 0, this.scale.width, VIEW_HEIGHT * zoom)
-      .setZoom(zoom)
-      .setBounds(streetLeft, 0, streetRight - streetLeft, levelHeight)
-      .startFollow(this._player, true, 0.1, 0.1);
+      .setZoom(zoom);
+    this._cam = null;
+    this._updateCamera(0);
     this._uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height)
       .setName('hud');
     // World objects, those made so far and every one made later, stay off
@@ -623,8 +655,10 @@ export default class GameScene extends Phaser.Scene {
     this._initSocketHandlers();
 
     // A tie-break is for those sharing the top; the rest look on.
-    if (this._active && !this._active.includes(this._myPlayerId)) {
-      this._leaveLevel();
+    if (this._active) {
+      this._jacks.forEach((j) => {
+        if (!this._active.includes(j.data.id)) this._leaveLevel(j);
+      });
       this._flashBonus(`ТАЙ-БРЕЙК: ${this._active.map((id) => this._nameOf(id)).join(' и ')}`);
     }
 
@@ -632,15 +666,16 @@ export default class GameScene extends Phaser.Scene {
       levelId: this._levelId,
       mode: this._mode,
       players: this._players.length,
-      spawn,
+      local: this._jacks.length,
     });
   }
 
   // ── Update loop ───────────────────────────────────────────────────────────
 
   update(time, delta) {
-    if (!this._player || !this._cursors) return;
-    if (this._rang) {
+    if (!this._jacks) return;
+    const live = this._liveJacks();
+    if (live.length === 0) {
       this._bell.update(delta);
       return;
     }
@@ -649,15 +684,18 @@ export default class GameScene extends Phaser.Scene {
     // testing isDown would miss a key that was already back up by the time
     // we looked.
     const { JustDown } = Phaser.Input.Keyboard;
-    const but2Pressed = JustDown(this._but2Key) || JustDown(this._cursors.space);
-    // The speed physics moved him at this frame, before he sets the next
-    // one: what a cannon he pushes moves at too, or it runs a frame ahead.
-    this._movedVx = this._player.body.velocity.x;
-    this._player.update(this._cursors, {
-      but1: JustDown(this._but1Key),
-      but2: but2Pressed || this._but2Key.isDown || this._cursors.space.isDown,
-      but2Pressed,
-    }, delta);
+    live.forEach((j) => {
+      const { pad, player } = j;
+      const but2Pressed = JustDown(pad.but2);
+      // The speed physics moved him at this frame, before he sets the next
+      // one: what a cannon he pushes moves at too, or it runs a frame ahead.
+      j.movedVx = player.body.velocity.x;
+      player.update(pad, {
+        but1: JustDown(pad.but1),
+        but2: but2Pressed || pad.but2.isDown,
+        but2Pressed,
+      }, delta);
+    });
 
     this._collapse.update(delta);
     // The super hoover takes the rubble from a box 2048 x 1024 ahead of
@@ -666,15 +704,20 @@ export default class GameScene extends Phaser.Scene {
     const ticks = (delta * 60) / 1000;
     this._superHoover = Math.max(0, this._superHoover - ticks);
     this._doublePoints = Math.max(0, this._doublePoints - ticks);
-    let box = this._player.hooverBox;
-    if (box && this._superHoover > 0) {
-      const ahead = this._player.facingLeft ? this._player.x - 40 - 2048 : this._player.x + 40;
-      box = new Phaser.Geom.Rectangle(ahead, this._player.y - 512, 2048, 1024);
-    }
-    if (this._player.vac) {
-      this._player.vac.setAlpha(this._superHoover > 0 && (this.time.now / (1000 / 60)) & 8 ? 0.5 : 1);
-    }
-    let taken = this._rubble.update(delta, box, this._player.nozzle);
+    const hoovers = [];
+    live.forEach(({ player }) => {
+      let box = player.hooverBox;
+      if (box && this._superHoover > 0) {
+        const ahead = player.facingLeft ? player.x - 40 - 2048 : player.x + 40;
+        box = new Phaser.Geom.Rectangle(ahead, player.y - 512, 2048, 1024);
+      }
+      if (player.vac) {
+        player.vac.setAlpha(this._superHoover > 0 && (this.time.now / (1000 / 60)) & 8 ? 0.5 : 1);
+      }
+      if (box) hoovers.push({ box, nozzle: player.nozzle, who: player });
+    });
+    let taken = 0;
+    this._rubble.update(delta, hoovers).forEach((n) => { taken += n; });
     if (taken && this._doublePoints > 0) taken *= 2;
     if (taken) {
       this._rubbleTaken += taken;
@@ -691,14 +734,19 @@ export default class GameScene extends Phaser.Scene {
     this._bell.update(delta);
     this._tickDynamite(time);
     if (this._cannons) this._tickCannons(delta);
+    const stillIn = this._liveJacks();
     if (this._tellies) {
-      if (this._player.state !== 'caught') this._tellies.meet(this._player);
+      stillIn.forEach(({ player }) => {
+        if (player.state !== 'caught') this._tellies.meet(player);
+      });
       this._tellies.update(delta,
         (pl, x, y, sx, sy) => pl.holdAt(x, y, sx, sy),
         (pl) => pl.letGo());
     }
     if (this._suckers) {
-      if (this._player.state !== 'caught') this._suckers.catchJack(this._player);
+      stillIn.forEach(({ player }) => {
+        if (player.state !== 'caught') this._suckers.catchJack(player);
+      });
       this._suckers.update(delta,
         (pl, x, y) => pl.holdAt(x, y),
         (pl, x, y, vy) => pl.thrownUp(x, y, vy));
@@ -707,15 +755,21 @@ export default class GameScene extends Phaser.Scene {
     if (this._ufos) this._ufos.update(delta);
     if (this._bonuses) this._bonuses.update(delta);
     if (this._gits) {
-      const got = this._gits.update(delta, this._player.hooverBox, this._player.nozzle);
+      const got = this._gits.update(delta, hoovers);
       if (got) this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
     }
-    if (this._seesaws) this._seesaws.update(this._player, this._seesawHooks);
+    if (this._seesaws) this._seesaws.update(stillIn.map((j) => j.player), this._seesawHooks);
 
     // A stick that goes off in his hands is gone from them.
-    const held = this._player.carried;
-    if (held && !held.sprite.active) this._player.dropCarried();
-    this._loose.update(delta, this._player.carried ? this._player.carryPoint : null, this._player.aim);
+    const carries = [];
+    const aims = [];
+    stillIn.forEach(({ player }) => {
+      const held = player.carried;
+      if (held && !held.sprite.active) player.dropCarried();
+      if (player.carried) carries.push({ handle: player.carried, point: player.carryPoint });
+      if (player.aim) aims.push(player.aim);
+    });
+    this._loose.update(delta, carries, aims);
 
     // ── Throttled player update (for future socket send) ──────────────────────
     if (time - this._lastUpdateSent >= PLAYER_UPDATE_INTERVAL) {
@@ -726,19 +780,73 @@ export default class GameScene extends Phaser.Scene {
     // ── Fell out of the level ─────────────────────────────────────────────────
     // Levels converted from the original are open at the bottom, so a missed
     // jump drops you into nothing. Put the player back on the start ledge.
-    if (this._player.y > this._levelHeight + 120) {
-      this._player.setPosition(this._spawn.x, this._spawn.y);
-      this._player.body.setVelocity(0, 0);
-    }
+    stillIn.forEach(({ player, spawn }) => {
+      if (player.y > this._levelHeight + 120) {
+        player.setPosition(spawn.x, spawn.y);
+        player.body.setVelocity(0, 0);
+      }
+    });
+
+    this._updateCamera(delta);
 
     // ── Remote players interpolation ──────────────────────────────────────────
     this.remotePlayers.forEach((rp) => rp.update());
 
     // ── Debug HUD ─────────────────────────────────────────────────────────────
-    const b = this._player.body;
+    const pl = this._jacks[0].player;
+    const b = pl.body;
     this._debugText.setText(
-      `x:${Math.round(this._player.x)} y:${Math.round(this._player.y)} state:${this._player.state} vx:${Math.round(b.velocity.x)} vy:${Math.round(b.velocity.y)}`,
+      `x:${Math.round(pl.x)} y:${Math.round(pl.y)} state:${pl.state} vx:${Math.round(b.velocity.x)} vy:${Math.round(b.velocity.y)}`,
     );
+  }
+
+  /** The Jacks still in the level: not yet rung, not looking on. */
+  _liveJacks() {
+    return this._jacks.filter((j) => !j.rang);
+  }
+
+  /**
+   * The original's camera (VA 0x2c22f): the box round every Jack still in
+   * the level, its margins added, as wide as it must be for its height at
+   * 320:200 and no narrower than the screen's 320 — so one Jack is seen at
+   * 1:1, and the view draws back as the players spread out. Eased toward,
+   * except the first time.
+   */
+  _updateCamera(delta) {
+    const cam = this.cameras.main;
+    let jacks = this._liveJacks();
+    if (jacks.length === 0) jacks = this._jacks;
+    const xs = jacks.map((j) => j.player.x);
+    const ys = jacks.map((j) => j.player.y);
+    const x0 = Math.min(...xs) - CAM_MARGIN.side;
+    const x1 = Math.max(...xs) + CAM_MARGIN.side;
+    const y0 = Math.min(...ys) - CAM_MARGIN.top;
+    const y1 = Math.max(...ys) + CAM_MARGIN.bottom;
+    const w = x1 - x0;
+    const h = y1 - y0;
+    const want = {
+      x: x0 + w / 2,
+      y: y0 + h / 2,
+      width: Phaser.Math.Clamp(Math.max(w, (h * VIEW_WIDTH) / VIEW_HEIGHT), VIEW_WIDTH, VIEW_MAX),
+    };
+    if (!this._cam) {
+      this._cam = want;
+    } else {
+      const ticks = (delta * 60) / 1000;
+      const ease = (k) => 1 - (1 - k) ** ticks;
+      this._cam.x += (want.x - this._cam.x) * ease(CAM_EASE);
+      this._cam.y += (want.y - this._cam.y) * ease(CAM_EASE);
+      this._cam.width += (want.width - this._cam.width) * ease(CAM_ZOOM_EASE);
+    }
+    this._cam.y = Math.min(this._cam.y, this._street.ground - CAM_LOWEST);
+    // Sideways it keeps to the street, as the clone always has.
+    const { left, right } = this._street;
+    const half = this._cam.width / 2;
+    const x = right - left <= this._cam.width
+      ? (left + right) / 2
+      : Phaser.Math.Clamp(this._cam.x, left + half, right - half);
+    cam.setZoom(this.scale.width / this._cam.width);
+    cam.centerOn(x, this._cam.y);
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -751,7 +859,9 @@ export default class GameScene extends Phaser.Scene {
    */
   /** A word in the middle of the panel for a moment — a bonus taken. */
   _flashBonus(text) {
-    const t = this._hud(this.add.text(this.scale.width / 2, this.scale.height - 60, text, {
+    // at the foot of the play field, clear of the clock in the panel
+    const y = VIEW_HEIGHT * (this.scale.width / VIEW_WIDTH) - 40;
+    const t = this._hud(this.add.text(this.scale.width / 2, y, text, {
       fontFamily: 'monospace', fontSize: '22px', fill: '#ffee55', stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5).setDepth(1000));
     this.tweens.add({ targets: t, alpha: 0, y: t.y - 20, duration: 1200, onComplete: () => t.destroy() });
@@ -773,11 +883,11 @@ export default class GameScene extends Phaser.Scene {
    * hammer's head.
    * @returns {{x: number, y: number}[]} cell centres, level pixels
    */
-  _hammerCells() {
+  _hammerCells(pl) {
     const { dx, dy, w, h } = HAMMER.reach;
-    const dir = this._player.facingLeft ? -1 : 1;
-    const ox = Math.round(this._player.x) + dir * dx;
-    const oy = Math.round(this._player.y) + dy;
+    const dir = pl.facingLeft ? -1 : 1;
+    const ox = Math.round(pl.x) + dir * dx;
+    const oy = Math.round(pl.y) + dy;
     const steps = (extent) => {
       const out = [0];
       for (let k = 8; k <= extent; k += 8) out.push(k, -k);
@@ -797,11 +907,11 @@ export default class GameScene extends Phaser.Scene {
    * The overhead strike's box: from Jack's feet, `HAMMER.overBox` ahead
    * and down, mirrored when he faces left (VA 0x2f1d7).
    */
-  _overheadBox() {
+  _overheadBox(pl) {
     const { dx, dy, w, h } = HAMMER.overBox;
-    const x = Math.round(this._player.x);
-    const left = this._player.facingLeft ? x - dx - w + 1 : x + dx;
-    return new Phaser.Geom.Rectangle(left, Math.round(this._player.y) + dy, w, h);
+    const x = Math.round(pl.x);
+    const left = pl.facingLeft ? x - dx - w + 1 : x + dx;
+    return new Phaser.Geom.Rectangle(left, Math.round(pl.y) + dy, w, h);
   }
 
   /**
@@ -811,14 +921,15 @@ export default class GameScene extends Phaser.Scene {
    * — in the game it goes to sprites only (VA 0x1fd94) — so here it only
    * reaches what is not a block.
    * @param {{charge: number, overhead: boolean}} blow
+   * @param {Player} pl whose hammer it is
    */
-  _checkHammerDestructibles({ charge, overhead }) {
+  _checkHammerDestructibles({ charge, overhead }, pl) {
     let reach;
     if (overhead) {
-      reach = this._overheadBox();
+      reach = this._overheadBox(pl);
     } else {
       const force = hammerForce(charge);
-      const cells = this._hammerCells();
+      const cells = this._hammerCells(pl);
       const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
       let left = HAMMER.strikes;
       for (const c of cells) {
@@ -857,29 +968,31 @@ export default class GameScene extends Phaser.Scene {
    * his speed. Out of the stance, or apart, it rolls on by itself.
    */
   _tickCannons(delta) {
-    const pl = this._player;
-    const bounds = pl.getBounds();
-    if (pl.pushing && !this._cannons.all.some((c) => c.heldBy === pl)) {
-      const c = this._cannons.find(bounds, pl.facingLeft);
-      if (c) c.heldBy = pl;
-    }
+    const live = this._liveJacks();
+    live.forEach(({ player: pl }) => {
+      if (pl.pushing && !this._cannons.all.some((c) => c.heldBy === pl)) {
+        const c = this._cannons.find(pl.getBounds(), pl.facingLeft);
+        if (c && !c.heldBy) c.heldBy = pl;
+      }
+    });
     this._cannons.update(delta, (c) => {
-      if (c.heldBy !== pl) return null;
-      if (!pl.pushing || !this._cannons.touches(c, pl.getBounds())) {
+      const j = c.heldBy ? live.find((k) => k.player === c.heldBy) : null;
+      if (!j || !j.player.pushing || !this._cannons.touches(c, j.player.getBounds())) {
         c.heldBy = null;
         return null;
       }
-      return this._movedVx / 60;
+      return j.movedVx / 60;
     });
   }
 
   /** Burns the lit fuses and sets off the ones that run out. */
   _tickDynamite(time) {
     // The other kind lights at Jack's touch.
-    const body = this._player.getBounds();
+    const bodies = this._liveJacks().map((j) => j.player.getBounds());
     this._dynamite.forEach((d) => {
       if (d.lit || d.litBy !== 'touch' || !d.sprite.active) return;
-      if (Phaser.Geom.Intersects.RectangleToRectangle(body, d.sprite.getBounds())) {
+      const box = d.sprite.getBounds();
+      if (bodies.some((b) => Phaser.Geom.Intersects.RectangleToRectangle(b, box))) {
         d.lit = time + FUSE_MS;
       }
     });
@@ -944,9 +1057,11 @@ export default class GameScene extends Phaser.Scene {
     // The shock (VA 0x1d8d1) reaches Jack too: pushed, and hurt up close.
     const shock = new Phaser.Geom.Rectangle(shockAt.x - BLAST_SHOCK, shockAt.y - BLAST_SHOCK,
       BLAST_SHOCK * 2, BLAST_SHOCK * 2);
-    if (Phaser.Geom.Intersects.RectangleToRectangle(shock, this._player.getBounds())) {
-      this._player.blasted(shockAt.x, shockAt.y);
-    }
+    this._liveJacks().forEach(({ player }) => {
+      if (Phaser.Geom.Intersects.RectangleToRectangle(shock, player.getBounds())) {
+        player.blasted(shockAt.x, shockAt.y);
+      }
+    });
     if (this._gits) this._gits.blasted(shockAt.x, shockAt.y, shock);
     this._dynamite.forEach((d) => {
       if (d.lit || !d.sprite.active) return;
@@ -1176,42 +1291,47 @@ export default class GameScene extends Phaser.Scene {
   }
 
   _checkHammerBell() {
-    if (this._bellHit || !this._bell || this._bell.hidden) return;
-
-    const playerBounds = this._player.getBounds();
+    if (!this._bell || this._bell.hidden) return;
     const bellBounds = this._bell.getBounds();
-
-    // The bell is the goal, so touching it anywhere counts.
-    if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, bellBounds)) {
-      this._bellHit = true;
+    // The bell is the goal, so touching it anywhere counts — and every
+    // player rings it, each for himself.
+    this._liveJacks().forEach((j) => {
+      if (!Phaser.Geom.Intersects.RectangleToRectangle(j.player.getBounds(), bellBounds)) return;
       this._bell.ring();
-      console.log('[GameScene] bell_hit!');
+      this._rung.push(j);
+      // Whoever rings is out of the level (Jack and hammer flagged done,
+      // VA 0x34114); the level ends when everyone has rung.
+      this._leaveLevel(j);
 
-      // Send to server only once (flag prevents repeat)
       const sm = SocketManager.getInstance();
       if (sm.socket) {
-        sm.emit(EVENTS.BELL_HIT, { playerId: this._myPlayerId });
-        // Whoever rings is out of the level (Jack and hammer flagged done,
-        // VA 0x34114); the level ends when everyone has rung.
-        this._leaveLevel();
-      } else {
-        // Solo / offline: nobody else is going to advance the level.
-        this.showResultOverlay('УРОВЕНЬ ПРОЙДЕН', 'Колокольчик твой',
-          { nextLevel: nextLevelId(this._levelId) });
+        sm.emit(EVENTS.BELL_HIT, { playerId: j.data.id });
+        return;
       }
-    }
+      if (this._liveJacks().length > 0) {
+        this._flashBonus(`${this._nameOf(j.data.id)} — ${this._rung.length}-Й`);
+        return;
+      }
+      // Offline, at one keyboard: nobody else is going to advance the level.
+      const order = this._rung.length > 1
+        ? this._rung.map((k, i) => `${i + 1}. ${this._nameOf(k.data.id)}`).join('\n')
+        : 'Колокольчик твой';
+      this.showResultOverlay('УРОВЕНЬ ПРОЙДЕН', order, { nextLevel: nextLevelId(this._levelId) });
+    });
   }
 
-  /** This player has rung: Jack leaves the level and the others go on. */
-  _leaveLevel() {
-    this._rang = true;
-    this._player.setVisible(false);
-    this._player.body.setVelocity(0, 0);
-    this._player.body.enable = false;
-    if (this._player.art) this._player.art.setVisible(false);
-    if (this._player.hammer) this._player.hammer.setVisible(false);
-    if (this._player.vac) this._player.vac.setVisible(false);
-    if (this.remotePlayers.size > 0 && !this._active) this._flashBonus('ЖДЁМ ОСТАЛЬНЫХ');
+  /** A player has rung, or looks on: his Jack leaves the level, the others go on. */
+  _leaveLevel(j) {
+    j.rang = true;
+    const pl = j.player;
+    pl.setVisible(false);
+    pl.body.setVelocity(0, 0);
+    pl.body.enable = false;
+    if (pl.art) pl.art.setVisible(false);
+    if (pl.hammer) pl.hammer.setVisible(false);
+    if (pl.vac) pl.vac.setVisible(false);
+    if (pl.carried) pl.dropCarried();
+    if (this.remotePlayers && this.remotePlayers.size > 0 && !this._active) this._flashBonus('ЖДЁМ ОСТАЛЬНЫХ');
   }
 
   /**
@@ -1248,6 +1368,7 @@ export default class GameScene extends Phaser.Scene {
       hostId: this._hostId,
       active: extra.active || null,
       battle: extra.battle || null,
+      local: this._local,
     });
   }
 

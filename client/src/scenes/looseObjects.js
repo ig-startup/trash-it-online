@@ -125,14 +125,17 @@ export default class LooseObjects {
    * Moves what is carried with its carrier and what is loose through the
    * air, and draws the aim's arc if there is one.
    * @param {number} delta ms
-   * @param {{x: number, y: number}|null} carryPoint
-   * @param {{x: number, y: number, vx: number, vy: number}|null} aim
+   * @param {{handle: object, point: {x: number, y: number}}[]} carries
+   *   what each carrier holds, and where he holds it
+   * @param {{x: number, y: number, vx: number, vy: number}[]} aims
    */
-  update(delta, carryPoint, aim) {
+  update(delta, carries = [], aims = []) {
     for (const h of this._all) {
-      if (!h.sprite.active) { this._all.delete(h); continue; }
-      if (h.carried && carryPoint) h.sprite.setPosition(carryPoint.x, carryPoint.y);
+      if (!h.sprite.active) this._all.delete(h);
     }
+    carries.forEach(({ handle, point }) => {
+      if (handle && handle.carried && point) handle.sprite.setPosition(point.x, point.y);
+    });
 
     this._acc = Math.min(this._acc + delta, 100);
     const tick = 1000 / HZ;
@@ -150,7 +153,8 @@ export default class LooseObjects {
       }
     }
 
-    this._drawArc(aim);
+    this._arc.clear();
+    aims.forEach((aim) => this._drawArc(aim));
   }
 
   /** One tick of the shared sprite step. */
@@ -223,7 +227,6 @@ export default class LooseObjects {
 
   /** The dotted arc 0x15bcb draws once the aim has wound up. */
   _drawArc(aim) {
-    this._arc.clear();
     if (!aim) return;
     this._arc.fillStyle(0xffffff, 0.9);
     let { x, y, vx, vy } = aim;

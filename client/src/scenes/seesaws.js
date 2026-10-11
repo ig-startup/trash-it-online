@@ -127,10 +127,10 @@ export default class Seesaws {
   /**
    * Each frame: weights at rest on a down end become its rider, Jack
    * standing on one rides it, Jack dropping onto a raised end tips it.
-   * @param {any} player
+   * @param {any[]} players
    * @param {{launchJack: Function}} hooks
    */
-  update(player, hooks) {
+  update(players, hooks) {
     const handles = this._loose.handles();
     this.all.forEach((s) => {
       // a rider picked up or gone is no longer riding
@@ -157,22 +157,28 @@ export default class Seesaws {
       }
     });
 
-    if (!player || player.state === 'caught') return;
-    const b = player.body;
-    const feetX = player.x;
-    const feetY = b.bottom;
+    const jacks = players.filter((pl) => pl && pl.body && pl.body.enable && pl.state !== 'caught');
     // Jack riding: standing on the down end of an empty seesaw (0x28b6f)
-    const stand = b.blocked.down ? this._find(feetX, feetY, STAND_DY) : null;
+    const stands = new Map(jacks.map((pl) => [pl,
+      pl.body.blocked.down ? this._find(pl.x, pl.body.bottom, STAND_DY) : null]));
     this.all.forEach((s) => {
-      s.riders = s.riders.map((r) => (r && r.player
-        && !(stand && stand.s === s && stand.end === s.down) ? null : r));
+      s.riders = s.riders.map((r) => {
+        if (!r || !r.player) return r;
+        const stand = stands.get(r.player);
+        return stand && stand.s === s && stand.end === s.down ? r : null;
+      });
     });
-    if (stand && stand.end === stand.s.down && !stand.s.riders[stand.end]) {
-      stand.s.riders[stand.end] = { player };
-    }
+    stands.forEach((stand, pl) => {
+      if (stand && stand.end === stand.s.down && !stand.s.riders[stand.end]) {
+        stand.s.riders[stand.end] = { player: pl };
+      }
+    });
     // dropping through a raised end (0x28af9)
-    const drop = !b.blocked.down && b.velocity.y > 0 ? this._find(feetX, feetY, DROP_DY) : null;
-    if (drop && drop.end !== drop.s.down) this._tip(drop.s, drop.end, b.velocity.y / 60, hooks);
+    jacks.forEach((pl) => {
+      const b = pl.body;
+      const drop = !b.blocked.down && b.velocity.y > 0 ? this._find(pl.x, b.bottom, DROP_DY) : null;
+      if (drop && drop.end !== drop.s.down) this._tip(drop.s, drop.end, b.velocity.y / 60, hooks);
+    });
   }
 
   destroy() {

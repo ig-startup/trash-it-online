@@ -110,7 +110,7 @@ export default class Gits {
    * @param {number} world.width
    * @param {import('./looseObjects').default} world.loose
    * @param {() => void} world.shake
-   * @param {() => any} world.jack  the Jack the gits can touch
+   * @param {() => any[]} world.jacks  the Jacks the gits can touch
    * @param {(x: number, y: number) => void} world.bombBlast
    * @param {(kind: number, count: number, x: number, y: number, left: boolean) => void} world.prize
    */
@@ -245,12 +245,17 @@ export default class Gits {
 
   /**
    * @param {number} delta ms
-   * @param {Phaser.Geom.Rectangle|null} hooverBox
-   * @param {{x: number, y: number}} nozzle
+   * @param {{box: Phaser.Geom.Rectangle, nozzle: {x: number, y: number}, who: any}[]} hoovers
+   *   every hoover that is on, and whose it is
    * @returns {number} timmies taken this frame
    */
-  update(delta, hooverBox, nozzle) {
+  update(delta, hoovers = []) {
     let taken = 0;
+    const nozzleOf = (g) => {
+      const h = hoovers.find((k) => k.who === g.into);
+      if (h) g.nozzle = h.nozzle;
+      return g.nozzle;
+    };
     this._acc = Math.min(this._acc + delta, 100);
     const tick = 1000 / HZ;
     while (this._acc >= tick) {
@@ -258,7 +263,7 @@ export default class Gits {
       for (const g of [...this.all]) {
         if (!g.sprite.active) { this._drop(g); continue; }
         if (g.state === 'hoovered') {
-          if (this._suck(g, nozzle)) { taken += 1; this._drop(g); g.sprite.destroy(); }
+          if (this._suck(g, nozzleOf(g))) { taken += 1; this._drop(g); g.sprite.destroy(); }
           continue;
         }
         if (g.state === 'locked') {
@@ -283,10 +288,13 @@ export default class Gits {
           g.vy = 0;
           g.state = 'walk';
         }
-        if (hooverBox && (g.kind === 'timmy' || g.hooverable)
+        const by = (g.kind === 'timmy' || g.hooverable)
           && g.state !== 'struck' && g.state !== 'dying'
-          && hooverBox.contains(g.x, g.y - 6)) {
+          && hoovers.find((h) => h.box.contains(g.x, g.y - 6));
+        if (by) {
           g.state = 'hoovered';
+          g.into = by.who;
+          g.nozzle = by.nozzle;
           g.t = 0;
           continue;
         }
@@ -481,8 +489,13 @@ export default class Gits {
 
   /** What Jack's box overlapping a git does — by its kind (his event list). */
   _touchJack(g) {
-    const jack = this._w.jack && this._w.jack();
-    if (!jack || !jack.active) return;
+    (this._w.jacks ? this._w.jacks() : []).forEach((jack) => {
+      if (g.sprite.active) this._touchOne(g, jack);
+    });
+  }
+
+  _touchOne(g, jack) {
+    if (!jack || !jack.active || !jack.body || !jack.body.enable) return;
     if (g.state === 'struck' || g.state === 'locked') return;
     if (!Phaser.Geom.Intersects.RectangleToRectangle(jack.getBounds(), g.sprite.getBounds())) return;
     if (g.kind === 'spike') {
@@ -504,7 +517,8 @@ export default class Gits {
 
   /** The needles: falling, turning as they go, gone below the level. */
   _needlesTick() {
-    const jack = this._w.jack && this._w.jack();
+    const jacks = (this._w.jacks ? this._w.jacks() : [])
+      .filter((j) => j && j.active && j.body && j.body.enable);
     for (let i = this.needles.length - 1; i >= 0; i -= 1) {
       const n = this.needles[i];
       n.vy += NEEDLE_GRAVITY;
@@ -515,10 +529,11 @@ export default class Gits {
       if (n.vy > -1 && (n.t & 3) === 0 && n.frame < 42) n.frame += 1;
       n.sprite.setPosition(n.x, n.y);
       applyPropFrame(n.sprite, this._spkFrames[n.frame]);
-      if (jack && jack.active
-        && Phaser.Geom.Intersects.RectangleToRectangle(jack.getBounds(), n.sprite.getBounds())) {
-        jack.hurt({ x: n.x, y: n.y, vx: n.vx, vy: n.vy });   // outcome 12
-      }
+      jacks.forEach((jack) => {
+        if (Phaser.Geom.Intersects.RectangleToRectangle(jack.getBounds(), n.sprite.getBounds())) {
+          jack.hurt({ x: n.x, y: n.y, vx: n.vx, vy: n.vy });   // outcome 12
+        }
+      });
       if (n.y > this._w.groundY) {
         n.sprite.destroy();
         this.needles.splice(i, 1);
