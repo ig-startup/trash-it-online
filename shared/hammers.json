@@ -1,6 +1,7 @@
 [
  {
   "index": 0,
+  "record": 0,
   "name": "the sledge hammer v1",
   "sprite": "SLA",
   "lo": 8,
@@ -30,64 +31,7 @@
  },
  {
   "index": 1,
-  "name": "the sledge hammer v2",
-  "sprite": "SLB",
-  "lo": 150,
-  "hi": 300,
-  "mask": 4095,
-  "overLo": 1,
-  "overHi": 8,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 51,
-   "dy": -8,
-   "w": 4,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 38,
-   "dy": -13,
-   "w": 35,
-   "h": 18
-  },
-  "atlas": {
-   "image": "sprites/hammers/SLB.png",
-   "data": "sprites/hammers/SLB.json"
-  }
- },
- {
-  "index": 2,
-  "name": "the sledge hammer v3",
-  "sprite": "SLC",
-  "lo": 300,
-  "hi": 900,
-  "mask": 8191,
-  "overLo": 1,
-  "overHi": 12,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 58,
-   "dy": -8,
-   "w": 8,
-   "h": 8
-  },
-  "overBox": {
-   "dx": 40,
-   "dy": -13,
-   "w": 39,
-   "h": 19
-  },
-  "atlas": {
-   "image": "sprites/hammers/SLC.png",
-   "data": "sprites/hammers/SLC.json"
-  }
- },
- {
-  "index": 3,
+  "record": 3,
   "name": "the ball ended hammer v1",
   "sprite": "BEA",
   "lo": 250,
@@ -116,65 +60,8 @@
   }
  },
  {
-  "index": 4,
-  "name": "the ball ended hammer v2",
-  "sprite": "BEB",
-  "lo": 250,
-  "hi": 600,
-  "mask": 8191,
-  "overLo": 1,
-  "overHi": 12,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 54,
-   "dy": -11,
-   "w": 4,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 44,
-   "dy": -13,
-   "w": 26,
-   "h": 17
-  },
-  "atlas": {
-   "image": "sprites/hammers/BEB.png",
-   "data": "sprites/hammers/BEB.json"
-  }
- },
- {
-  "index": 5,
-  "name": "the ball ended hammer v3",
-  "sprite": "BEC",
-  "lo": 300,
-  "hi": 750,
-  "mask": 8191,
-  "overLo": 1,
-  "overHi": 12,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 54,
-   "dy": -8,
-   "w": 8,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 42,
-   "dy": -13,
-   "w": 35,
-   "h": 20
-  },
-  "atlas": {
-   "image": "sprites/hammers/BEC.png",
-   "data": "sprites/hammers/BEC.json"
-  }
- },
- {
-  "index": 6,
+  "index": 2,
+  "record": 6,
   "name": "the warhammer v1",
   "sprite": "WAA",
   "lo": 100,
@@ -203,65 +90,8 @@
   }
  },
  {
-  "index": 7,
-  "name": "the warhammer v2",
-  "sprite": "WAB",
-  "lo": 220,
-  "hi": 350,
-  "mask": 1023,
-  "overLo": 1,
-  "overHi": 8,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 50,
-   "dy": -10,
-   "w": 4,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 40,
-   "dy": -13,
-   "w": 33,
-   "h": 18
-  },
-  "atlas": {
-   "image": "sprites/hammers/WAB.png",
-   "data": "sprites/hammers/WAB.json"
-  }
- },
- {
-  "index": 8,
-  "name": "the warhammer v3",
-  "sprite": "WAC",
-  "lo": 200,
-  "hi": 500,
-  "mask": 1023,
-  "overLo": 1,
-  "overHi": 12,
-  "type": 0,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 54,
-   "dy": -10,
-   "w": 8,
-   "h": 8
-  },
-  "overBox": {
-   "dx": 42,
-   "dy": -13,
-   "w": 43,
-   "h": 23
-  },
-  "atlas": {
-   "image": "sprites/hammers/WAC.png",
-   "data": "sprites/hammers/WAC.json"
-  }
- },
- {
-  "index": 9,
+  "index": 3,
+  "record": 9,
   "name": "the piledriver hammer v1",
   "sprite": "PDA",
   "lo": 110,
@@ -290,65 +120,8 @@
   }
  },
  {
-  "index": 10,
-  "name": "the piledriver hammer v2",
-  "sprite": "PDB",
-  "lo": 100,
-  "hi": 750,
-  "mask": 32767,
-  "overLo": 1,
-  "overHi": 8,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 53,
-   "dy": -8,
-   "w": 8,
-   "h": 8
-  },
-  "overBox": {
-   "dx": 39,
-   "dy": -13,
-   "w": 31,
-   "h": 20
-  },
-  "atlas": {
-   "image": "sprites/hammers/PDB.png",
-   "data": "sprites/hammers/PDB.json"
-  }
- },
- {
-  "index": 11,
-  "name": "the piledriver hammer v3",
-  "sprite": "PDC",
-  "lo": 300,
-  "hi": 800,
-  "mask": 32767,
-  "overLo": 1,
-  "overHi": 8,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 53,
-   "dy": -11,
-   "w": 8,
-   "h": 8
-  },
-  "overBox": {
-   "dx": 42,
-   "dy": -13,
-   "w": 37,
-   "h": 22
-  },
-  "atlas": {
-   "image": "sprites/hammers/PDC.png",
-   "data": "sprites/hammers/PDC.json"
-  }
- },
- {
-  "index": 12,
+  "index": 4,
+  "record": 12,
   "name": "the spikeball v1",
   "sprite": "SBA",
   "lo": 300,
@@ -380,71 +153,8 @@
   }
  },
  {
-  "index": 13,
-  "name": "the spikeball v2",
-  "sprite": "SBB",
-  "lo": 350,
-  "hi": 1500,
-  "mask": 262143,
-  "overLo": 1,
-  "overHi": 12,
-  "type": 4,
-  "halves": true,
-  "strikes": [
-   2,
-   3
-  ],
-  "reach": {
-   "dx": 58,
-   "dy": -10,
-   "w": 4,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 38,
-   "dy": -13,
-   "w": 35,
-   "h": 19
-  },
-  "atlas": {
-   "image": "sprites/hammers/SBB.png",
-   "data": "sprites/hammers/SBB.json"
-  }
- },
- {
-  "index": 14,
-  "name": "the spikeball v3",
-  "sprite": "SBC",
-  "lo": 400,
-  "hi": 2000,
-  "mask": 524287,
-  "overLo": 1,
-  "overHi": 12,
-  "type": 4,
-  "halves": true,
-  "strikes": [
-   2,
-   3
-  ],
-  "reach": {
-   "dx": 62,
-   "dy": -8,
-   "w": 4,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 37,
-   "dy": -13,
-   "w": 43,
-   "h": 25
-  },
-  "atlas": {
-   "image": "sprites/hammers/SBC.png",
-   "data": "sprites/hammers/SBC.json"
-  }
- },
- {
-  "index": 15,
+  "index": 5,
+  "record": 15,
   "name": "the bio hammer v1!",
   "sprite": "BIA",
   "lo": 5000,
@@ -476,7 +186,281 @@
   }
  },
  {
-  "index": 16,
+  "index": 6,
+  "record": 18,
+  "name": "the volcanic hammer v1",
+  "sprite": "VOA",
+  "lo": 15000,
+  "hi": 22000,
+  "mask": 32767,
+  "overLo": 1,
+  "overHi": 15,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 52,
+   "dy": -12,
+   "w": 4,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 39,
+   "dy": -13,
+   "w": 27,
+   "h": 14
+  },
+  "atlas": {
+   "image": "sprites/hammers/VOA.png",
+   "data": "sprites/hammers/VOA.json"
+  }
+ },
+ {
+  "index": 7,
+  "record": 21,
+  "name": "the splitter hammer v1",
+  "sprite": "SPA",
+  "lo": 100,
+  "hi": 100000,
+  "mask": 131071,
+  "overLo": 1,
+  "overHi": 15,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 54,
+   "dy": -8,
+   "w": 1,
+   "h": 1
+  },
+  "overBox": {
+   "dx": 40,
+   "dy": -13,
+   "w": 27,
+   "h": 14
+  },
+  "atlas": {
+   "image": "sprites/hammers/SPA.png",
+   "data": "sprites/hammers/SPA.json"
+  }
+ },
+ {
+  "index": 8,
+  "record": 24,
+  "name": "the future hammer v1",
+  "sprite": "FUA",
+  "lo": 50,
+  "hi": 500000,
+  "mask": 32767,
+  "overLo": 1,
+  "overHi": 19,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 50,
+   "dy": -8,
+   "w": 1,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 37,
+   "dy": -13,
+   "w": 27,
+   "h": 14
+  },
+  "atlas": {
+   "image": "sprites/hammers/FUA.png",
+   "data": "sprites/hammers/FUA.json"
+  }
+ },
+ {
+  "index": 9,
+  "record": 27,
+  "name": "the apocalypse hammer v1",
+  "sprite": "APA",
+  "lo": 1000,
+  "hi": 1000000,
+  "mask": 32767,
+  "overLo": 8,
+  "overHi": 19,
+  "type": 0,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 54,
+   "dy": -8,
+   "w": 1,
+   "h": 1
+  },
+  "overBox": {
+   "dx": 42,
+   "dy": -13,
+   "w": 27,
+   "h": 14
+  },
+  "atlas": {
+   "image": "sprites/hammers/APA.png",
+   "data": "sprites/hammers/APA.json"
+  }
+ },
+ {
+  "index": 10,
+  "record": 1,
+  "name": "the sledge hammer v2",
+  "sprite": "SLB",
+  "lo": 150,
+  "hi": 300,
+  "mask": 4095,
+  "overLo": 1,
+  "overHi": 8,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 51,
+   "dy": -8,
+   "w": 4,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 38,
+   "dy": -13,
+   "w": 35,
+   "h": 18
+  },
+  "atlas": {
+   "image": "sprites/hammers/SLB.png",
+   "data": "sprites/hammers/SLB.json"
+  }
+ },
+ {
+  "index": 11,
+  "record": 4,
+  "name": "the ball ended hammer v2",
+  "sprite": "BEB",
+  "lo": 250,
+  "hi": 600,
+  "mask": 8191,
+  "overLo": 1,
+  "overHi": 12,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 54,
+   "dy": -11,
+   "w": 4,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 44,
+   "dy": -13,
+   "w": 26,
+   "h": 17
+  },
+  "atlas": {
+   "image": "sprites/hammers/BEB.png",
+   "data": "sprites/hammers/BEB.json"
+  }
+ },
+ {
+  "index": 12,
+  "record": 7,
+  "name": "the warhammer v2",
+  "sprite": "WAB",
+  "lo": 220,
+  "hi": 350,
+  "mask": 1023,
+  "overLo": 1,
+  "overHi": 8,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 50,
+   "dy": -10,
+   "w": 4,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 40,
+   "dy": -13,
+   "w": 33,
+   "h": 18
+  },
+  "atlas": {
+   "image": "sprites/hammers/WAB.png",
+   "data": "sprites/hammers/WAB.json"
+  }
+ },
+ {
+  "index": 13,
+  "record": 10,
+  "name": "the piledriver hammer v2",
+  "sprite": "PDB",
+  "lo": 100,
+  "hi": 750,
+  "mask": 32767,
+  "overLo": 1,
+  "overHi": 8,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 53,
+   "dy": -8,
+   "w": 8,
+   "h": 8
+  },
+  "overBox": {
+   "dx": 39,
+   "dy": -13,
+   "w": 31,
+   "h": 20
+  },
+  "atlas": {
+   "image": "sprites/hammers/PDB.png",
+   "data": "sprites/hammers/PDB.json"
+  }
+ },
+ {
+  "index": 14,
+  "record": 13,
+  "name": "the spikeball v2",
+  "sprite": "SBB",
+  "lo": 350,
+  "hi": 1500,
+  "mask": 262143,
+  "overLo": 1,
+  "overHi": 12,
+  "type": 4,
+  "halves": true,
+  "strikes": [
+   2,
+   3
+  ],
+  "reach": {
+   "dx": 58,
+   "dy": -10,
+   "w": 4,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 38,
+   "dy": -13,
+   "w": 35,
+   "h": 19
+  },
+  "atlas": {
+   "image": "sprites/hammers/SBB.png",
+   "data": "sprites/hammers/SBB.json"
+  }
+ },
+ {
+  "index": 15,
+  "record": 16,
   "name": "the bio hammer v2!",
   "sprite": "BIB",
   "lo": 10000,
@@ -508,7 +492,281 @@
   }
  },
  {
+  "index": 16,
+  "record": 19,
+  "name": "the volcanic hammer v2",
+  "sprite": "VOB",
+  "lo": 18500,
+  "hi": 25000,
+  "mask": 32767,
+  "overLo": 1,
+  "overHi": 15,
+  "type": 0,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 54,
+   "dy": -12,
+   "w": 4,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 39,
+   "dy": -13,
+   "w": 33,
+   "h": 17
+  },
+  "atlas": {
+   "image": "sprites/hammers/VOB.png",
+   "data": "sprites/hammers/VOB.json"
+  }
+ },
+ {
   "index": 17,
+  "record": 22,
+  "name": "the splitter hammer v2",
+  "sprite": "SPB",
+  "lo": 100,
+  "hi": 150000,
+  "mask": 131071,
+  "overLo": 1,
+  "overHi": 15,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 54,
+   "dy": -8,
+   "w": 1,
+   "h": 1
+  },
+  "overBox": {
+   "dx": 44,
+   "dy": -13,
+   "w": 23,
+   "h": 20
+  },
+  "atlas": {
+   "image": "sprites/hammers/SPB.png",
+   "data": "sprites/hammers/SPB.json"
+  }
+ },
+ {
+  "index": 18,
+  "record": 25,
+  "name": "the future hammer v2",
+  "sprite": "FUB",
+  "lo": 70,
+  "hi": 700000,
+  "mask": 32767,
+  "overLo": 1,
+  "overHi": 19,
+  "type": 0,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 54,
+   "dy": -8,
+   "w": 4,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 46,
+   "dy": -13,
+   "w": 29,
+   "h": 19
+  },
+  "atlas": {
+   "image": "sprites/hammers/FUB.png",
+   "data": "sprites/hammers/FUB.json"
+  }
+ },
+ {
+  "index": 19,
+  "record": 28,
+  "name": "the apocalypse hammer v2",
+  "sprite": "APB",
+  "lo": 4000,
+  "hi": 4000000,
+  "mask": 32767,
+  "overLo": 12,
+  "overHi": 19,
+  "type": 0,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 54,
+   "dy": -8,
+   "w": 4,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 46,
+   "dy": -13,
+   "w": 32,
+   "h": 21
+  },
+  "atlas": {
+   "image": "sprites/hammers/APB.png",
+   "data": "sprites/hammers/APB.json"
+  }
+ },
+ {
+  "index": 20,
+  "record": 2,
+  "name": "the sledge hammer v3",
+  "sprite": "SLC",
+  "lo": 300,
+  "hi": 900,
+  "mask": 8191,
+  "overLo": 1,
+  "overHi": 12,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 58,
+   "dy": -8,
+   "w": 8,
+   "h": 8
+  },
+  "overBox": {
+   "dx": 40,
+   "dy": -13,
+   "w": 39,
+   "h": 19
+  },
+  "atlas": {
+   "image": "sprites/hammers/SLC.png",
+   "data": "sprites/hammers/SLC.json"
+  }
+ },
+ {
+  "index": 21,
+  "record": 5,
+  "name": "the ball ended hammer v3",
+  "sprite": "BEC",
+  "lo": 300,
+  "hi": 750,
+  "mask": 8191,
+  "overLo": 1,
+  "overHi": 12,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 54,
+   "dy": -8,
+   "w": 8,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 42,
+   "dy": -13,
+   "w": 35,
+   "h": 20
+  },
+  "atlas": {
+   "image": "sprites/hammers/BEC.png",
+   "data": "sprites/hammers/BEC.json"
+  }
+ },
+ {
+  "index": 22,
+  "record": 8,
+  "name": "the warhammer v3",
+  "sprite": "WAC",
+  "lo": 200,
+  "hi": 500,
+  "mask": 1023,
+  "overLo": 1,
+  "overHi": 12,
+  "type": 0,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 54,
+   "dy": -10,
+   "w": 8,
+   "h": 8
+  },
+  "overBox": {
+   "dx": 42,
+   "dy": -13,
+   "w": 43,
+   "h": 23
+  },
+  "atlas": {
+   "image": "sprites/hammers/WAC.png",
+   "data": "sprites/hammers/WAC.json"
+  }
+ },
+ {
+  "index": 23,
+  "record": 11,
+  "name": "the piledriver hammer v3",
+  "sprite": "PDC",
+  "lo": 300,
+  "hi": 800,
+  "mask": 32767,
+  "overLo": 1,
+  "overHi": 8,
+  "type": 1,
+  "halves": true,
+  "strikes": 3,
+  "reach": {
+   "dx": 53,
+   "dy": -11,
+   "w": 8,
+   "h": 8
+  },
+  "overBox": {
+   "dx": 42,
+   "dy": -13,
+   "w": 37,
+   "h": 22
+  },
+  "atlas": {
+   "image": "sprites/hammers/PDC.png",
+   "data": "sprites/hammers/PDC.json"
+  }
+ },
+ {
+  "index": 24,
+  "record": 14,
+  "name": "the spikeball v3",
+  "sprite": "SBC",
+  "lo": 400,
+  "hi": 2000,
+  "mask": 524287,
+  "overLo": 1,
+  "overHi": 12,
+  "type": 4,
+  "halves": true,
+  "strikes": [
+   2,
+   3
+  ],
+  "reach": {
+   "dx": 62,
+   "dy": -8,
+   "w": 4,
+   "h": 4
+  },
+  "overBox": {
+   "dx": 37,
+   "dy": -13,
+   "w": 43,
+   "h": 25
+  },
+  "atlas": {
+   "image": "sprites/hammers/SBC.png",
+   "data": "sprites/hammers/SBC.json"
+  }
+ },
+ {
+  "index": 25,
+  "record": 17,
   "name": "the bio hammer v3!",
   "sprite": "BIC",
   "lo": 20000,
@@ -540,65 +798,8 @@
   }
  },
  {
-  "index": 18,
-  "name": "the volcanic hammer v1",
-  "sprite": "VOA",
-  "lo": 15000,
-  "hi": 22000,
-  "mask": 32767,
-  "overLo": 1,
-  "overHi": 15,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 52,
-   "dy": -12,
-   "w": 4,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 39,
-   "dy": -13,
-   "w": 27,
-   "h": 14
-  },
-  "atlas": {
-   "image": "sprites/hammers/VOA.png",
-   "data": "sprites/hammers/VOA.json"
-  }
- },
- {
-  "index": 19,
-  "name": "the volcanic hammer v2",
-  "sprite": "VOB",
-  "lo": 18500,
-  "hi": 25000,
-  "mask": 32767,
-  "overLo": 1,
-  "overHi": 15,
-  "type": 0,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 54,
-   "dy": -12,
-   "w": 4,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 39,
-   "dy": -13,
-   "w": 33,
-   "h": 17
-  },
-  "atlas": {
-   "image": "sprites/hammers/VOB.png",
-   "data": "sprites/hammers/VOB.json"
-  }
- },
- {
-  "index": 20,
+  "index": 26,
+  "record": 20,
   "name": "the volcanic hammer v3",
   "sprite": "VOC",
   "lo": 22000,
@@ -627,65 +828,8 @@
   }
  },
  {
-  "index": 21,
-  "name": "the splitter hammer v1",
-  "sprite": "SPA",
-  "lo": 100,
-  "hi": 100000,
-  "mask": 131071,
-  "overLo": 1,
-  "overHi": 15,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 54,
-   "dy": -8,
-   "w": 1,
-   "h": 1
-  },
-  "overBox": {
-   "dx": 40,
-   "dy": -13,
-   "w": 27,
-   "h": 14
-  },
-  "atlas": {
-   "image": "sprites/hammers/SPA.png",
-   "data": "sprites/hammers/SPA.json"
-  }
- },
- {
-  "index": 22,
-  "name": "the splitter hammer v2",
-  "sprite": "SPB",
-  "lo": 100,
-  "hi": 150000,
-  "mask": 131071,
-  "overLo": 1,
-  "overHi": 15,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 54,
-   "dy": -8,
-   "w": 1,
-   "h": 1
-  },
-  "overBox": {
-   "dx": 44,
-   "dy": -13,
-   "w": 23,
-   "h": 20
-  },
-  "atlas": {
-   "image": "sprites/hammers/SPB.png",
-   "data": "sprites/hammers/SPB.json"
-  }
- },
- {
-  "index": 23,
+  "index": 27,
+  "record": 23,
   "name": "the splitter hammer v3",
   "sprite": "SPC",
   "lo": 100,
@@ -714,65 +858,8 @@
   }
  },
  {
-  "index": 24,
-  "name": "the future hammer v1",
-  "sprite": "FUA",
-  "lo": 50,
-  "hi": 500000,
-  "mask": 32767,
-  "overLo": 1,
-  "overHi": 19,
-  "type": 1,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 50,
-   "dy": -8,
-   "w": 1,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 37,
-   "dy": -13,
-   "w": 27,
-   "h": 14
-  },
-  "atlas": {
-   "image": "sprites/hammers/FUA.png",
-   "data": "sprites/hammers/FUA.json"
-  }
- },
- {
-  "index": 25,
-  "name": "the future hammer v2",
-  "sprite": "FUB",
-  "lo": 70,
-  "hi": 700000,
-  "mask": 32767,
-  "overLo": 1,
-  "overHi": 19,
-  "type": 0,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 54,
-   "dy": -8,
-   "w": 4,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 46,
-   "dy": -13,
-   "w": 29,
-   "h": 19
-  },
-  "atlas": {
-   "image": "sprites/hammers/FUB.png",
-   "data": "sprites/hammers/FUB.json"
-  }
- },
- {
-  "index": 26,
+  "index": 28,
+  "record": 26,
   "name": "the future hammer v3",
   "sprite": "FUC",
   "lo": 200,
@@ -801,65 +888,8 @@
   }
  },
  {
-  "index": 27,
-  "name": "the apocalypse hammer v1",
-  "sprite": "APA",
-  "lo": 1000,
-  "hi": 1000000,
-  "mask": 32767,
-  "overLo": 8,
-  "overHi": 19,
-  "type": 0,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 54,
-   "dy": -8,
-   "w": 1,
-   "h": 1
-  },
-  "overBox": {
-   "dx": 42,
-   "dy": -13,
-   "w": 27,
-   "h": 14
-  },
-  "atlas": {
-   "image": "sprites/hammers/APA.png",
-   "data": "sprites/hammers/APA.json"
-  }
- },
- {
-  "index": 28,
-  "name": "the apocalypse hammer v2",
-  "sprite": "APB",
-  "lo": 4000,
-  "hi": 4000000,
-  "mask": 32767,
-  "overLo": 12,
-  "overHi": 19,
-  "type": 0,
-  "halves": true,
-  "strikes": 3,
-  "reach": {
-   "dx": 54,
-   "dy": -8,
-   "w": 4,
-   "h": 4
-  },
-  "overBox": {
-   "dx": 46,
-   "dy": -13,
-   "w": 32,
-   "h": 21
-  },
-  "atlas": {
-   "image": "sprites/hammers/APB.png",
-   "data": "sprites/hammers/APB.json"
-  }
- },
- {
   "index": 29,
+  "record": 29,
   "name": "the apocalypse hammer v3",
   "sprite": "APC",
   "lo": 10000,
@@ -889,6 +919,7 @@
  },
  {
   "index": 30,
+  "record": 30,
   "name": "the bfh ommer",
   "sprite": "BFH",
   "lo": 100,
@@ -918,6 +949,7 @@
  },
  {
   "index": 31,
+  "record": 31,
   "name": "the quality hammer",
   "sprite": "QUA",
   "lo": 100,
@@ -947,6 +979,7 @@
  },
  {
   "index": 32,
+  "record": 32,
   "name": "the galactic ommer",
   "sprite": "GAL",
   "lo": 100,
@@ -976,6 +1009,7 @@
  },
  {
   "index": 33,
+  "record": 33,
   "name": "the mystical dragon ommer",
   "sprite": "DRA",
   "lo": 100,
@@ -1005,6 +1039,7 @@
  },
  {
   "index": 34,
+  "record": 34,
   "name": "THE ULTIMATE MOOLA, OH YES",
   "sprite": "MOO",
   "lo": 100,
@@ -1034,6 +1069,7 @@
  },
  {
   "index": 35,
+  "record": 35,
   "name": "the spoon!!",
   "sprite": "SPO",
   "lo": 100,
@@ -1063,6 +1099,7 @@
  },
  {
   "index": 36,
+  "record": 36,
   "name": "the guitar!!",
   "sprite": "GIT",
   "lo": 100,

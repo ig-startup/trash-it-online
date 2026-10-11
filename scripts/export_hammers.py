@@ -4,13 +4,18 @@ Export the original's 37 hammers — what each blow carries, and its look.
     python3 scripts/export_hammers.py
 
 Writes:
-  shared/hammers.json                          one record a hammer, in the
-                                               catalogue's order (G.EXE VA
-                                               0xa1e04 — the index the
-                                               battle sets name)
+  shared/hammers.json                          one record a hammer, by its
+                                               number — the index the shop,
+                                               /JACKS and the battle sets use
   client/public/sprites/hammers/<STEM>.png     its 61 frames in one strip
   client/public/sprites/hammers/<STEM>.json    a Phaser atlas of them, each
                                                frame carrying its anchor
+
+A hammer's number is its place in the pointer table at VA 0xa2d0c, which
+initialise_a_player's_hammer (VA 0x216c0) goes through: the ten v1s, the
+ten v2s, the ten v3s, then the seven odd ones (36 the guitar). The records
+themselves (VA 0xa1e04) run v1 v2 v3 of each kind, so the two orders agree
+only at 0 and from 30 on.
 
 A hammer's sprite file is its data file's stem: `sla.dat`, the sledge v1,
 draws from `SLA.SPR`. Every sheet has the same 61 frames in the same order,
@@ -50,6 +55,8 @@ PREFIX = "sprites/hammers"
 # VA 0x1fcd3: per type, whether the force is halved and how many blocks one
 # blow may strike. Type 4 picks 2 or 3 at random; type 0 is 3 and halved
 # unless the caller passes flag bits the clone has not traced.
+POINTERS_VA = 0xa2d0c
+
 TYPES = {
     0: {"halves": True, "strikes": 3},
     1: {"halves": True, "strikes": 3},
@@ -104,13 +111,16 @@ def main():
         pal.decode(os.path.join(ORIG, "SPR", "JACKS.PAL")))
     os.makedirs(OUT_PNG, exist_ok=True)
 
+    records = {h["va"]: h for h in hammers.read(exe)}
     out = []
-    for i, h in enumerate(hammers.read(exe)):
+    for i in range(len(records)):
+        h = records[code.u32(POINTERS_VA + 4 * i)]
         rec = code.read(h["va"], hammers.RECORD_SIZE)
         stem = h["file"].split(".")[0].upper()
         kind = _s16(rec, 0x48)
         record = {
             "index": i,
+            "record": (h["va"] - hammers.TABLE_VA) // hammers.RECORD_SIZE,
             "name": h["name"],
             "sprite": stem,
             "lo": _u32(rec, 0x3c),
