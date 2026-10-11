@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import SocketManager from '../network/SocketManager.js';
 import { PLAYER_COLORS } from '../../../shared/constants.mjs';
+import BATTLES from '../../../shared/battles.json';
+import LocalBattle from '../battle/LocalBattle';
 
 const EVENTS = {
   CREATE_ROOM: 'create_room',
@@ -21,6 +23,7 @@ export default class MenuScene extends Phaser.Scene {
 
     this._selectedMode = 'coop';
     this._localCount = 2;
+    this._battleSet = 0;
     this._playerName = 'Player';
     this._roomCode = '';
 
@@ -78,8 +81,20 @@ export default class MenuScene extends Phaser.Scene {
     this._countButtons = [1, 2, 3, 4].map((n, i) => this._makeButton(lx - 90 + i * 60, 330, String(n),
       () => this._setCount(n)));
     this._updateCountButtons();
-    this._makeButton(lx, 400, 'ИГРАТЬ', () => this._playLocal());
-    this._makeButton(lx, 460, 'КЛАВИШИ', () => {
+    // A battle plays one of the original's five sets (F.EXE): click to pick.
+    const setLabel = () => `Битва: набор ${this._battleSet + 1} из ${BATTLES.sets.length}, `
+      + `${BATTLES.sets[this._battleSet].length} ур.`;
+    this._setText = this.add.text(lx, 372, setLabel(), {
+      fontSize: '14px',
+      color: '#aaaaaa',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this._setText.on('pointerdown', () => {
+      this._battleSet = (this._battleSet + 1) % BATTLES.sets.length;
+      this._setText.setText(setLabel());
+    });
+    this._updateSetLabel();
+    this._makeButton(lx, 415, 'ИГРАТЬ', () => this._playLocal());
+    this._makeButton(lx, 470, 'КЛАВИШИ', () => {
       this._cleanup();
       this.scene.start('KeysScene');
     });
@@ -213,6 +228,12 @@ export default class MenuScene extends Phaser.Scene {
   _setMode(mode) {
     this._selectedMode = mode;
     this._updateModeButtons();
+    this._updateSetLabel();
+  }
+
+  /** The battle set picker only means something in a battle. */
+  _updateSetLabel() {
+    if (this._setText) this._setText.setVisible(this._selectedMode === 'battle');
   }
 
   _updateModeButtons() {
@@ -249,6 +270,21 @@ export default class MenuScene extends Phaser.Scene {
     const players = PLAYER_COLORS.slice(0, this._localCount).map((color, i) => ({
       id: `p${i + 1}`, name: `ИГРОК ${i + 1}`, color, pad: i,
     }));
+    if (this._selectedMode === 'battle') {
+      // the original's battle is for two to four
+      if (players.length < 2) {
+        this._errorText.setText('Битва — от двух игроков');
+        return;
+      }
+      const localBattle = new LocalBattle(this._battleSet, players.map((p) => p.id));
+      const first = localBattle.current();
+      this._cleanup();
+      this.scene.start('GameScene', {
+        players, mode: 'battle', myPlayerId: players[0].id, local: true,
+        localBattle, levelId: first.level, battle: first.battle,
+      });
+      return;
+    }
     this._cleanup();
     this.scene.start('GameScene', {
       players, mode: this._selectedMode, myPlayerId: players[0].id, local: true,

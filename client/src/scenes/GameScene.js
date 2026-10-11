@@ -28,6 +28,7 @@ import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
 import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
+import { LAST_ONE_SECONDS } from '../battle/LocalBattle';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
@@ -93,6 +94,13 @@ export default class GameScene extends Phaser.Scene {
      * way of playing together. Otherwise only `myPlayerId` is played here.
      */
     this._local = !!data.local;
+    /** A battle at this keyboard keeps its own score (battle/LocalBattle.js). */
+    this._localBattle = data.localBattle || null;
+    if (this._localBattle && !this._battle) {
+      const now = this._localBattle.current();
+      this._battle = now.battle;
+      this._active = now.active;
+    }
     /** Local players in the order they rang the bell. */
     this._rung = [];
   }
@@ -841,9 +849,57 @@ export default class GameScene extends Phaser.Scene {
 
   /** Out of time at one keyboard: the level is lost (state 3) — play it again. */
   _timeUp() {
+    if (this._localBattle) {
+      // those who rang are placed, the rest score nothing, the set goes on
+      this._endLocalBattleLevel(true);
+      return;
+    }
     this._over = true;
     this._jacks.forEach((j) => { if (!j.rang) this._leaveLevel(j); });
     this.showResultOverlay('ВРЕМЯ ВЫШЛО', 'Попробуйте ещё раз', { nextLevel: this._levelId });
+  }
+
+  /** A battle level over at one keyboard: the places score, then on. */
+  _endLocalBattleLevel(timeout) {
+    this._over = true;
+    this._jacks.forEach((j) => { if (!j.rang) this._leaveLevel(j); });
+    const result = this._localBattle.endLevel(this._rung.map((j) => j.data.id), timeout);
+    const { title, text } = this._battleLevelText(result);
+    this.showResultOverlay(title, text, { then: () => this._nextLocalBattleStep() });
+  }
+
+  _nextLocalBattleStep() {
+    const step = this._localBattle.next();
+    if (step.over) {
+      const { title, text } = this._battleOverText(step);
+      this.showResultOverlay(title, text);
+      return;
+    }
+    this._startLevel(step.level, { battle: step.battle, active: step.active });
+  }
+
+  /** The panel after a battle level: who rang in what order, what it scored. */
+  _battleLevelText({
+    places = [], award = {}, points = {}, battle, timeout,
+  }) {
+    const text = Object.keys(points)
+      .sort((a, b) => points[b] - points[a])
+      .map((id) => {
+        const place = places.indexOf(id);
+        const at = place >= 0 ? `${place + 1}-й` : 'не дозвонился';
+        return `${this._nameOf(id)}: ${at}, +${award[id] || 0} = ${points[id]}`;
+      }).join('\n');
+    const head = battle.tieBreak ? 'ТАЙ-БРЕЙК' : `УРОВЕНЬ ${battle.level} ИЗ ${battle.of}`;
+    return { title: timeout ? `${head}: ВРЕМЯ ВЫШЛО` : head, text };
+  }
+
+  /** The set is played (F.EXE VA 0x13e80): the points and the winner. */
+  _battleOverText({ winners = [], points = {} }) {
+    const text = Object.entries(points).sort((a, b) => b[1] - a[1])
+      .map(([id, pts]) => `${this._nameOf(id)} — ${pts}`).join('\n');
+    const title = !this._local && winners.includes(this._myPlayerId)
+      ? 'ВЫ ПОБЕДИЛИ!' : `ПОБЕДИЛ ${this._nameOf(winners[0])}`;
+    return { title, text };
   }
 
   /** Whether this game goes through the server: not when played at one keyboard. */
@@ -1362,9 +1418,18 @@ export default class GameScene extends Phaser.Scene {
       }
       if (this._liveJacks().length > 0) {
         this._flashBonus(`${this._nameOf(j.data.id)} — ${this._rung.length}-Й`);
+        // In a battle the last one left to ring has a minute at most.
+        if (this._localBattle && this._liveJacks().length === 1 && this._timeLeft > LAST_ONE_SECONDS) {
+          this._timeLeft = LAST_ONE_SECONDS;
+          this._showClock(this._timeLeft);
+        }
         return;
       }
       // Offline, at one keyboard: nobody else is going to advance the level.
+      if (this._localBattle) {
+        this._endLocalBattleLevel(false);
+        return;
+      }
       this._over = true;
       const order = this._rung.length > 1
         ? this._rung.map((k, i) => `${i + 1}. ${this._nameOf(k.data.id)}`).join('\n')
@@ -1422,6 +1487,7 @@ export default class GameScene extends Phaser.Scene {
       active: extra.active || null,
       battle: extra.battle || null,
       local: this._local,
+      localBattle: this._localBattle,
     });
   }
 
@@ -1451,48 +1517,59 @@ export default class GameScene extends Phaser.Scene {
     const cx = width / 2;
     const cy = height / 2;
 
+    // One overlay at a time: a new one (the battle's result after its last
+    // level's) takes the place of the last, countdown and all.
+    (this._overlay || []).forEach((o) => o.destroy());
+    if (this._overlayTimer) this._overlayTimer.remove();
+    this._overlayTimer = null;
+    this._overlay = [];
+    const keep = (o) => { this._overlay.push(o); return o; };
+
     // Semi-transparent black background
-    this._hud(this.add.rectangle(cx, cy, width, height, 0x000000, 0.75)
-      .setDepth(100));
+    keep(this._hud(this.add.rectangle(cx, cy, width, height, 0x000000, 0.75)
+      .setDepth(100)));
 
     // Title text
-    this._hud(this.add.text(cx, cy - 60, title, {
+    keep(this._hud(this.add.text(cx, cy - 60, title, {
       fontSize: '48px',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setOrigin(0.5).setDepth(101));
+    }).setOrigin(0.5).setDepth(101)));
 
     // Subtitle text
     const lines = String(subtitle).split('\n').length;
-    this._hud(this.add.text(cx, cy + (lines > 1 ? 10 * lines : 0), subtitle, {
+    keep(this._hud(this.add.text(cx, cy + (lines > 1 ? 10 * lines : 0), subtitle, {
       fontSize: lines > 1 ? '18px' : '24px',
       align: 'center',
       lineSpacing: 6,
       color: '#cccccc',
       stroke: '#000000',
       strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(101));
+    }).setOrigin(0.5).setDepth(101)));
 
     // Countdown text. Online the server moves the room on by itself (its
     // game_started restarts this scene), so the overlay only waits for it;
     // leaving for the menu here dropped the player out of the room.
-    const { nextLevel, waitServer, toLobby } = options;
+    const {
+      nextLevel, waitServer, toLobby, then,
+    } = options;
     if (waitServer) {
-      this._hud(this.add.text(cx, height - 40, 'Следующий уровень…', {
+      keep(this._hud(this.add.text(cx, height - 40, 'Следующий уровень…', {
         fontSize: '18px',
         color: '#aaaaaa',
-      }).setOrigin(0.5).setDepth(101));
+      }).setOrigin(0.5).setDepth(101)));
       return;
     }
-    const label = (n) => (nextLevel
+    const label = (n) => (then ? `Дальше через ${n}...` : nextLevel
       ? `Следующий уровень через ${n}...`
       : `Возврат ${toLobby ? 'в лобби' : 'в меню'} через ${n}...`);
     let countdown = 3;
-    const countdownText = this._hud(this.add.text(cx, cy + 60, label(countdown), {
+    // below the subtitle, however many lines it runs to
+    const countdownText = keep(this._hud(this.add.text(cx, Math.max(cy + 60, cy + 22 * lines + 30), label(countdown), {
       fontSize: '18px',
       color: '#aaaaaa',
-    }).setOrigin(0.5).setDepth(101));
+    }).setOrigin(0.5).setDepth(101)));
 
     const timer = this.time.addEvent({
       delay: 1000,
@@ -1501,6 +1578,9 @@ export default class GameScene extends Phaser.Scene {
         countdown -= 1;
         if (countdown > 0) {
           countdownText.setText(label(countdown));
+        } else if (then) {
+          this._overlayTimer = null;
+          then();
         } else if (nextLevel) {
           this._startLevel(nextLevel);
         } else if (toLobby) {
@@ -1514,6 +1594,7 @@ export default class GameScene extends Phaser.Scene {
         }
       },
     });
+    this._overlayTimer = timer;
   }
 
   /**
@@ -1583,30 +1664,19 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // The battle set is played (F.EXE VA 0x13e80): points and the winner.
-    sm.on(EVENTS.BATTLE_OVER, ({ winners = [], points = {} } = {}) => {
-      const table = Object.entries(points).sort((a, b) => b[1] - a[1])
-        .map(([id, pts]) => `${this._nameOf(id)} — ${pts}`).join('\n');
-      const title = winners.includes(this._myPlayerId) ? 'ВЫ ПОБЕДИЛИ!' : `ПОБЕДИЛ ${this._nameOf(winners[0])}`;
-      this.showResultOverlay(title, table, { toLobby: true });
+    sm.on(EVENTS.BATTLE_OVER, (data = {}) => {
+      const { title, text } = this._battleOverText(data);
+      this.showResultOverlay(title, text, { toLobby: true });
     });
 
     // Level outcome overlays
     sm.on(EVENTS.LEVEL_COMPLETE, (data = {}) => {
-      const { places = [], award, points, battle } = data;
-      if (!battle) {
+      if (!data.battle) {
         this.showResultOverlay('КОМАНДА ПОБЕДИЛА!', 'Уровень пройден', { waitServer: true });
         return;
       }
-      // A battle level: who rang in what order, and what it scored.
-      const lines = Object.keys(points)
-        .sort((a, b) => points[b] - points[a])
-        .map((id) => {
-          const place = places.indexOf(id);
-          const at = place >= 0 ? `${place + 1}-й` : 'не дозвонился';
-          return `${this._nameOf(id)}: ${at}, +${award[id] || 0} = ${points[id]}`;
-        });
-      const title = battle.tieBreak ? 'ТАЙ-БРЕЙК' : `УРОВЕНЬ ${battle.level} ИЗ ${battle.of}`;
-      this.showResultOverlay(data.timeout ? `${title}: ВРЕМЯ ВЫШЛО` : title, lines.join('\n'), { waitServer: true });
+      const { title, text } = this._battleLevelText(data);
+      this.showResultOverlay(title, text, { waitServer: true });
     });
 
     sm.on(EVENTS.LEVEL_FAILED, () => {
