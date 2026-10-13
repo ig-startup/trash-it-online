@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
 import { JACK_COLORS } from '../palette';
 import {
-  PLAYER_WIDTH, CANVAS_WIDTH, FULL_HEIGHT, CROUCH_HEIGHT,
+  PLAYER_WIDTH, BODY_WIDTH, CANVAS_WIDTH, FULL_HEIGHT, CROUCH_HEIGHT,
 } from './jackMetrics';
 import {
   JACK_FRAME_INFO, JACK_SCALE, hasRealJackFrames, jackAnims, variantForColor,
 } from './jackSprites';
 
-export { PLAYER_WIDTH, CANVAS_WIDTH, FULL_HEIGHT, CROUCH_HEIGHT };
+export { PLAYER_WIDTH, BODY_WIDTH, CANVAS_WIDTH, FULL_HEIGHT, CROUCH_HEIGHT };
 
 /**
  * Draws one animation frame of "Jack" into a Phaser Graphics object.
