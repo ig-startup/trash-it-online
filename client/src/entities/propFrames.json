@@ -592,6 +592,78 @@
       "ay": 34,
       "src": "KTIMMY.SPR:34"
     },
+    "timbin_00": {
+      "file": "sprites/props/timbin_00.png",
+      "w": 51,
+      "h": 54,
+      "ax": 31,
+      "ay": 53,
+      "src": "TIMBIN.SPR:0"
+    },
+    "timbin_01": {
+      "file": "sprites/props/timbin_01.png",
+      "w": 50,
+      "h": 53,
+      "ax": 30,
+      "ay": 52,
+      "src": "TIMBIN.SPR:1"
+    },
+    "timbin_02": {
+      "file": "sprites/props/timbin_02.png",
+      "w": 42,
+      "h": 46,
+      "ax": 22,
+      "ay": 45,
+      "src": "TIMBIN.SPR:2"
+    },
+    "timbin_03": {
+      "file": "sprites/props/timbin_03.png",
+      "w": 39,
+      "h": 45,
+      "ax": 19,
+      "ay": 40,
+      "src": "TIMBIN.SPR:3"
+    },
+    "timbin_04": {
+      "file": "sprites/props/timbin_04.png",
+      "w": 46,
+      "h": 47,
+      "ax": 26,
+      "ay": 48,
+      "src": "TIMBIN.SPR:4"
+    },
+    "timbin_05": {
+      "file": "sprites/props/timbin_05.png",
+      "w": 53,
+      "h": 52,
+      "ax": 33,
+      "ay": 54,
+      "src": "TIMBIN.SPR:5"
+    },
+    "timbin_06": {
+      "file": "sprites/props/timbin_06.png",
+      "w": 50,
+      "h": 52,
+      "ax": 30,
+      "ay": 54,
+      "src": "TIMBIN.SPR:6"
+    },
+    "timbin_07": {
+      "file": "sprites/props/timbin_07.png",
+      "w": 50,
+      "h": 52,
+      "ax": 30,
+      "ay": 54,
+      "src": "TIMBIN.SPR:7"
+    },
+    "timbin_08": {
+      "file": "sprites/props/timbin_08.png",
+      "w": 51,
+      "h": 51,
+      "ax": 31,
+      "ay": 53,
+      "src": "TIMBIN.SPR:8"
+    },
     "spk_00": {
       "file": "sprites/props/spk_00.png",
       "w": 38,
@@ -2769,6 +2841,17 @@
       "ktimmy_32",
       "ktimmy_33",
       "ktimmy_34"
+    ],
+    "timbin": [
+      "timbin_00",
+      "timbin_01",
+      "timbin_02",
+      "timbin_03",
+      "timbin_04",
+      "timbin_05",
+      "timbin_06",
+      "timbin_07",
+      "timbin_08"
     ],
     "spk": [
       "spk_00",

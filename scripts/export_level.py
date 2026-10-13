@@ -66,6 +66,8 @@ CANNON_CLASS = 6
 BALL_CLASS = 7
 #: Class 22 places a sucker — the spring that throws what lands on it.
 SUCKER_CLASS = 22
+#: Classes 18-21 place player 0-3's timmy bin (TIMBIN.SPR, VA 0x2f72c).
+BIN_CLASSES = (18, 19, 20, 21)
 #: Class 27 places a teleporter pad (TELLY.SPR).
 TELLY_CLASS = 27
 UFO_CLASS = 31
@@ -406,10 +408,24 @@ def export(name):
     ufo = next((ufo_params(payload) for cid, _off, payload in placed
                 if cid == UFO_CLASS), None)
 
+    # Timmy bins (classes 18-21, VA 0x2f72c): stood at x + 17, y + 16,
+    # each its player's. The rules record's +0x3a is how many timmies must
+    # go into them before a subtype-2 bell lets go (VA 0x1ae49, 0x2f7ea).
+    # Only 8K has one. See docs/re/objects/timmy-bin.md.
+    bins = [{"x": clamp_x(x + 17), "y": y + 16 + HEADROOM, "player": cid - BIN_CLASSES[0]}
+            for cid, _off, payload in placed if cid in BIN_CLASSES
+            for x, y in [struct.unpack_from("<hh", payload, 0)]]
+    bin_count = struct.unpack_from("<h", rules, 0x3a)[0] if rules else 0
+
     rung = ob.bells(placed)
     if rung:
-        bx, by, _subtype = rung[0]
+        bx, by, subtype = rung[0]
         bell = {"x": clamp_x(bx), "y": by + HEADROOM}
+        # Subtype 2: hidden until the bins have taken their count — or a
+        # crawling kind is gone, which the clone does not have yet, so it
+        # holds the bell back only where there are bins (VA 0x33fdd).
+        if subtype == 2 and bins and bin_count > 0:
+            bell["bins"] = bin_count
         # Subtype 8: hidden until this share of the level's objects is
         # destroyed — every `.WAM` object counts (VA 0x340af, 0x68724).
         trash = ob.bell_trash_percent(placed)
@@ -449,6 +465,7 @@ def export(name):
         "ufo": ufo,
         "seesaws": seesaws,
         "weights": weights,
+        "bins": bins,
         # The bottom edge of a level is solid ground in the original. It is
         # not made of objects — in 0B all 179 are destructible and nothing
         # sits under the start at all — but every level's authored start is

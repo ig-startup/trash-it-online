@@ -113,6 +113,8 @@ export default class Gits {
    * @param {() => any[]} world.jacks  the Jacks the gits can touch
    * @param {(x: number, y: number) => void} world.bombBlast
    * @param {(kind: number, count: number, x: number, y: number, left: boolean) => void} world.prize
+   * @param {(x: number, y: number, vy: number) => boolean} [world.bin]  a timmy
+   *   bin takes one coming down there (timmyBins.js)
    */
   constructor(scene, level, world) {
     this._scene = scene;
@@ -202,6 +204,13 @@ export default class Gits {
     const g = this._make('timmy', x, y, 0);
     this._free(g, vx, vy);
     return g;
+  }
+
+  /** A timmy a bin has swallowed: gone (timbin_swallow kills it, VA 0x2f7ea). */
+  binned(sprite) {
+    const g = this.all.find((k) => k.sprite === sprite);
+    if (g) this._drop(g);
+    sprite.destroy();
   }
 
   /** The timmy sprites, for whoever wants to find one (a UFO). */
@@ -299,6 +308,11 @@ export default class Gits {
           continue;
         }
         this._step(g);
+        if ((g.kind === 'timmy' || g.kind === 'king') && g.state !== 'dying'
+          && this._w.bin && this._w.bin(g.x, g.y, g.vy)) {
+          this.binned(g.sprite);
+          continue;
+        }
         g.t += 1;
         if (g.kind === 'spike') this._spikeTick(g);
         if (g.sprite.active) this._touchJack(g);
