@@ -422,6 +422,17 @@ export default class GameScene extends Phaser.Scene {
         const b = player.body;
         return this._collapse.over(b.left, b.right, b.top, b.bottom);
       };
+      // Room over his head (the rows 0x244c0 probes): no solid cell
+      // across x ± 4 from `top` down to `bottom`.
+      player.headroom = (x, top, bottom) => {
+        for (let cy = Math.floor(top / 8) * 8; cy < bottom; cy += 8) {
+          for (let cx = Math.floor((x - 4) / 8) * 8; cx <= x + 4; cx += 8) {
+            const b = blockAt(cx, cy);
+            if (b && b.col === COL.SOLID) return false;
+          }
+        }
+        return true;
+      };
       player.ladder = {
         at: (x, feet) => ladderAt(blockAt, x, feet),
         topUnder: (x, feet) => ladderTopUnder(blockAt, x, feet),

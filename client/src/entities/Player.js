@@ -1733,8 +1733,45 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   _show(pose, frame = 0) {
     const keys = this._frames[pose];
     if (!keys || !keys.length) return false;
-    applyJackFrame(this.art, keys[frame % keys.length]);
+    const key = keys[frame % keys.length];
+    // Coming up out of the hat, he grows a frame at a time; the frame that
+    // would put his head into something solid sends him back into the hat
+    // (0x244c0 probes the rows above with the growing box, then 0x24727).
+    if (this.state === 'hatOut' && this.headroom) {
+      const h = this._frameHeight(key);
+      if (h > this.body.height && !this.headroom(this.x, this.body.bottom - h, this.body.top)) {
+        this._enter('hat', this.scene.time.now);
+        return true;
+      }
+    }
+    applyJackFrame(this.art, key);
+    this._fitBody(key);
     return true;
+  }
+
+  /** A frame's height, as the sheet gives it. */
+  _frameHeight(key) {
+    const info = JACK_FRAME_INFO[key] || JACK_FRAME_INFO[`${this.art.texture.key}|${this.art.frame.name}`];
+    return info ? info.h : FULL_HEIGHT;
+  }
+
+  /**
+   * The box his walls are probed with. Standing it is 42 high (VA 0xa0260);
+   * in the hard hat — going in, in it, coming out — every state first sets
+   * it from the frame on show (probe_box_from_frame, VA 0x2def3): as tall
+   * as the hat, 22 px, which is what lets him under what a timmy runs under.
+   * His feet stay where they are.
+   */
+  _fitBody(key) {
+    const h = this._inHatBox() ? Math.min(FULL_HEIGHT, this._frameHeight(key)) : FULL_HEIGHT;
+    if (this.body.height === h) return;
+    this.body.setSize(PLAYER_WIDTH, h, false);
+    this.body.setOffset(0, FULL_HEIGHT - h);
+  }
+
+  /** The states whose wall box is the frame's (they call VA 0x2def3). */
+  _inHatBox() {
+    return ['hatIn', 'hat', 'hatWalk', 'hatOut', 'hatJump', 'hatPop'].includes(this.state);
   }
 
   resetBellHit() {
