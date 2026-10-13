@@ -22,7 +22,7 @@ draws from `SLA.SPR`. Every sheet has the same 61 frames in the same order,
 so the lists that pick a hammer frame for each of Jack's animations
 (anims.hammer_lists, `hammerBySlot` in propFrames.json) fit them all.
 
-The fields (see "What a hammer blow carries" in scripts/formats/README.md):
+The fields (see "What a hammer blow carries" in docs/re/logic/collapse.md):
 
   lo, hi        +0x3c / +0x40   the sideways blow's force ramp
   mask          +0x34           the rubble a blow throws (debris mask)

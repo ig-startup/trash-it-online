@@ -1,6 +1,6 @@
 /**
  * The arcade, played at one keyboard — the original's own (F.EXE game
- * type 2, VA 0x214c2; see "Type 2, arcade" in scripts/formats/README.md).
+ * type 2, VA 0x214c2; see "Type 2, arcade" in docs/re/front/game-types.md).
  *
  * The number of players is picked once (VA 0x19d2b) and teams are entered
  * one after another, up to four (VA 0x177df). Then the teams take turns on

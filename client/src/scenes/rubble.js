@@ -14,8 +14,7 @@ import Phaser from 'phaser';
  * (0x61205). The hoover (0x61472) catches what is in its box and draws it
  * in (0x61518): an eighth of the way across and a quarter down each tick,
  * squashing it a quarter a tick, height first, then width, until it is
- * gone. See "What a destroyed block becomes" and "The hoover" in
- * scripts/formats/README.md.
+ * gone. See docs/re/logic/destroyed-block.md and docs/re/jack/hoover.md.
  *
  * All in the game's units, px and px/tick, at its 60 Hz.
  */

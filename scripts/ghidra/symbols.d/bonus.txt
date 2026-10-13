@@ -1,5 +1,5 @@
 # Bonuses, the dispenser and the secret panel — .OB classes 33, 8 and 46.
-# See README "Bonuses, the dispenser and the panel".
+# See docs/re/objects/bonuses.md "Bonuses, the dispenser and the panel".
 0x1b4cf  f  ob_class_33_bonus              ; word +0xe: 1 a walking bonus git, 2 a BELL-sprite shell locked in a block; +0x12 lowest bit → its prize (+0x68), +0x14 a count (+0x76)
 0x1b568  f  bonus_shell_tick               ; the shell waits for its block (0x1b2a9), then becomes a walking bonus git
 0x135ba  f  spawn_bonus_git                ; spawn_timmy from BON's template, +0x68 the prize, +0x76 the count

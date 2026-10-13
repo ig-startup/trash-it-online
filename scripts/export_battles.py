@@ -3,7 +3,7 @@ Export the original's games for several players — the battle's sets of
 levels, the hammer each level hands every player, the points a place
 scores and the tie-break; and the arcade's fifteen K levels with their
 hammers and mission lines — from F.EXE's own tables
-(scripts/formats/front.py, README "Playing together") into
+(scripts/formats/front.py, docs/re/front/game-types.md "Playing together") into
 shared/battles.json, which the server and the client play from.
 
     python3 scripts/export_battles.py

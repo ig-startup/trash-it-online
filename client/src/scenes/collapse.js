@@ -1,7 +1,7 @@
 /**
  * Structures that lose their support fall — the game's own mechanic, read
  * off `G.EXE` and checked against every shipped level by
- * scripts/formats/ccs.py ("How a structure collapses" in its README).
+ * scripts/formats/ccs.py ("How a structure collapses" in docs/re/logic/collapse.md).
  *
  * - At most every fifth tick, and only after something changed (the dirty
  *   flag 0x410474: a hit, a destruction, a landing), the engine floods up

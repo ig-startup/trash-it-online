@@ -1,6 +1,6 @@
 # Names for F.EXE (the front end), by hand.
 #
-# The world map (scripts/formats/front.py, README "The front end").
+# The world map (scripts/formats/front.py, docs/re/front/front-end.md "The front end").
 0x1e97a  f  find_current_node              ; node pointer for record +0x1b8, logs "could not find node"
 0x1de35  f  map_fire_pressed               ; what fire does on a node: play, refuse, next world
 0x1e1c1  f  map_walk_step                  ; one pixel along the LVSPAT path; stops at untrashed points

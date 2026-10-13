@@ -3,7 +3,7 @@ import { PROP_ANIMS, applyPropFrame } from '../entities/props';
 
 /**
  * Suckers — `.OB` class 22 (constructor VA 0x18fba, template 0x96de0). See
- * "The sucker" in scripts/formats/README.md.
+ * "The sucker" in docs/re/objects/sucker.md.
  *
  * A base and a red cup on it (SUCKER.SPR frames 0 and 1; the cup sits at
  * the base's `+0x5e, +0x5c`, VA 0x193cb). It can be carried like anything

@@ -1,4 +1,4 @@
-# The UFO (.OB class 31, BON/UFO.SPR) — read whole; see README "The UFO".
+# The UFO (.OB class 31, BON/UFO.SPR) — read whole; see docs/re/objects/ufo.md "The UFO".
 # Its own fields: +0x54/+0x58 the point it steers to, +0x5c the timmy it is
 # taking, +0x60 the Jack it is after, +0x66..+0x6c the four action periods
 # and +0x6e..+0x74 their countdowns, +0x78 timmies stolen.

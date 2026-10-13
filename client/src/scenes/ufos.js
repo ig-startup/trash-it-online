@@ -4,7 +4,7 @@ import { floorUnder } from './blockKinds';
 
 /**
  * UFOs — `.OB` class 31 (constructor VA 0x13079, BON/UFO.SPR). See "The
- * UFO" in scripts/formats/README.md; the routines are named in
+ * UFO" in docs/re/objects/ufo.md; the routines are named in
  * scripts/ghidra/symbols.d/ufo.txt.
  *
  * The level sets how many start, how many may fly at once, how often a new

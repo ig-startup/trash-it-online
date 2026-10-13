@@ -1,17 +1,20 @@
 #!/bin/sh
 # Decompile G.EXE with every name we have, into one greppable C file.
 #
-#   scripts/ghidra/run.sh <work dir>      # writes <work dir>/decomp.c, and
+#   scripts/ghidra/run.sh [work dir]      # writes <work dir>/decomp.c, and
 #                                         # decomp_fields.c with field names
 #
-# Needs Ghidra and a JDK (see scripts/formats/README.md, "Reading G.EXE in
-# Ghidra"); GHIDRA and JAVA_HOME default to where they were installed here.
+# The work dir defaults to $TRASHIT_GHWORK, else ~/ghwork/g — where
+# scripts/ghidra/fn.py reads it from. It is kept between sessions: run this
+# again only after the symbol or field files change.
+#
+# Needs Ghidra and a JDK (see docs/re/tools/ghidra.md); GHIDRA and JAVA_HOME default to where they were installed here.
 # The work dir must not sit under a directory whose name starts with a
 # dot — analyzeHeadless refuses such paths. About two minutes.
 set -e
 
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
-WORK=${1:?usage: run.sh <work dir>}
+WORK=${1:-${TRASHIT_GHWORK:-$HOME/ghwork/g}}
 GHIDRA=${GHIDRA:-$HOME/.local/opt/ghidra}
 export JAVA_HOME=${JAVA_HOME:-$HOME/.local/opt/jdk-21/Contents/Home}
 EXE="$REPO/Trash-it-original/G.EXE"

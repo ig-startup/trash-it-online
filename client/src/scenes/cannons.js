@@ -4,7 +4,7 @@ import { COL } from './blockKinds';
 
 /**
  * Cannons — `.OB` class 6 (constructor VA 0x5f69a). See "The cannon" in
- * scripts/formats/README.md.
+ * docs/re/objects/cannon.md.
  *
  * One cannon is four sprites on one spot: what it stands on — a wheel,
  * CWHL (template 0xa4470), or a fixed carriage, CFIX (0xa448c) — and three

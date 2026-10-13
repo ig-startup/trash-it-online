@@ -4,7 +4,7 @@ import { COL, floorUnder } from './blockKinds';
 
 /**
  * The gits — timmies, king timmies and the spike gits. See "The gits" in
- * scripts/formats/README.md; the routines are named in
+ * docs/re/objects/gits.md; the routines are named in
  * scripts/ghidra/symbols.d/git.txt.
  *
  * A placed timmy sits locked to the block under it (VA 0x2ff6b) until that
@@ -16,7 +16,7 @@ import { COL, floorUnder } from './blockKinds';
  * and they count; a king timmy it cannot take. A spike git walks the same
  * at half speed, and the overhead blow finishes it (VA 0x32b15).
  *
- * What hurts Jack (README "What hurts Jack"): a walking spike git's touch
+ * What hurts Jack (docs/re/jack/hurt.md "What hurts Jack"): a walking spike git's touch
  * (his event outcome 11), and the needles it throws when it bristles —
  * every 1024, 512 or 64 ticks by its record, eight in a fan (VA 0x32cfb,
  * outcome 12). A bomb git hurts no one by touch: touched on the ground it
@@ -24,7 +24,7 @@ import { COL, floorUnder } from './blockKinds';
  * stays put it lights (0x32550) and blows (0x327c8) — a blast that
  * pushes Jack and breaks blocks with the level's own force.
  *
- * Timmies can be hurt too (README "A timmy knocked, and its end"). The
+ * Timmies can be hurt too (docs/re/objects/gits.md "A timmy knocked, and its end"). The
  * overhead blow knocks one on the ground flat (VA 0x31504); it lies there,
  * shakes itself (0x3172b) and walks on. Hit once more — or caught by a
  * blast a second time, or turned about too often — it dies: it floats up

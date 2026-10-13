@@ -7,7 +7,7 @@
 #   kind d  data: a global, a table, an object template
 #
 # Addresses are virtual addresses in the mapped LE image, the same ones
-# scripts/formats/README.md quotes. Everything here was read off the code;
+# docs/re/ quotes. Everything here was read off the code;
 # a name that is only a guess says so in its comment ("?").
 #
 # symbols.py adds names it can derive from the binary itself — class

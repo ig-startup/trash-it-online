@@ -41,7 +41,7 @@ PROPS = {
     # The bell is three sprites (VA 0x33d1d): the plinth (0), the tower
     # with its striker (1, and 2 while it rings) and the ball on top (3).
     "bell": ("BELL.SPR", [0, 1, 2, 3]),
-    # The gits (README "The gits"): every frame of each sheet, index =
+    # The gits (docs/re/objects/gits.md "The gits"): every frame of each sheet, index =
     # frame number, since their frame lists (VA 0xa40be) index the sheet
     # directly — the walk is 1-16, the fall 6-9, the skid 17-25.
     "timmy": ("TIMMY.SPR", list(range(35))),
@@ -89,7 +89,7 @@ PROPS = {
     # The post at each end of the street (VA 0x2f623): PANEL.SPR, a sheet
     # of odds and ends, frame 16 (+0x44 = 0x10); the right one mirrored.
     "post": ("PANEL.SPR", [16]),
-    # Bonuses (README "Bonuses, the dispenser and the panel"): the bonus
+    # Bonuses (docs/re/objects/bonuses.md "Bonuses, the dispenser and the panel"): the bonus
     # git walks on BON 1-16 like a timmy, 17 struck, 21-23 its sparks; it
     # waits in a block as a BELL; its prizes are the clock (CLOK 0-23
     # spinning), the super hoover (BVAC 5) and the bubble.

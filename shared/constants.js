@@ -51,7 +51,7 @@ const GAME_CONFIG = {
  *   overBox record +0x5e / +0x62 / +0x60: the overhead strike's box, from
  *           Jack's feet (VA 0x1fd5a). That strike hits sprites, not blocks.
  *
- * See "What a hammer blow carries" in scripts/formats/README.md.
+ * See "What a hammer blow carries" in docs/re/logic/collapse.md.
  */
 const HAMMER = {
   name: 'the sledge hammer v1', lo: 8, hi: 150, halves: true, strikes: 3, overLo: 1, overHi: 8,

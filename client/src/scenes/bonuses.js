@@ -3,7 +3,7 @@ import { PROP_ANIMS, applyPropFrame } from '../entities/props';
 
 /**
  * Bonuses, the dispenser and the secret panel — .OB classes 33, 8 and 46.
- * See "Bonuses, the dispenser and the panel" in scripts/formats/README.md;
+ * See "Bonuses, the dispenser and the panel" in docs/re/objects/bonuses.md;
  * the routines are named in scripts/ghidra/symbols.d/bonus.txt.
  *
  * The bonus git itself walks with the other gits (gits.js); when it bursts

@@ -4,7 +4,7 @@ import { PROP_ANIMS, applyPropFrame } from '../entities/props';
 /**
  * Seesaws and the 20-ton weights — `.OB` classes 0 (VA 0x1eb0d, BCSAW or
  * CSAW.SPR) and 1 (VA 0x1e6c3, LEAD.SPR), in 43 and 42 levels. See "The
- * seesaw and the weight" in scripts/formats/README.md.
+ * seesaw and the weight" in docs/re/objects/seesaw.md.
  *
  * A seesaw has two ends, each tested with two boxes 31 px either side of
  * it, 40x24: one 21 up (table 0x9977c) that what comes down passes

@@ -8,7 +8,7 @@
 //
 // Each function is preceded by a comment with its name and entry address,
 // so a hit can be traced back to the addresses used in
-// scripts/formats/README.md.
+// docs/re/.
 //
 //   analyzeHeadless <proj> <name> -process <file> \
 //       -scriptPath scripts/ghidra -postScript DumpDecomp.java <out.c>

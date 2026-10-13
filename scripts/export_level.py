@@ -1,7 +1,7 @@
 """
 Convert original Trash It levels into the web client's level format.
 
-Reads the game's own level files (see scripts/formats/README.md) and writes,
+Reads the game's own level files (see docs/re/INDEX.md) and writes,
 per level:
 
   client/public/sprites/levels/<name>/shapes.png    all block artwork, packed
@@ -130,7 +130,7 @@ def build_atlas(shapes, palette, out_dir, image_name="shapes.png"):
 # ── UFO control (.OB class 31, VA 0x13079 → 0x1315c) ───────────────────────
 # A preset row, then each field of the record that is set overrides one
 # value through its own table — all read from G.EXE. See "The UFO" in
-# scripts/formats/README.md.
+# docs/re/objects/ufo.md.
 _UFO_TABLES = None
 
 
@@ -237,7 +237,7 @@ def export(name):
         # 2 a platform from above, 4 a ladder, 5 a ladder's top (level.py).
         "col": o["col"],
         # `.COL` word 2: a marker for the gits walking over it — 1 turns
-        # them left, 2 right (VA 0x2fbfd; README "The gits").
+        # them left, 2 right (VA 0x2fbfd; docs/re/objects/gits.md "The gits").
         **({"marker": o["marker"]} if o["marker"] else {}),
     } for i, o in enumerate(lv["objects"])]
 
@@ -274,7 +274,7 @@ def export(name):
     # x, y, the word at +0xe its mode — 1 locked to the block under it
     # until that dies, 2 free from the start — and at +0x14 its flags
     # (bit 1: it heeds the conditional markers). About 1450 records, the
-    # most common thing in the game. See "The gits" in the README.
+    # most common thing in the game. See "The gits" in docs/re/objects/gits.md.
     timmies = [{"x": x, "y": y + HEADROOM, "king": cid == KING_TIMMY_CLASS,
                 "locked": w[7] == 1, "flags": w[10]}
                for cid, _off, payload in placed
@@ -316,7 +316,7 @@ def export(name):
     # Bonus gits. Class 33 (VA 0x1b4cf): the word at +0xe 1 walking, 2 a
     # shell locked in the block under it; the lowest bit of +0x12 its prize
     # (0 a clock, 1 timmies, 2 a super hoover, 3 a bubble), +0x14 how many
-    # timmies. README "Bonuses, the dispenser and the panel".
+    # timmies. docs/re/objects/bonuses.md "Bonuses, the dispenser and the panel".
     bonuses = [{"x": w[0], "y": w[1] + HEADROOM, "locked": w[7] == 2,
                 "prize": _lowest_bit(w[9]), "count": w[10]}
                for cid, _off, payload in placed if cid == BONUS_CLASS

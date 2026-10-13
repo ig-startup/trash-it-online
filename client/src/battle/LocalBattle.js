@@ -2,7 +2,7 @@
  * A battle played at one keyboard — the original's own (F.EXE game type 1,
  * "battle framework", VA 0x212d2). The rules are the server's (GameRoom's
  * startBattle / _endLevel / nextBattleStep), kept here for when there is
- * no server; see "Type 1, battle" in scripts/formats/README.md.
+ * no server; see "Type 1, battle" in docs/re/front/game-types.md.
  *
  * Up to four players play a battle set, a fixed list of B levels each with
  * the hammer everyone gets for it. The order of the rings is the place;

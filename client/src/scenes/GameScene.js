@@ -53,7 +53,7 @@ const DEFAULT_TIME = 20 * 60; // a level with no limit keeps 20:00 (BCD 0x2000)
 // the sledge v1's where none is given), 0x3ffff for the blast (VA 0x1f8c5).
 const HAMMER_RUBBLE_MASK = 4095;
 const BLAST_RUBBLE_MASK = 0x3ffff;
-// Dynamite, all from the original (see "Dynamite" in scripts/formats/README.md).
+// Dynamite, all from the original (see "Dynamite" in docs/re/objects/dynamite.md).
 // The fuse: 35 ticks of the lit stick hopping, 25 of the flame, then ten
 // steps of eleven ticks counting down (VA 0x1d4ec → 0x1d584 → 0x1d60b).
 const FUSE_MS = (170 * 1000) / 60;
@@ -186,7 +186,7 @@ export default class GameScene extends Phaser.Scene {
       buildBackground(this, levelWidth, levelHeight);
     }
     // Below the street the original draws its backdrop's floor in
-    // perspective (see backdrop_horizon in scripts/formats/README.md); until
+    // perspective (see the horizon, VA 0x1c759, in docs/re/formats/scn.md); until
     // the clone does, that floor is the wall in shadow.
     const groundY = level.ground ? level.ground.y : levelHeight;
     this.add.rectangle(streetLeft - BACKDROP_PAD, groundY, streetRight - streetLeft + BACKDROP_PAD * 2,

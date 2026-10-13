@@ -1,5 +1,5 @@
 # The seesaw (.OB class 0, BCSAW/CSAW.SPR) and the 20-ton weight (class 1,
-# LEAD.SPR) — see README "The seesaw and the weight". Seesaw fields: +0x44
+# LEAD.SPR) — see docs/re/objects/seesaw.md "The seesaw and the weight". Seesaw fields: +0x44
 # which end is down (0 left, 1 right), +0x54 / +0x58 the rider of the left /
 # right end. Hotspot tables: 0x9977c (ends 21 up — what comes down) and
 # 0x9978e (ends 3 up — what stands there).

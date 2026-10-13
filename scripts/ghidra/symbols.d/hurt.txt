@@ -1,4 +1,4 @@
-# What hurts Jack — see README "What hurts Jack". His event outcomes are an
+# What hurts Jack — see docs/re/jack/hurt.md "What hurts Jack". His event outcomes are an
 # array by the other sprite's event type (template +0xa) at 0xa2f48; the
 # ones here were not functions to Ghidra (no call reaches them). Jack's
 # fields: +0x7c the ticks he cannot be hurt; player +0x15a the ticks no

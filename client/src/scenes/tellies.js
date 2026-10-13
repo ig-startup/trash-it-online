@@ -4,7 +4,7 @@ import { COL } from './blockKinds';
 
 /**
  * Teleporters — `.OB` class 27 (constructor VA 0x347c1, state 0x34890).
- * See "The teleporter" in scripts/formats/README.md.
+ * See "The teleporter" in docs/re/objects/teleporter.md.
  *
  * A pad (TELLY.SPR 0-9) that opens, and while it is open a beam stands
  * over it (frame 10, its own sprite, VA 0x34a26) growing to full size.

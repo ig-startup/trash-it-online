@@ -20,7 +20,7 @@ import {
  * (main loop VA 0x2c654 → 0x2cb6e), and both of its video set-ups are
  * 480-line modes that retrace at 60Hz. It only falls back on a 13ms
  * catch-up step when the machine cannot keep up. See "Movement and
- * gravity" in scripts/formats/README.md.
+ * gravity" in docs/re/jack/movement.md.
  */
 const ORIGINAL_HZ = 60;
 const GRAVITY = 0.28125 * ORIGINAL_HZ * ORIGINAL_HZ;  // VA 0x22d31: vy += 0x4800
@@ -221,7 +221,7 @@ const STATES = {
   flip: { slot: 57, anim: 'tumble', ms: Infinity, hold: true, rolling: true, profile: 'run' },
 
   // Hurt — a spike git, its needles, a bomb's or a stick's blast, a UFO's
-  // bolt (see "What hurts Jack" in the README). Out of the hat he is sent
+  // bolt (see "What hurts Jack" in docs/re/jack/hurt.md). Out of the hat he is sent
   // flying through 0x2b152 (slot 73, its four frames a step every four
   // ticks); in it the hat is, through 0x26539 (slot 43, the hat frame).
   stung: { slot: 73, anim: 'land', ms: 4 * TICK_MS, hold: true, hurt: true },
@@ -256,7 +256,7 @@ const STATES = {
 const PUSH_SKID = perS(0x2bf20);
 
 /**
- * Ladders (see "Ladders" in scripts/formats/README.md). He climbs at 2
+ * Ladders (see "Ladders" in docs/re/objects/ladders.md). He climbs at 2
  * px/tick either way. Topping out and stepping off a top each run twelve
  * frames two ticks apart, lifting him by half a frame's entry in the table
  * at VA 0xa130e a tick — 25 px in all — before he is set on the top. Off a
@@ -689,7 +689,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   /**
    * One tick of Jack, on the game's keyboard layout (mode 2): six keys,
    * LEFT RIGHT UP DOWN BUT1 BUT2, and every action a combination of them.
-   * See "The keyboard layout, state by state" in scripts/formats/README.md.
+   * See "The keyboard layout, state by state" in docs/re/jack/keyboard.md.
    *
    * @param {Phaser.Types.Input.Keyboard.CursorKeys} cursors
    * @param {{but1: boolean, but2: boolean, but2Pressed: boolean}} keys
