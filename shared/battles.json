@@ -229,5 +229,97 @@
    2,
    1
   ]
- }
+ },
+ "arcade": [
+  {
+   "level": "level_0K",
+   "hammer": 22,
+   "hammerName": "warhammer v3",
+   "mission": "trash 28% to free the bell"
+  },
+  {
+   "level": "level_1K",
+   "hammer": 21,
+   "hammerName": "ball-pein v3",
+   "mission": "trash 61% to free the bell"
+  },
+  {
+   "level": "level_2K",
+   "hammer": 20,
+   "hammerName": "sledgehammer v3",
+   "mission": "trash 58% to free the bell"
+  },
+  {
+   "level": "level_3K",
+   "hammer": 10,
+   "hammerName": "sledgehammer v2",
+   "mission": "trash 61% to free the bell"
+  },
+  {
+   "level": "level_4K",
+   "hammer": 24,
+   "hammerName": "spikeball v3",
+   "mission": "trash 34% to free the bell"
+  },
+  {
+   "level": "level_5K",
+   "hammer": 22,
+   "hammerName": "warhammer v3",
+   "mission": "get to the bell"
+  },
+  {
+   "level": "level_6K",
+   "hammer": 0,
+   "hammerName": "sledgehammer v1",
+   "mission": "ring the bell"
+  },
+  {
+   "level": "level_7K",
+   "hammer": 24,
+   "hammerName": "spikeball v3",
+   "mission": "hit the bell"
+  },
+  {
+   "level": "level_8K",
+   "hammer": 0,
+   "hammerName": "sledgehammer v1",
+   "mission": "collect the timmies"
+  },
+  {
+   "level": "level_9K",
+   "hammer": 22,
+   "hammerName": "warhammer v3",
+   "mission": "get to the bell"
+  },
+  {
+   "level": "level_AK",
+   "hammer": 16,
+   "hammerName": "volcanic hammer v2",
+   "mission": "trash 90% to free the bell"
+  },
+  {
+   "level": "level_BK",
+   "hammer": 21,
+   "hammerName": "ball-pein v3",
+   "mission": "get to the bell"
+  },
+  {
+   "level": "level_CK",
+   "hammer": 24,
+   "hammerName": "spikeball v3",
+   "mission": "get to the bell"
+  },
+  {
+   "level": "level_DK",
+   "hammer": 23,
+   "hammerName": "piledriver v3",
+   "mission": "trash 48% to free the bell"
+  },
+  {
+   "level": "level_EK",
+   "hammer": 16,
+   "hammerName": "volcanic hammer v2",
+   "mission": "trash 85% to free the bell"
+  }
+ ]
 }

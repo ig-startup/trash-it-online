@@ -1,8 +1,10 @@
 """
-Export the original's battle game — its sets of levels, the hammer each
-level hands every player, the points a place scores and the tie-break —
-from F.EXE's own tables (scripts/formats/front.py, README "Playing
-together") into shared/battles.json, which the server plays from.
+Export the original's games for several players — the battle's sets of
+levels, the hammer each level hands every player, the points a place
+scores and the tie-break; and the arcade's fifteen K levels with their
+hammers and mission lines — from F.EXE's own tables
+(scripts/formats/front.py, README "Playing together") into
+shared/battles.json, which the server and the client play from.
 
     python3 scripts/export_battles.py
 """
@@ -38,6 +40,10 @@ def main():
         "tieBreakHammer": sets[TIE_BREAK][0][1],
         # Battle points by place, keyed by the number of players.
         "points": {str(n): list(p) for n, p in front.BATTLE_POINTS.items()},
+        # The arcade (VA 0x8d6f0): one K level a row, its hammer, and its
+        # mission line in English (VA 0x8d5c4, the first language).
+        "arcade": [dict(level(*row), mission=line)
+                   for row, line in zip(f.arcade(), f.missions())],
     }
     with open(OUT, "w") as fh:
         json.dump(data, fh, indent=1)

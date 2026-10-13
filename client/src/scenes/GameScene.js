@@ -29,6 +29,7 @@ import {
 } from './blockKinds';
 import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
 import { LAST_ONE_SECONDS } from '../battle/LocalBattle';
+import { ARCADE_MAX_TENTHS, formatTenths, missionText } from '../battle/LocalArcade';
 
 const PLAYER_UPDATE_INTERVAL = 50; // ms
 const FORCE_MAX_DEPTH = 12;  // how far one blow may travel down a stack
@@ -96,6 +97,8 @@ export default class GameScene extends Phaser.Scene {
     this._local = !!data.local;
     /** A battle at this keyboard keeps its own score (battle/LocalBattle.js). */
     this._localBattle = data.localBattle || null;
+    /** So does the arcade: the teams' turns and times (battle/LocalArcade.js). */
+    this._arcade = data.arcade || null;
     if (this._localBattle && !this._battle) {
       const now = this._localBattle.current();
       this._battle = now.battle;
@@ -110,8 +113,13 @@ export default class GameScene extends Phaser.Scene {
     preloadProps(this);
     // Every Jack swings the same hammer: a battle level names its own
     // (the guitar in a tie-break); the story starts on the sledge v1.
-    this._hammerIndex = this._battle && Number.isInteger(this._battle.hammer)
-      ? this._battle.hammer : FIRST_HAMMER;
+    // An arcade level hands its row's hammer.
+    if (this._arcade) {
+      this._hammerIndex = this._arcade.entry.hammer;
+    } else {
+      this._hammerIndex = this._battle && Number.isInteger(this._battle.hammer)
+        ? this._battle.hammer : FIRST_HAMMER;
+    }
     preloadHammer(this, hammerAt(this._hammerIndex));
 
     // A converted level is served, not bundled: its data comes first, and
@@ -600,7 +608,10 @@ export default class GameScene extends Phaser.Scene {
     this._timeLeft = level.timeLimit || DEFAULT_TIME;
     this._clockMs = 0;
     this._over = false;
-    this._showClock(this._timeLeft);
+    // In the arcade the clock starts at 0 and counts up, in tenths.
+    this._tenths = 0;
+    if (this._arcade) this.timerText.setText(formatTenths(0));
+    else this._showClock(this._timeLeft);
 
     // Mode label — panel right
     const modeLabel = this._modeLabel();
@@ -684,6 +695,14 @@ export default class GameScene extends Phaser.Scene {
         if (!this._active.includes(j.data.id)) this._leaveLevel(j);
       });
       this._flashBonus(`ТАЙ-БРЕЙК: ${this._active.map((id) => this._nameOf(id)).join(' и ')}`);
+    }
+    if (this._arcade) {
+      this._flashBonus(missionText(this._arcade.entry.mission), 3500);
+    }
+
+    // Esc leaves a game played at this keyboard for the menu.
+    if (this._local) {
+      this.input.keyboard.on('keydown-ESC', () => this.scene.start('MenuScene'));
     }
 
     console.log('[GameScene] created', {
@@ -838,6 +857,16 @@ export default class GameScene extends Phaser.Scene {
   /** The clock run here, when no server does: down a second a second. */
   _tickClock(delta) {
     if (this._online() || this._over) return;
+    if (this._arcade) {
+      // up a tenth every 6 ticks, to 60:00.0 and no further (VA 0x19edb)
+      this._clockMs += delta;
+      while (this._clockMs >= 100 && this._tenths < ARCADE_MAX_TENTHS) {
+        this._clockMs -= 100;
+        this._tenths += 1;
+      }
+      this.timerText.setText(formatTenths(this._tenths));
+      return;
+    }
     this._clockMs += delta;
     while (this._clockMs >= 1000 && this._timeLeft > 0) {
       this._clockMs -= 1000;
@@ -866,6 +895,27 @@ export default class GameScene extends Phaser.Scene {
     const result = this._localBattle.endLevel(this._rung.map((j) => j.data.id), timeout);
     const { title, text } = this._battleLevelText(result);
     this.showResultOverlay(title, text, { then: () => this._nextLocalBattleStep() });
+  }
+
+  /** A team has all rung: its time is kept, and the next team goes. */
+  _endArcadeTurn() {
+    this._over = true;
+    const a = this._arcade;
+    const team = a.current + 1;
+    const time = this._tenths;
+    const more = a.record(time);
+    const best = a.best === time ? 'РЕКОРД!' : `Рекорд ${formatTenths(a.best)}`;
+    if (more) {
+      this.showResultOverlay(`КОМАНДА ${team}: ${formatTenths(time)}`,
+        `${best}\nДальше играет команда ${a.current + 1}`,
+        { then: () => this._startLevel(this._levelId) });
+      return;
+    }
+    const table = a.standings()
+      .map((r) => `${r.place}. КОМАНДА ${r.team + 1} — ${r.time === null ? '—' : formatTenths(r.time)}`)
+      .join('\n');
+    this.showResultOverlay(a.teams > 1 ? 'ИТОГИ АРКАДЫ' : `ВРЕМЯ ${formatTenths(time)}`,
+      a.teams > 1 ? table : missionText(a.entry.mission));
   }
 
   _nextLocalBattleStep() {
@@ -965,13 +1015,13 @@ export default class GameScene extends Phaser.Scene {
    * @returns {T}
    */
   /** A word in the middle of the panel for a moment — a bonus taken. */
-  _flashBonus(text) {
+  _flashBonus(text, ms = 1200) {
     // at the foot of the play field, clear of the clock in the panel
     const y = VIEW_HEIGHT * (this.scale.width / VIEW_WIDTH) - 40;
     const t = this._hud(this.add.text(this.scale.width / 2, y, text, {
       fontFamily: 'monospace', fontSize: '22px', fill: '#ffee55', stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5).setDepth(1000));
-    this.tweens.add({ targets: t, alpha: 0, y: t.y - 20, duration: 1200, onComplete: () => t.destroy() });
+    this.tweens.add({ targets: t, alpha: 0, y: t.y - 20, duration: ms, ease: 'Cubic.easeIn', onComplete: () => t.destroy() });
   }
 
   _hud(obj) {
@@ -1430,6 +1480,10 @@ export default class GameScene extends Phaser.Scene {
         this._endLocalBattleLevel(false);
         return;
       }
+      if (this._arcade) {
+        this._endArcadeTurn();
+        return;
+      }
       this._over = true;
       const order = this._rung.length > 1
         ? this._rung.map((k, i) => `${i + 1}. ${this._nameOf(k.data.id)}`).join('\n')
@@ -1488,11 +1542,17 @@ export default class GameScene extends Phaser.Scene {
       battle: extra.battle || null,
       local: this._local,
       localBattle: this._localBattle,
+      arcade: this._arcade,
     });
   }
 
   /** The heading of the panel's mode label: КООП, or the battle's progress. */
   _modeLabel() {
+    if (this._arcade) {
+      const a = this._arcade;
+      const best = a.best === null ? '' : `  РЕКОРД ${formatTenths(a.best)}`;
+      return `КОМАНДА ${a.current + 1}/${a.teams}${best}`;
+    }
     if (this._mode !== 'battle') return 'КООП';
     const b = this._battle;
     if (!b) return 'БИТВА';

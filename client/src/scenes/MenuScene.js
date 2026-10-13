@@ -3,6 +3,7 @@ import SocketManager from '../network/SocketManager.js';
 import { PLAYER_COLORS } from '../../../shared/constants.mjs';
 import BATTLES from '../../../shared/battles.json';
 import LocalBattle from '../battle/LocalBattle';
+import LocalArcade, { ARCADE, missionText } from '../battle/LocalArcade';
 
 const EVENTS = {
   CREATE_ROOM: 'create_room',
@@ -29,6 +30,9 @@ export default class MenuScene extends Phaser.Scene {
 
     this._btnCoop = null;
     this._btnRace = null;
+    this._btnArcade = null;
+    this._arcadeRow = 0;
+    this._arcadeTeams = 2;
     this._errorText = null;
 
     // Bound listener references for cleanup
@@ -59,10 +63,12 @@ export default class MenuScene extends Phaser.Scene {
       color: '#aaaaaa',
     }).setOrigin(0.5);
 
-    this._btnCoop = this._makeButton(cx - 75, 195, 'КООП', () => this._setMode('coop'));
+    this._btnCoop = this._makeButton(cx - 150, 195, 'КООП', () => this._setMode('coop'));
     // The original's battle: a set of levels, places by the order of the
     // rings, battle points (F.EXE's game type 1).
-    this._btnRace = this._makeButton(cx + 75, 195, 'БИТВА', () => this._setMode('battle'));
+    this._btnRace = this._makeButton(cx, 195, 'БИТВА', () => this._setMode('battle'));
+    // The arcade (F.EXE game type 2): teams take turns at one K level.
+    this._btnArcade = this._makeButton(cx + 150, 195, 'АРКАДА', () => this._setMode('arcade'));
     this._updateModeButtons();
 
     // ── At one keyboard ───────────────────────────────────────────────────────
@@ -74,7 +80,7 @@ export default class MenuScene extends Phaser.Scene {
       fontSize: '15px',
       color: '#888888',
     }).setOrigin(0.5);
-    this.add.text(lx, 290, 'Игроков:', {
+    this._countLabel = this.add.text(lx, 290, 'Игроков:', {
       fontSize: '16px',
       color: '#aaaaaa',
     }).setOrigin(0.5);
@@ -92,9 +98,31 @@ export default class MenuScene extends Phaser.Scene {
       this._battleSet = (this._battleSet + 1) % BATTLES.sets.length;
       this._setText.setText(setLabel());
     });
+    // The arcade: which K level, and how many teams take turns at it.
+    const rowLabel = () => {
+      const r = ARCADE[this._arcadeRow];
+      return `Уровень ${r.level.replace('level_', '')}: ${missionText(r.mission).toLowerCase()}`;
+    };
+    this._rowText = this.add.text(lx, 362, rowLabel(), {
+      fontSize: '13px',
+      color: '#aaaaaa',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this._rowText.on('pointerdown', () => {
+      this._arcadeRow = (this._arcadeRow + 1) % ARCADE.length;
+      this._rowText.setText(rowLabel());
+    });
+    const teamsLabel = () => `Команд: ${this._arcadeTeams} (по очереди)`;
+    this._teamsText = this.add.text(lx, 384, teamsLabel(), {
+      fontSize: '13px',
+      color: '#aaaaaa',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this._teamsText.on('pointerdown', () => {
+      this._arcadeTeams = (this._arcadeTeams % 4) + 1;
+      this._teamsText.setText(teamsLabel());
+    });
     this._updateSetLabel();
-    this._makeButton(lx, 415, 'ИГРАТЬ', () => this._playLocal());
-    this._makeButton(lx, 470, 'КЛАВИШИ', () => {
+    this._makeButton(lx, 425, 'ИГРАТЬ', () => this._playLocal());
+    this._makeButton(lx, 478, 'КЛАВИШИ', () => {
       this._cleanup();
       this.scene.start('KeysScene');
     });
@@ -233,7 +261,12 @@ export default class MenuScene extends Phaser.Scene {
 
   /** The battle set picker only means something in a battle. */
   _updateSetLabel() {
+    const arcade = this._selectedMode === 'arcade';
     if (this._setText) this._setText.setVisible(this._selectedMode === 'battle');
+    if (this._rowText) this._rowText.setVisible(arcade);
+    if (this._teamsText) this._teamsText.setVisible(arcade);
+    // in the arcade the count is of the players in each team
+    if (this._countLabel) this._countLabel.setText(arcade ? 'Игроков в команде:' : 'Игроков:');
   }
 
   _updateModeButtons() {
@@ -249,6 +282,11 @@ export default class MenuScene extends Phaser.Scene {
       const isRace = this._selectedMode === 'battle';
       this._btnRace.setStyle({ backgroundColor: isRace ? activeColor : inactiveColor });
       this._btnRace._bgColor = isRace ? activeColor : inactiveColor;
+    }
+    if (this._btnArcade) {
+      const isArcade = this._selectedMode === 'arcade';
+      this._btnArcade.setStyle({ backgroundColor: isArcade ? activeColor : inactiveColor });
+      this._btnArcade._bgColor = isArcade ? activeColor : inactiveColor;
     }
   }
 
@@ -285,6 +323,16 @@ export default class MenuScene extends Phaser.Scene {
       });
       return;
     }
+    if (this._selectedMode === 'arcade') {
+      // every team plays with the same players' keys, one team after another
+      const arcade = new LocalArcade(this._arcadeRow, this._arcadeTeams);
+      this._cleanup();
+      this.scene.start('GameScene', {
+        players, mode: 'arcade', myPlayerId: players[0].id, local: true,
+        arcade, levelId: arcade.entry.level,
+      });
+      return;
+    }
     this._cleanup();
     this.scene.start('GameScene', {
       players, mode: this._selectedMode, myPlayerId: players[0].id, local: true,
@@ -293,6 +341,10 @@ export default class MenuScene extends Phaser.Scene {
 
   _createRoom() {
     this._errorText.setText('');
+    if (this._selectedMode === 'arcade') {
+      this._errorText.setText('Аркада пока только за одним компьютером');
+      return;
+    }
     const sm = SocketManager.getInstance();
     sm.emit(EVENTS.CREATE_ROOM, {
       mode: this._selectedMode,

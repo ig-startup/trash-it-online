@@ -1959,8 +1959,19 @@ probably tenths of a second); the time a team
 finishes in goes back in the record's `+0x20`, the best time so far is
 kept at `+0x104` (starting at BCD 0x99999, which any time beats) and handed to the next team to
 beat (VA 0x195e5 puts it on the panel). When every team has played,
-VA 0x11df6 runs (not read — presumably the winner) and the menu offers
-to play again.
+VA 0x11df6 runs — the results, if there was more than one team — and the
+menu offers to play again.
+
+Who the teams are (F.EXE, read 13.10.2026): the number of **players** is
+picked once, before the teams (VA 0x19d2b → record `+4`), and the teams
+are then entered one screen after another (VA 0x177df), each time
+"another team" or "start", four at most. So every team is all the
+players at once on the K level — the same keys, the same Jacks — and the
+teams take the keyboard in turn. The clock (G.EXE VA 0x19edb) is a
+packed-BCD m:ss.t that adds a tenth every 6 ticks and **stops at
+60:00.0** (`cmp 0x60000`); nothing in the arcade runs out of time. The
+results (VA 0x11e2c) put the team times at `+0x158` in order (VA 0x20730)
+and let equal times share a place.
 
 ### Reading `G.EXE` in Ghidra
 
