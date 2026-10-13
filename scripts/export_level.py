@@ -270,6 +270,25 @@ def export(name):
         left = min(o["x"] for o in lv["objects"])
         spawn_pts = [{"x": left + 40 + i * 60, "y": ground} for i in range(4)]
 
+    # Flags. Classes 2-5, player 1-4's (ob_flag_common, VA 0x1f499): where a
+    # Jack flies back to after being flattened, stored at (x, y - 10).
+    # 103 levels place only player 1's and 12 only the first two; the
+    # original then leaves the others wherever the last level put them, so
+    # here they fan out from the last one like the starts above.
+    # See "Flattened, and home to the flag" in docs/re/jack/falling-block.md.
+    placed_flags = {cid - 2: (x, y - 10 + HEADROOM)
+                    for cid, _off, payload in placed if 2 <= cid <= 5
+                    for x, y in [struct.unpack_from("<hh", payload, 0)]}
+    flags = []
+    for i in range(4):
+        if i in placed_flags:
+            fx, fy = placed_flags[i]
+        elif flags:
+            fx, fy = flags[-1]["x"] + 24, flags[-1]["y"]
+        else:
+            fx, fy = spawn_pts[0]["x"], spawn_pts[0]["y"] - 10
+        flags.append({"x": clamp_x(fx), "y": fy})
+
     # Timmies. Class 14 a timmy, 17 a king timmy (VA 0x2fd06, 0x2fd42):
     # x, y, the word at +0xe its mode — 1 locked to the block under it
     # until that dies, 2 free from the start — and at +0x14 its flags
@@ -434,6 +453,7 @@ def export(name):
                        "data": "%s/shapes.json" % prefix},
         "shapes": sizes,
         "spawnPoints": spawn_pts,
+        "flags": flags,
         "timmies": timmies,
         "spikes": spikes,
         "bombs": bombs,

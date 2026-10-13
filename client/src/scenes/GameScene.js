@@ -24,6 +24,7 @@ import Seesaws from './seesaws';
 import Gits from './gits';
 import Bonuses from './bonuses';
 import Bell from './bell';
+import Flags from './flags';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -355,6 +356,9 @@ export default class GameScene extends Phaser.Scene {
         { hammer: this._hammerIndex });
       const set = keySets[pd.pad ?? i] || keySets[0];
       const pad = this._keys.pad(set, here.length === 1 ? SOLO_EXTRA : {});
+      // His flag (`.OB` class 2 + his index): where he flies home to once
+      // flattened (VA 0x2a2fe).
+      player.flag = (level.flags || [])[spawnIndex] || null;
       const j = {
         player, pad, data: pd, spawn, rang: false, movedVx: 0,
       };
@@ -415,7 +419,14 @@ export default class GameScene extends Phaser.Scene {
     // Ladders: the probes his climbing states make of the tile map.
     const blockAt = (x, y) => this._blockAt(x, y);
     const bottom = level.ground ? level.ground.y : levelHeight;
+    this._flags = hasProps(this) && (level.flags || []).length
+      ? new Flags(this, this._jacks.map(({ player }) => player.flag || level.flags[0]),
+        this._jacks.map(({ data }) => data.color || '#ff4444'))
+      : null;
+    if (this._flags) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._flags.destroy());
     this._jacks.forEach(({ player }) => {
+      // Flattened, he comes down through everything to here (VA 0x2a151).
+      player.levelBottom = bottom;
       player.findPickup = (x, y) => this._loose.find(x, y, player.getBounds());
       player.findCrusher = () => {
         if (!this._collapse) return null;
@@ -809,6 +820,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (this._ufos) this._ufos.update(delta);
     if (this._bonuses) this._bonuses.update(delta);
+    if (this._flags) this._flags.update(delta);
     if (this._gits) {
       const got = this._gits.update(delta, hoovers);
       if (got) this._timmyText.setText(`ТИММИ ${this._gits.collected}`);

@@ -192,9 +192,9 @@
 0x2b3ac  f  jack_air_down_but2             ; in the air, DOWN + BUT2; not traced
 0x29c92  f  jack_pinned                    ; under a block, squashed
 0x29e16  f  jack_pinned_in_hat             ; the same in the hat
-0x29f7a  f  jack_flattened                 ; slot 65, the pancake
-0x2a199  f  jack_knocked_out               ; slot 69, thrown up; after 150 ticks → fly to flag
-0x2a2fe  f  jack_fly_to_flag               ; slot 64, damped spring to the flag
+0x29f7a  f  jack_flattened                 ; slot 65, the pancake: flung up, then down like a leaf through everything to the level bottom; 150 ticks → fly to flag
+0x2a199  f  jack_hat_pop                   ; slot 69, out of the hat at -4 with a wobble, half gravity, back into the hat on landing
+0x2a2fe  f  jack_fly_to_flag               ; slot 64, damped spring to the flag, then jack_stand_hub2 (falling)
 0x2a4d8  f  jack_state_2a4d8               ; plays slot 0x42, stands after 28 frames; not traced
 
 # ── hammers and blows ─────────────────────────────────────────────────────

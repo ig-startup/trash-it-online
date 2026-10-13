@@ -2,3 +2,9 @@
 0x12b18  f  at_least_magnitude             ; *v keeps its sign but is pushed out to at least n (≤ 0 counts as negative)
 0x19c09  f  bcd_sub                        ; packed BCD, 8 digits, a - b with borrow; the score's counterpart to the adder
 0x1cf3d  f  slot32_add                     ; first free of 32 eight-byte slots (bit 0 = used), stores eax at +4; -1 if full
+# The flags (docs/re/jack/falling-block.md "Flattened, and home to the flag")
+0x1f5aa  f  flag_tick                      ; FLAG.SPR 0-7 a frame every 2 ticks; y = flag y + bob table 0x997c0
+0x1f698  f  flag_settle                    ; ? after 30 ticks steps the frame down every 4 to 0, then flag_tick
+0x211d2  f  jack_combo_taken               ; ? the player's +0xb0 combo slot +0x50 is 1: take it (demo mode 6: input 0x50)
+0x33861  f  jack_spill_angels              ; ? every timmy the player has goes up as a dying angel (git_32164)
+0x997c0  d  flag_bob                       ; 16 × i16: 0 1 2 4 6 8 9 10 10 9 8 6 4 2 1 0
