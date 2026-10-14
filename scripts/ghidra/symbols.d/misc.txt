@@ -149,9 +149,10 @@
 0x6017f  f  cannon_wheel_frame             ; roll_friction; frame follows the barrel's
 0x601ac  f  hammer_head_tick               ; HAMHEA on the hammer in slot 34; slot 35 → flies off (state_6023e)
 0x6023e  f  hammer_head_fly                ; rising faster each tick, spinning; gone when unlinked
-0x60d5d  f  heat_tick                      ; HEAT: plays script 0xa46e2[mode] — 0 and 1 while Jack is in slot 4, 2 once then gone
+0x60d5d  f  heat_tick                      ; unreferenced — HEAT: plays script 0xa46e2[mode] — 0 and 1 while Jack is in slot 4, 2 once then gone
 0x612e9  f  dust_grow_tick                 ; frames to 7, widening 4 px a frame
 0x6137f  f  spawn_rubble_dust              ; dust over a falling piece of rubble, one of 8 speeds
 0x6143f  f  dust_loop_tick                 ; frames 8-15, looping
 0x615ca  f  hoover_tick                    ; VAC on Jack: the suck list for his slot, the hoover sound
 0x617dc  f  hoover_dropped                 ; a dropped hoover falls, skids and stops
+0x1cd94  f  scn_picture_double             ; ? unreferenced: the 320x200 picture at 0x277634 (the .SCN's third part) doubled to 320x400

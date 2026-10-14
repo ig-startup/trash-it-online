@@ -1,7 +1,6 @@
 # Still open
 
-- The `.I` second u16; the `HEAT` draw mode (-1); which `.SCN` texture
-  each backdrop plane samples.
+- The `.I` second u16.
 - Sound scripts 29–32 are a lone `skip` (op 14) whose five words the
   interpreter ignores — something else must read them.
 - `F.EXE`: what a gate node (kind 4) charges; node words 17 and 18; the
@@ -21,7 +20,7 @@
   that sets them; nothing yet traces a reader.
 - Scoring beyond the packed-BCD adder and the rules record's +0x38.
 
-Closed since these notes last listed them: the sledge v3 trick; the apocalypse hammer's flight script; the dragon show (table 0x9ff42) and the camera's target list, which an old name had as a "hit queue"; the event/outcome tables
+Closed since these notes last listed them: which `.SCN` texture each backdrop plane samples (0 the ground, 1 the backdrop, the third part unused) and `HEAT` (dead code); the sledge v3 trick; the apocalypse hammer's flight script; the dragon show (table 0x9ff42) and the camera's target list, which an old name had as a "hit queue"; the event/outcome tables
 (Jack's, 0xa2f48, is read but for type 9, the unplaced generic thing); why 2T, 4T and BA ask for
 more trashing than they hold (a button demolishes the level); the last
 unnamed `.OB` classes (the crawler, the rocket, the buttons); `.OBT` field 6 is mass and

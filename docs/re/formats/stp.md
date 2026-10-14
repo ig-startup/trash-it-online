@@ -20,5 +20,6 @@ Drawn through it:
 
 The same template word with 0x8000 alone is a colour remap — table
 `0xa1c28[n]`, 256 bytes: 1-3 are the player colours (Jack, flags, bins);
-with 0x4000 it is mode -1 (`HEAT`, not read). `0xa1b28`, all 255, draws a
+with 0x4000 it is mode -1 (`HEAT`) — no template sets it (see
+[scn](scn.md)). `0xa1b28`, all 255, draws a
 sprite as a flat silhouette — the super hoover's blink.
