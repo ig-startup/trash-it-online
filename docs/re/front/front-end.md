@@ -29,7 +29,8 @@ world's index: S is screen 5 and L screen 4, A is 8 and T is 7.
 
 Jack moves pixel by pixel along the 255-coloured paths (VA 0x1e1c1) and
 **cannot step over a point that is not trashed**: a level is a stop until
-it is won. Path nodes start trashed. A kind-3 exit that is trashed sends
+it is won. How he walks, faces and warps, and what fire does on each kind
+of node: `world-map.md`. Path nodes start trashed. A kind-3 exit that is trashed sends
 the front end to state 5 — next world, the map reset (VA 0x200e8), and
 the new world's password shown. The first six worlds branch, so some
 levels can be walked past once a neighbour is won; A, T and M are

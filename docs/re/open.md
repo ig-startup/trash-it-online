@@ -6,6 +6,9 @@
   interpreter ignores — something else must read them.
 - `F.EXE`: what a gate node (kind 4) charges; node words 17 and 18; the
   C/D one-object screens (`G.EXE` VA 0x10c1f builds them).
+- `F.EXE`'s screen files `PROJ/*.DAT`: past the sheet names and the
+  per-frame sizes, how the screens' objects and their animation rates are
+  laid out (the map Jack's frame rate, the landmarks, `LEVSLBIN`).
 - Why 2T, 4T and BA ask for more trashing than they hold.
 - What sets the swing's starting frame — the operating range of the force
   ramp (see the collapse section; the formula itself is confirmed).

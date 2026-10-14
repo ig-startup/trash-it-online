@@ -29,6 +29,10 @@ Each frame:
 Each .SPR has a matching .PAL loaded alongside it (e.g. JACKS.PAL for
 JACKS.SPR), so sprites are NOT drawn in the level's palette.
 
+A frame wider than a scanline can say (its length is a byte) is stored
+raw instead, `w * h` pixels row by row: the front end's 640 x 480
+screens, e.g. frame 5 of FSPR/JUNKMP.SPR, the junkyard's world map.
+
 Exception: TRASHIT/CHAR.SPR uses the same header but its frames are
 8x8 raw uncompressed pixels (72 bytes each = 8 header + 64 pixels) —
 it is the text font, not a sprite sheet.
@@ -50,8 +54,14 @@ def parse(buf):
         p = table + o
         w, h, ox, oy = struct.unpack_from("<4h", buf, p)
         end = table + offs[i + 1] if i + 1 < n else len(buf)
-        frames.append(dict(w=w, h=h, ox=ox, oy=oy, off=p,
-                           rows=decode_rows(buf[p + 8:end], max_rows=h)))
+        data = buf[p + 8:end]
+        if w > 253 and len(data) >= w * h:
+            # Too wide for a scanline (its length is a byte): stored raw,
+            # w * h pixels — the front end's 640 x 480 screens.
+            rows = [(0, data[y * w:(y + 1) * w], False) for y in range(h)]
+        else:
+            rows = decode_rows(data, max_rows=h)
+        frames.append(dict(w=w, h=h, ox=ox, oy=oy, off=p, rows=rows))
     return frames
 
 

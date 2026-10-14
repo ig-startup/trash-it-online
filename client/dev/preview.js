@@ -15,6 +15,7 @@
  */
 import Phaser from 'phaser';
 import GameScene from '../src/scenes/GameScene.js';
+import WorldMapScene from '../src/scenes/WorldMapScene.js';
 import { DEFAULT_LEVEL_ID } from '../src/levels/index.js';
 import { PLAYER_COLORS } from '../../shared/constants.mjs';
 
@@ -32,6 +33,12 @@ class DevBoot extends Phaser.Scene {
   constructor() { super({ key: 'DevBoot' }); }
 
   create() {
+    // ?story (=password) starts on the world map instead
+    const story = new URLSearchParams(window.location.search).get('story');
+    if (story !== null) {
+      this.scene.start('WorldMapScene', { players, password: story || null, arrived: true });
+      return;
+    }
     this.scene.start('GameScene', {
       roomCode: 'DEV', players, mode: 'coop', levelId, myPlayerId: 'p0', local: local > 0,
       // ?hammer=N swings hammer N of the catalogue (36 is the guitar)
@@ -49,5 +56,5 @@ window.game = new Phaser.Game({
   backgroundColor: '#1a1a2e',
   // as main.js has it — the original's gravity, see GRAVITY in Player.js
   physics: { default: 'arcade', arcade: { gravity: { y: 1378 }, debug: false } },
-  scene: [DevBoot, GameScene],
+  scene: [DevBoot, GameScene, WorldMapScene],
 });

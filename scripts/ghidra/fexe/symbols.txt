@@ -3,7 +3,12 @@
 # The world map (scripts/formats/front.py, docs/re/front/front-end.md "The front end").
 0x1e97a  f  find_current_node              ; node pointer for record +0x1b8, logs "could not find node"
 0x1de35  f  map_fire_pressed               ; what fire does on a node: play, refuse, next world
-0x1e1c1  f  map_walk_step                  ; one pixel along the LVSPAT path; stops at untrashed points
+0x1e1c1  f  map_walk_step                  ; the arrows: off a trashed point, or back the way he came
+0x1e539  f  map_read_neighbours            ; the 3x3 of LVSPAT around Jack into 0xd9812, 0..8 by rows
+0x1e09f  f  map_walk_tick                  ; one pixel on: not back, the key's pair first tick, a point first
+0x1e5c9  f  map_move_to_neighbour          ; x, y by the neighbour index; came-from into 0xd981c
+0x1e923  f  map_settle_facing              ; a new direction only after it held two ticks
+0x1dbd9  f  map_place_jack                 ; on the record's node, came 4, stopped; point positions from LVSPAT
 0x1e708  f  map_take_warp                  ; node word 3: jump to the paired node
 0x1e788  f  map_pick_jack_facing           ; looks 32 steps ahead to choose Jack's walking frame
 0x1ff5a  f  map_start_node                 ; record +0x24 = level, +0xdc = film, +0x1b8 = node

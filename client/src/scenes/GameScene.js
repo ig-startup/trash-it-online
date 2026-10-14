@@ -99,6 +99,8 @@ export default class GameScene extends Phaser.Scene {
     this._localBattle = data.localBattle || null;
     /** So does the arcade: the teams' turns and times (battle/LocalArcade.js). */
     this._arcade = data.arcade || null;
+    /** The story: a level played off the world map, back to it after (story/Story.js). */
+    this._story = data.story || null;
     if (this._localBattle && !this._battle) {
       const now = this._localBattle.current();
       this._battle = now.battle;
@@ -116,6 +118,8 @@ export default class GameScene extends Phaser.Scene {
     // An arcade level hands its row's hammer.
     if (this._arcade) {
       this._hammerIndex = this._arcade.entry.hammer;
+    } else if (this._story) {
+      this._hammerIndex = this._story.hammer;
     } else {
       this._hammerIndex = this._battle && Number.isInteger(this._battle.hammer)
         ? this._battle.hammer : FIRST_HAMMER;
@@ -896,6 +900,10 @@ export default class GameScene extends Phaser.Scene {
     }
     this._over = true;
     this._jacks.forEach((j) => { if (!j.rang) this._leaveLevel(j); });
+    if (this._story) {
+      this.showResultOverlay('ВРЕМЯ ВЫШЛО', 'Минус жизнь', { then: () => this._backToMap('lost') });
+      return;
+    }
     this.showResultOverlay('ВРЕМЯ ВЫШЛО', 'Попробуйте ещё раз', { nextLevel: this._levelId });
   }
 
@@ -1499,8 +1507,17 @@ export default class GameScene extends Phaser.Scene {
       const order = this._rung.length > 1
         ? this._rung.map((k, i) => `${i + 1}. ${this._nameOf(k.data.id)}`).join('\n')
         : 'Колокольчик твой';
+      if (this._story) {
+        this.showResultOverlay('УРОВЕНЬ ПРОЙДЕН', order, { then: () => this._backToMap('won') });
+        return;
+      }
       this.showResultOverlay('УРОВЕНЬ ПРОЙДЕН', order, { nextLevel: nextLevelId(this._levelId) });
     });
+  }
+
+  /** The story goes on on the world map, the level won or lost. */
+  _backToMap(result) {
+    this.scene.start('WorldMapScene', { players: this._players, story: this._story, result });
   }
 
   /** A player has rung, or looks on: his Jack leaves the level, the others go on. */
@@ -1554,6 +1571,7 @@ export default class GameScene extends Phaser.Scene {
       local: this._local,
       localBattle: this._localBattle,
       arcade: this._arcade,
+      story: this._story,
     });
   }
 
@@ -1564,6 +1582,7 @@ export default class GameScene extends Phaser.Scene {
       const best = a.best === null ? '' : `  РЕКОРД ${formatTenths(a.best)}`;
       return `КОМАНДА ${a.current + 1}/${a.teams}${best}`;
     }
+    if (this._story) return `СЮЖЕТ · ЖИЗНИ ${this._story.lives}`;
     if (this._mode !== 'battle') return 'КООП';
     const b = this._battle;
     if (!b) return 'БИТВА';
