@@ -5,7 +5,7 @@ The levels whose bell waits for "the last of a crawling kind" (0L 2D 5L
 of a launch pad, and `.OB` classes 35–43 are the pieces of an **Apollo
 rocket** (`APOLLO.SPR`, the constructors' own error string: `"too many
 rocket bits???"`). Jack brings the pieces to the crawler one at a time,
-in order; the crawler drives each to the pad and a crane arm stacks it.
+in order, on a [forklift](forklift.md) — he cannot lift one himself; the crawler drives each to the pad and a crane arm stacks it.
 When the last piece is on, level option 0x800 is set and the subtype-2
 bell pops (see the bell section of [.OB](../formats/ob.md)).
 

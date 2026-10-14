@@ -15,12 +15,10 @@
 - What the individual bits of the level's option byte (0x98224, and a
   second at 0x98226) do. `ob.py` lists every field of the rules record
   that sets them; nothing yet traces a reader.
-- `"event list contains no outcome for object type %d"` (VA 0x90e0c):
-  there is an event/outcome table keyed by object type that nothing here
-  has looked at.
 - Scoring beyond the packed-BCD adder and the rules record's +0x38.
 
-Closed since these notes last listed them: why 2T, 4T and BA ask for
+Closed since these notes last listed them: the event/outcome tables
+(Jack's, 0xa2f48, is read but for type 9, the unplaced generic thing); why 2T, 4T and BA ask for
 more trashing than they hold (a button demolishes the level); the last
 unnamed `.OB` classes (the crawler, the rocket, the buttons); `.OBT` field 6 is mass and
 field 0 is hit points; the `.OB` record lengths (all 147 files parse

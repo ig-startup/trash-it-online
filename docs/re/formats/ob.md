@@ -63,7 +63,7 @@ sprite its template points at, and 64 templates cover the whole cast:
 | 15 | `DYNA.SPR` — dynamite |
 | 17, 32 | `TIMMY.SPR` |
 | 22 | `SUCKER.SPR` |
-| 23 | `FORK.SPR` |
+| 23 | `FORK.SPR` — the [forklift](../objects/forklift.md) |
 | 24 | `FORK.SPR` frames 12–15 — a spinning cog in a block, inert ([buttons](../objects/buttons.md)) |
 | 25 | `BUBBLE.SPR` — the double-points bubble in a block (no level) |
 | 26 | a generic thing, 12 words (no level) |
