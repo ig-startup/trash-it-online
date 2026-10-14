@@ -28,9 +28,10 @@ while Jack is already in the state that spends it. It is spent by:
   on a pad, BUT1 + 0x40 held) → the palette flashes and Jack **flies back
   to his flag** (0x33861). This is the "hat to flag" route the
   keyboard-layout note was missing.
-- **hammer 20, the sledge hammer v3**, overhead windup → state 0x2a4d8
-  (slot 66, 28 frames; at frame 8 something 62 px ahead, 0x34590) — not
-  traced further.
+- **hammer 20, the sledge hammer v3**, overhead windup → the sledge is
+  slammed into the floor ahead, rebounds 1250 px straight up through the
+  building and falls back on it as a weight of mass 12 (state 0x2a4d8; see
+  [sledge trick](sledge-trick.md)).
 - **hammer 29, the apocalypse hammer v3**, sideways windup → the hammer
   flies off on its own and the player steers it down onto the level
   (`apocalypse_start`, 0x15260; see [apocalypse](apocalypse.md)).

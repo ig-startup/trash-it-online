@@ -122,8 +122,8 @@
 0x343dc  f  bell_steer_vx                  ; push vx by the sign of *eax (16000, 0x1f400 against), stop near 0
 0x3443d  f  bell_ringer_tick               ; a child on the bell; frames 1/2 every 6 ticks while it rings
 0x34494  f  bell_glow_tick                 ; the flashing highlight while +0x5c counts down
-0x34590  f  sledge_trick_slam              ; hammer 20's trick: the hammer (frame 60) dropped to the floor ahead
-0x34686  f  sledge_trick_rise              ; up and decelerating with a trail; frames to 77
+0x34590  f  sledge_trick_slam              ; hammer 20's trick: no floor ahead → it drops (mass 6); floor → shake, rebound up 21.4 px a tick
+0x34686  f  sledge_trick_rise              ; up through anything, slowing 12000 a tick, sparks; frames 61-77 at the top, then a falling weight of mass 12
 0x34747  f  sledge_trick_settle            ; on the ground → hammer_dropped, the player's +0x160 cleared
 0x34794  f  sledge_trick_physics
 0x347c1  f  ob_class_27_teleporter

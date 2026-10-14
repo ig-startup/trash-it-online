@@ -195,7 +195,6 @@
 0x29f7a  f  jack_flattened                 ; slot 65, the pancake
 0x2a199  f  jack_knocked_out               ; slot 69, thrown up; after 150 ticks → fly to flag
 0x2a2fe  f  jack_fly_to_flag               ; slot 64, damped spring to the flag
-0x2a4d8  f  jack_state_2a4d8               ; plays slot 0x42, stands after 28 frames; not traced
 
 # ── hammers and blows ─────────────────────────────────────────────────────
 0x1f83d  f  hammer_blow                    ; strike → blow box
@@ -266,6 +265,7 @@
 0x28b938 d  start_positions                ; per player: i16 x, y + 20
 0x28b948 d  flag_entities                  ; per player: the FLAG.SPR entity
 0x28b97c d  players                        ; four 360-byte player structs
+0x28bf28 d  current_hammer                 ; the current player's hammer entity (player +0x54)
 0x28bf2c d  current_player                 ; pointer to the one being run
 0x28bf34 d  input_pressed                  ; this tick's newly pressed bits
 0x28bf36 d  input_held                     ; held bits

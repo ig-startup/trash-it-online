@@ -4,7 +4,7 @@
 0x204c3  f  dragon_sequence                ; hammer 33's trick: sequence_start with Jack
 0x204f4  f  moola_demolition               ; hammer 34's trick: the demolition count, the camera on a point 1600 px over the bottom for 400 ticks
 0x211d2  f  hat_trick_armed                ; in the hat: spends the armed flag (keyboard) or sees BUT1+0x40 held (pad) → fly to the flag
-0x2a4d8  f  sledge_v3_trick                ; hammer 20 armed, overhead: slot 66 for 28 frames; frame 8 reaches 62 px ahead (0x34590)
+0x2a4d8  f  sledge_v3_trick                ; hammer 20 armed, overhead: slot 66 for 28 frames; at frame 8 the hammer 62 px ahead, sledge_trick_slam
 0x3f209a d  bell_x                         ; the bell's spot, set by its constructor; 0x3f209c its y
 0x20eaa  f  input_but2_held
 0x20eb5  f  input_down_and_jump            ; DOWN held and BUT2 pressed
