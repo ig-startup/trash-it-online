@@ -9,10 +9,11 @@
 - `F.EXE`'s screen files `PROJ/*.DAT`: past the sheet names and the
   per-frame sizes, how the screens' objects and their animation rates are
   laid out (the map Jack's frame rate, the landmarks, `LEVSLBIN`).
-- The scripted sequence 1D's button and the mystical dragon hammer's trick
-  start (table 0x9ff42, CD track 10); the apocalypse hammer's flight
-  script (0x93ddc, ops at 0x93d98); the sledge v3 trick's slam
-  (0x2a4d8, 0x34590). See [combos](jack/combos.md).
+- The apocalypse hammer's flight script (0x93ddc, ops at 0x93d98); the
+  sledge v3 trick's slam (0x2a4d8, 0x34590). See [combos](jack/combos.md).
+- Who reads 0x28bf7e (the dragon show lowers it by 1030 and lets it back —
+  a backdrop offset?) and 0xa2f0e (2 in the show's first half, else 1).
+  See [dragon show](levels/dragon-show.md).
 - What sets the swing's starting frame — the operating range of the force
   ramp (see the collapse section; the formula itself is confirmed).
 - What the individual bits of the level's option byte (0x98224, and a
@@ -20,7 +21,7 @@
   that sets them; nothing yet traces a reader.
 - Scoring beyond the packed-BCD adder and the rules record's +0x38.
 
-Closed since these notes last listed them: the event/outcome tables
+Closed since these notes last listed them: the dragon show (table 0x9ff42) and the camera's target list, which an old name had as a "hit queue"; the event/outcome tables
 (Jack's, 0xa2f48, is read but for type 9, the unplaced generic thing); why 2T, 4T and BA ask for
 more trashing than they hold (a button demolishes the level); the last
 unnamed `.OB` classes (the crawler, the rocket, the buttons); `.OBT` field 6 is mass and

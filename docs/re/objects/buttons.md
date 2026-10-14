@@ -29,8 +29,8 @@ wobbles for a while (`+0x50` 40 down by 4, `+0x4a` 6). It can be pressed
 again; the bit is already set.
 
 **Hidden** (word 9 = 1): routine 0x17350, invisible and untouchable until
-its colour's bit is in the options, then it appears with a `queue_hit`
-pop (2, 120) and kick −1.53 px/tick.
+its colour's bit is in the options, then it appears, the camera taking
+it in for 120 ticks (`camera_track`, see [camera](../logic/camera.md)) and kick −1.53 px/tick.
 
 ## Option 0x1000: the level's one big event
 
@@ -40,13 +40,16 @@ picks, by its word at stream +0x26, a handler for option 0x1000: 1 none
 (0x1b089, added to the 32-slot list) calls it once, the first tick 0x1000
 is set without 0x2000, and sets 0x2000.
 
-- **0x1b0f6, the demolition.** Starts an 80-tick count (0x28b964) and a
-  blast near the bottom of the level. `logic_frame` runs 0x2043c: at 8
+- **0x1b0f6, the demolition.** Starts an 80-tick count (0x28b964) and draws
+  the camera back to a point 1900 px over the bottom of the level, for
+  800 ticks. `logic_frame` runs 0x2043c: at 8
   the screen shakes; at 0 it sets option 0x40, plays a sound and calls
   `demolish_all` (0x206c0) — `remove_object_data` on **every
   destructible object** of the level at once.
-- **0x204be (1D).** Plays CD track 10 and starts an 80-tick step of the
-  scripted sequence at 0x9ff42 (`level_sequence_step`) — **not traced**.
+- **0x204be (1D).** Plays CD track 10 and starts the scripted
+  sequence at 0x9ff42 — the [dragon show](../levels/dragon-show.md): a
+  demon face, lightning, a camera sweep, then a blow from below that
+  brings the level down.
   The mystical dragon hammer's trick starts the same sequence, and the
   ULTIMATE MOOLA's trick the same demolition ([combos](../jack/combos.md)).
 

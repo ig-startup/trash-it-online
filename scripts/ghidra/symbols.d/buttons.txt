@@ -7,7 +7,7 @@
 0x172a9  f  button_tick                     ; hit from above (+0x40 & 0x80) → options |= +0x56, frame + 1, hop
 0x17350  f  button_hidden                   ; waits for its colour bit in the options, then appears with a pop
 0x1b089  f  option_1000_watch               ; once 0x1000 is set (and not 0x2000): set 0x2000, call the rules record's handler (0x287c68)
-0x1b0f6  f  demolition_start                ; 80-tick count at 0x28b964, a blast near the level bottom
+0x1b0f6  f  demolition_start                ; 80-tick count at 0x28b964, the camera on a point 1900 px over the bottom for 800 ticks
 0x2043c  f  demolition_tick                 ; shakes at 8; at 0 option 0x40, a sound, demolish_all
 0x206c0  f  demolish_all                    ; remove_object_data on every destructible object
 0x204be  f  sequence_start                  ; CD track 10, an 80-tick step of the sequence at 0x9ff42 (1D)

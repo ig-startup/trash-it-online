@@ -110,8 +110,8 @@ The constructor (VA 0x33d1d) copies payload +16 into entity +0x56, +18
 into +0x54 and +20 × 60 into the timer at +0x4a; every subtype but 1
 clears the entity's flag 8, which hides it and keeps it from being
 touched. When the condition comes true the bell gets subtype 1's
-routine, its flag back, a kick of -4 px/tick upward and a hit
-(`queue_hit`) — it pops into view.
+routine, its flag back, a kick of -4 px/tick upward and the camera takes it
+in for 180 ticks (`camera_track`, see [camera](../logic/camera.md)) — it pops into view.
 
 | subtype | lets go when | levels |
 |---|---|---|

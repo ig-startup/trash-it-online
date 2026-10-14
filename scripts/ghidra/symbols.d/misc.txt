@@ -52,7 +52,7 @@
 0x1d761  f  cannon_flash_tick              ; BLAM on the barrel's mouth, frames 9-13, a puff every +0x4e ticks
 0x1d986  f  release_from_holder            ; out of Jack's hands or a sucker's
 0x1da39  f  camera_target_remove           ; slot ax of the list at 0x287d84
-0x1daa7  f  camera_targets_bounds          ; the box around every live entry of the 32-slot list (queue_hit's): what the camera frames
+0x1daa7  f  camera_targets_bounds          ; the box around every live entry of the 32-slot list (camera_targets): what the camera frames; priority (flag 8) targets, if any, alone
 0x1dc86  f  min_s16
 0x1dc8f  f  max_s16
 0x1dc98  f  min_s16_2
@@ -89,7 +89,6 @@
 0x1f804  f  dust_tick                      ; frames to 19, +0x56 ticks each
 0x1fc59  f  play_sound_staggered           ; a sound whose start is offset by the frame counter
 0x1fe9f  f  blam_puff                      ; frames to 6, 3 ticks each
-0x200e2  f  sequence_rise_step             ; a step of the 0x9ff42 sequence: something rises 12 px a tick from the level's bottom centre, the palette pulsing
 0x202f2  f  vm_expire                      ; VM.SPR: die_after_timer
 0x2030e  f  spawn_vm                       ; VM.SPR at the level's bottom centre, frame 1
 0x20370  f  vm_flicker                     ; jitters, frames 1-4, the palette flickering 100-131

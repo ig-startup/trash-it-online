@@ -40,5 +40,5 @@ while Jack is already in the state that spends it. It is spent by:
 |---|---|---|
 | 20 sledge v3 | D+BUT2, BUT2, three times (pad: D, 0x40 ×3) | arm |
 | 29 apocalypse v3 | BUT2, L+BUT2, BUT2, D+BUT2, BUT2, L+BUT2, BUT2, U+BUT2, BUT2 (pad: 0x80 with L D L U) | arm |
-| 33 mystical dragon | the bell-warp keys | **0x204c3**: CD track 10 and the scripted sequence at 0x9ff42 — the same one 1D's button starts (see [buttons](../objects/buttons.md)); it runs before the warp |
+| 33 mystical dragon | the bell-warp keys | **0x204c3**: CD track 10 and the [dragon show](../levels/dragon-show.md) (table 0x9ff42) — the same one 1D's button starts; it runs before the warp |
 | 34 THE ULTIMATE MOOLA | R, BUT2, L, BUT1, U, BUT2, D, BUT1 (pad: R 0x80 L B1 U B2 D 0x40) | **0x204f4**: the 80-tick count and the **demolition of the whole level** |
