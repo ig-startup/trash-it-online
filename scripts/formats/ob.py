@@ -96,6 +96,8 @@ RULES = {
     0x1a: 'bit 1 -> option 0x04                         (14 levels)',
     0x1e: 'bit 1 -> option 0x08                         (12 levels)',
     0x2a: 'selector: 1/2/4/8 pick one of four           (1 in 122, 4 in 14, 8 in 10)',
+    0x22: 'bit 1 -> option 0x40 + demolish every object at load (no level)',
+    0x26: 'what option 0x1000 (a button) sets off: 1 nothing, 2 the 1D sequence (0x204be), 4 the demolition (0x1b0f6; 2T 4T BA)',
     0x2e: 'bit 1 -> option 0x1000                       (10 levels)',
     0x32: 'bit 1 -> option 0x2000, and sets 0x9385c      (10 levels)',
     0x36: '== 2 -> option 0x400000                      (0 in 84, 2 in 39, 1 in 23)',

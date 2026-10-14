@@ -64,8 +64,14 @@ sprite its template points at, and 64 templates cover the whole cast:
 | 17, 32 | `TIMMY.SPR` |
 | 22 | `SUCKER.SPR` |
 | 23 | `FORK.SPR` |
+| 24 | `FORK.SPR` frames 12–15 — a spinning cog in a block, inert ([buttons](../objects/buttons.md)) |
+| 25 | `BUBBLE.SPR` — the double-points bubble in a block (no level) |
+| 26 | a generic thing, 12 words (no level) |
+| 28, 29, 30 | `REDBUT.SPR` — red, green, blue [buttons](../objects/buttons.md) |
+| 34 | nothing — skips 16 bytes |
 | 35–43 | `APOLLO.SPR` — rocket pieces 8…0 ([crawler](../objects/crawler.md)) |
 | 44 | `CRAWL.SPR` — the crawler-transporter |
+| 45 | `TIMMY.SPR` — the bomb git ([gits](../objects/gits.md)) |
 | 46 | `PANEL.SPR` |
 
 `VAC.SPR` — the hoover — has a template too (VA 0xa3444), which confirms
