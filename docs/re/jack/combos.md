@@ -32,7 +32,8 @@ while Jack is already in the state that spends it. It is spent by:
   (slot 66, 28 frames; at frame 8 something 62 px ahead, 0x34590) — not
   traced further.
 - **hammer 29, the apocalypse hammer v3**, sideways windup → the hammer
-  flies off on its own (`apocalypse_start`, 0x15260).
+  flies off on its own and the player steers it down onto the level
+  (`apocalypse_start`, 0x15260; see [apocalypse](apocalypse.md)).
 
 ## Hammers with more
 

@@ -1,9 +1,32 @@
-# The apocalypse hammer v3's one special blow — hammer 29. Not written up beyond these lines yet.
+# The apocalypse hammer v3's one special blow — hammer 29. See docs/re/jack/apocalypse.md.
 0x15260  f  apocalypse_start               ; from jack_windup_side when hammer 29's one-shot flag (player +0xb0 + 29*2) is 1: the hammer leaves Jack, runs the script 0x93ddc
-0x15323  f  apocalypse_script              ; runs bytecode (handlers 0x93d98) and frame ramps; the trail
+0x15323  f  apocalypse_script              ; runs the flight script (ops 0x93d98), eases, height → camera width; after op 10 the player steers the dive, impact below width 170
 0x15708  f  apocalypse_fall                ; gravity 0x4800, bounces at half off the level's bottom, then apocalypse_return
 0x1577b  f  apocalypse_fly                 ; up 12 px a tick, vx growing by 20000, a trail; then apocalypse_return
 0x157f7  f  apocalypse_return              ; after 120 ticks eases back to 32 px over its owner, then its saved state again
 0x158b3  f  ease_by_sixteenth              ; *edx += (ax - target) / 16, capped at 6 px; 1 on arrival
 0x15ac8  f  apocalypse_trail               ; every 4 ticks an APOCS.SPR at the hammer
 0x15b79  f  apocs_tick                     ; the trail piece lives +0x4a ticks
+0x93ddc  d  apocalypse_flight              ; the flight script: rise to height 5600, the camera drawn back with it, then the dive
+0x93d98  d  apocalypse_ops                 ; 17 opcode routines, each returns 0 to go on, 1 to wait
+0x93ce0  d  apocalypse_blow_table          ; 23 × (force, rubble mask) by -vz/2 at impact: 1 … 16384000
+0x158f6  f  apo_op_frame                   ; op 0 n: frame n
+0x1590b  f  apo_op_rate                    ; op 1 n: ticks per frame n
+0x15926  f  apo_op_frame_to                ; op 2 n: step the frame toward n
+0x15abe  f  apo_op_wait                    ; op 3: stop until a frame_to / until_height finishes
+0x1593f  f  apo_op_timer                   ; op 4 n: +0x4a = n
+0x15954  f  apo_op_vel                     ; op 5 dx dy dh: px a tick in x, y and height (whole parts of vx, vy, +0x38)
+0x15985  f  apo_op_ease_y                  ; op 6 n: ease y to level_bottom + n
+0x159a7  f  apo_op_ease_x                  ; op 7 n: ease x to x + n
+0x159c6  f  apo_op_until_height            ; op 8 n: wait for height > -n
+0x159df  f  apo_op_cam_lock_xy             ; op 9: camera x, y held (options 0x98225 bits 0x40 0x80)
+0x15a7f  f  apo_op_dive                    ; op 10: frame 0x4f, the steered dive (+0x6c bit 0x40), option 0x98226 bit 2
+0x15a75  f  apo_op_cam_unlock_xy           ; op 11
+0x15a01  f  apo_op_cam_lock_all            ; op 12: x, y and width held
+0x15a3a  f  apo_op_cam_lock_width          ; op 13: width held (0x98226 bit 1) — the width is height + 250
+0x15aaf  f  apo_op_flag_28bfa4             ; op 14: 0x28bfa4 = 1
+0x15a50  f  apo_op_trail_on                ; op 15
+0x15a6b  f  apo_op_trail_off               ; op 16
+0x28bf84 d  cam_lock_width                 ; 16.16; its whole part 0x28bf86 is the width camera_frame_targets takes when 0x98226 bit 1
+0x28bf88 d  cam_lock_y                     ; 16.16; 0x28bf8a with 0x98225 bit 0x80
+0x28bf8c d  cam_lock_x                     ; 16.16; 0x28bf8e with 0x98225 bit 0x40
