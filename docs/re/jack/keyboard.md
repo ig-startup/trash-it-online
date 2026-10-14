@@ -49,15 +49,27 @@ profile 0, so slower):
 | BUT2 held + LEFT/RIGHT | overhead windup (0x23f0f) — so walking with it, BUT2 always gives the overhead one |
 | BUT1 pressed | hammer back into the hat (0x2320a, slot 10) |
 | UP held + BUT1 pressed | the hoover (0x2a88c) |
-| DOWN alone | 0x27ff7: clears `+0x9a`, hides the hammer entity — lays it down? (not traced further); option bit 2 forbids it |
+| DOWN held alone (`held == 8`) | 0x27ff7: straight into the hard hat (0x24346), the hammer with him — clears `+0x9a`, hides the hammer entity, sound 0x10; option bit 2 forbids it |
 
 In the hard hat (0x24727): UP pressed comes out (0x244c0); BUT2 pressed
-goes to 0x26539 (slot 43) or 0x2a199 (slot 69) depending on 0x60c25.
+(VA 0x2486d) asks 0x60c25 whether there is room about him — three probes,
+the first one pixel up — and with it **the hat hops**: sound 0x52,
+`vy = -2` px/tick, and with RIGHT held `vx = 0x1f000`, LEFT `-0x1f000`,
+into 0x26539 (slot 43, the same state a hit in the hat bounces through).
+There the arrows steer it as on the ground (`top_speed`, `accel`, `rate`)
+with 2000 of friction a tick; landing under 1.5 px/tick puts him back in
+the hat, faster bounces it at a quarter. With no room the hat pops out as
+from under a block (0x2a199, slot 69).
 
 With the hoover (0x24e55): LEFT/RIGHT walk with it (0x250d9); UP + BUT1
-puts it away (0x2ab7a); BUT1 alone goes to 0x25468 (slot 9); DOWN alone
-calls 0x28035, which spawns a sprite thrown upward at -2 px/tick —
-emptying the bag? (not traced). Option bit 8 forbids both.
+puts it away (0x2ab7a); BUT1 alone goes to 0x25468 (slot 9); DOWN held
+alone (`held == 8`, also walking) **throws it away** and ducks into the
+hat, 0x28035 → 0x24346: 0x280f1 hides the hoover at the player's `+0x4c`
+and, unless its frame is 3-9 (half drawn), 0x28129 makes a free VAC.SPR
+sprite (template 0xa3444, state 0x617dc) with Jack's position, speed and
+facing, then `vy = -2`. It falls at 0x4800 a tick through everything,
+loses 2000 a tick across, and is killed once it is off the screen. The
+next UP + BUT1 draws a new one from the hat. Option bit 8 forbids both.
 
 Carrying: see "Carrying and throwing" — DOWN puts down, UP aims, BUT1 or
 BUT2 throws. In the air: DOWN held + BUT2 pressed goes to 0x2b3ac (not
@@ -66,9 +78,11 @@ traced).
 The level's option byte (0x98224) switches actions off: bit 1 the
 hammer, 2 the hammer's DOWN action, 4 the hoover, 8 the hoover's.
 
-The clone plays this layout with Z as BUT1 and X (or Space) as BUT2.
-Not yet in it: the hammer's and the
-hoover's DOWN actions, and the hat's BUT2. Two choices are its own:
+The clone plays this layout with Z as BUT1 and X (or Space) as BUT2
+(`client/src/entities/Player.js`). Not yet in it: the sounds, and the
+level's option byte. Choices of its own, both because Phaser's "just
+pressed" lasts until it is read while the game's `pressed` lasts one tick:
 putting a carried thing down takes a fresh press of Down (the game tests
-Down held, so keeping it held after the lift would drop it at once), and
-the level's option byte is not applied.
+Down held, so keeping it held after the lift would drop it at once); and
+a Down or an Up pressed before a duck into the hat is spent there, so it
+does not bring him straight back out.

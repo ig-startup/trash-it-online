@@ -171,8 +171,11 @@
 0x250d9  f  jack_hoover_walk               ; slot 29
 0x2ab7a  f  jack_hoover_put_away           ; slot 71
 0x25468  f  jack_hoover_button             ; slot 9; not traced
-0x28035  f  jack_throw_up_bag              ; spawns a sprite thrown up at -2 px/tick; "emptying the bag?"
-0x27ff7  f  jack_lay_down_hammer           ; clears +0x9a, hides the hammer — "lays it down?"
+0x28035  f  jack_toss_hoover               ; DOWN with the hoover: throws it up at -2 px/tick, into the hat
+0x27ff7  f  jack_hammer_to_hat             ; DOWN with the hammer: into the hat with it (0x24346)
+0x280f1  f  hoover_let_go                  ; hides the player's hoover (+0x4c); unless half drawn, 0x28129
+0x28129  f  hoover_spawn_tossed            ; a free VAC.SPR sprite with Jack's position and speed
+0x617dc  f  hoover_tossed_tick             ; falls at 0x4800 through everything, dies off screen
 0x25bda  f  jack_climb                     ; slot 33, frame = height
 0x299b6  f  jack_top_out                   ; slot 60
 0x29b15  f  jack_step_down_ladder          ; slot 61
