@@ -64,7 +64,8 @@ sprite its template points at, and 64 templates cover the whole cast:
 | 17, 32 | `TIMMY.SPR` |
 | 22 | `SUCKER.SPR` |
 | 23 | `FORK.SPR` |
-| 44 | `CRAWL.SPR` |
+| 35–43 | `APOLLO.SPR` — rocket pieces 8…0 ([crawler](../objects/crawler.md)) |
+| 44 | `CRAWL.SPR` — the crawler-transporter |
 | 46 | `PANEL.SPR` |
 
 `VAC.SPR` — the hoover — has a template too (VA 0xa3444), which confirms
@@ -108,7 +109,7 @@ routine, its flag back, a kick of -4 px/tick upward and a hit
 
 | subtype | lets go when | levels |
 |---|---|---|
-| 2 | level option 0x800 is set — by the last timmy bin filling (VA 0x2f7ea) or the last of a crawling kind going (VA 0x116c9) — or the timer runs out | 6: 0L 2D 5L 8K 9L TL; timers 32767 s and 9999 s, so never |
+| 2 | level option 0x800 is set — by the last timmy bin filling (VA 0x2f7ea) or the last rocket piece stacked on the pad (VA 0x116c9, see the crawler) — or the timer runs out | 6: 0L 2D 5L 8K 9L TL; timers 32767 s and 9999 s, so never |
 | 4 | some player's counter at +0x28b9d8 reaches +16 | none |
 | 8 | `destroyed_percent` ≥ +18 (VA 0x340af), with a sound | 39, at 28 to 100% |
 | 16 | the block under it dies | none |
