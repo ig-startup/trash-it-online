@@ -1,0 +1,18 @@
+# Sound bookkeeping outside the Miles library. Read in the sweep of 2026-10-14.
+0x15e27  f  looped_sound_add               ; one of 16 slots at 0xce0e4: entity, sound, voice pointer; counts per sound at 0xce8fc
+0x15ea0  f  looped_sounds_update           ; stops a slot's voice when its entity's flag 0x8000 goes, restarts it when it comes back
+0x15fc9  f  voice_start_if                 ; sound_voice_start when edx is non-zero
+0x16031  f  sound_start_varied             ; sound_voice_start, then a random step for the next pitch
+0x16066  f  sound_start_owned              ; a voice for entity edx, counted in 0xcea9c
+0x160ae  f  sound_start_owned_varied       ; as sound_start_owned, with a random step
+0x1625d  f  dig_driver_uninstall           ; when a digital driver is in
+0x16f62  f  dig_driver_uninstall_2         ; the same, a second copy
+0x16262  f  sound_bank_index               ; sample pointers from the bank's offset table
+0x167b3  f  sound_stop_all                 ; every playing voice
+0x167e5  f  voice_effects_update           ; per voice: vibrato (flag 8), pitch sweep (4), volume ramps — through AIL each tick
+0x16c23  f  ping_pong                      ; *ecx += *ebx, turning *ebx round at ax and dx
+0x16c80  f  voice_set_loop                 ; a looped sample's loop block (0x961fc/0x96208)
+0x16f84  f  ail_startup                    ; AIL_startup, drivers from "dosdrv"
+0x16fa1  f  ail_shutdown                   ; drivers out, AIL_shutdown
+0x17059  f  music_pause_resume             ; flags 0x96474: 2 stop, 4 resume the XMI sequence
+0x170b6  f  music_start                    ; option 0x400000 (rules +0x36 == 2): a CD track instead; else the sequence, looping

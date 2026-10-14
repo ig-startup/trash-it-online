@@ -47,6 +47,8 @@ is set without 0x2000, and sets 0x2000.
   destructible object** of the level at once.
 - **0x204be (1D).** Plays CD track 10 and starts an 80-tick step of the
   scripted sequence at 0x9ff42 (`level_sequence_step`) — **not traced**.
+  The mystical dragon hammer's trick starts the same sequence, and the
+  ULTIMATE MOOLA's trick the same demolition ([combos](../jack/combos.md)).
 
 In 2T, 4T and BA: red (visible, sets 0x400) → green appears (sets 0x200)
 → blue appears (sets 0x1000) → 80 ticks later the level is rubble and the

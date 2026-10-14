@@ -1,0 +1,9 @@
+# The apocalypse hammer v3's one special blow — hammer 29. Not written up beyond these lines yet.
+0x15260  f  apocalypse_start               ; from jack_windup_side when hammer 29's one-shot flag (player +0xb0 + 29*2) is 1: the hammer leaves Jack, runs the script 0x93ddc
+0x15323  f  apocalypse_script              ; runs bytecode (handlers 0x93d98) and frame ramps; the trail
+0x15708  f  apocalypse_fall                ; gravity 0x4800, bounces at half off the level's bottom, then apocalypse_return
+0x1577b  f  apocalypse_fly                 ; up 12 px a tick, vx growing by 20000, a trail; then apocalypse_return
+0x157f7  f  apocalypse_return              ; after 120 ticks eases back to 32 px over its owner, then its saved state again
+0x158b3  f  ease_by_sixteenth              ; *edx += (ax - target) / 16, capped at 6 px; 1 on arrival
+0x15ac8  f  apocalypse_trail               ; every 4 ticks an APOCS.SPR at the hammer
+0x15b79  f  apocs_tick                     ; the trail piece lives +0x4a ticks

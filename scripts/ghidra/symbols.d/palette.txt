@@ -1,0 +1,8 @@
+# The palette's brightness: the tint behind fades and flashes. Read in the sweep of 2026-10-14.
+0x14edf  f  palette_tint_reset             ; R, G, B 100 (targets 0x80), easing speed 4
+0x14f24  f  palette_tint                   ; each colour channel + (level - 128) / 2 through the clamp table 0x93c9c
+0x14fbb  f  palette_apply_if_dirty         ; vga_set_palette once after a rebuild
+0x150be  f  ease_toward_by_speed           ; *eax toward dx by 0xcd832
+0x150ec  f  palette_brighten               ; all three channels + ax, clamped 0-255, and their targets with them (the bell's flash)
+0x151b9  f  palette_fade_step              ; 384 entries a step toward a target palette
+0x15229  f  palette_shift                  ; every entry + dl through the clamp table (level_finish)

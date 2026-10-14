@@ -1,0 +1,8 @@
+# Key combinations. See docs/re/jack/combos.md "Key combinations".
+0x1dead  f  arm_hammer_trick               ; player +0xb0 + hammer*2 = 1
+0x1e037  f  warp_to_bell                   ; Jack to the bell (0x3f209a, 0x3f209c - 10)
+0x204c3  f  dragon_sequence                ; hammer 33's trick: sequence_start with Jack
+0x204f4  f  moola_demolition               ; hammer 34's trick: the demolition count, a blast near the bottom
+0x211d2  f  hat_trick_armed                ; in the hat: spends the armed flag (keyboard) or sees BUT1+0x40 held (pad) → fly to the flag
+0x2a4d8  f  sledge_v3_trick                ; hammer 20 armed, overhead: slot 66 for 28 frames; frame 8 reaches 62 px ahead (0x34590)
+0x3f209a d  bell_x                         ; the bell's spot, set by its constructor; 0x3f209c its y

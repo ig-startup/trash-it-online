@@ -1,0 +1,5 @@
+# The scanline blitter's insides. See docs/re/formats/rle.md.
+0x38dd7  f  blit_rle_row0                  ; row type 0: no skip, opaque run (a jump-table case of blit_rle)
+0x38d78  f  blit_rle_next_row              ; row type 8 (empty), and the step every case ends in: next row, dispatch on its type
+0x3917c  f  blit_rle_tail                  ; the rest of blit_rle's row loop (Ghidra cut it off at a jump)
+0x3967b  d  scale_step_table               ; [source size] → row of 255 16.16 steps (source / drawn size); 0x3967b-0x5c000, Ghidra took it for 13 functions

@@ -427,7 +427,7 @@
 0x10167  f  level_finish                   ; stops the music; a won level (state 3, or 0x11 with +0x24 = 0) gets the end sequence
 0x1007c  f  pause_game                     ; ? loops until 0xb5ba8 is set, option bit 0x2000000 on, volumes 0x78 for 0x80
 0x6b90f  f  poll_input                     ; read_joypad for each player not under demo playback
-0x14fe4  f  audio_update                   ; ? when the volume settings change, re-applies them
+0x14fe4  f  palette_tint_update            ; R, G, B brightness (0xcd834/6/2e) eased toward targets; on a change rebuilds the palette (palette_tint)
 0x1cf6d  f  run_task_list                  ; ? 32 slots: flag bit 0, routine at +4
 0x2d1b5  f  objects_tick                   ; ? blocks in the camera view run their routine; moving ones are listed at 0x40bf78
 0x60e82  f  moving_objects_tick            ; ? runs the routine at +0x28 of each listed object; empties the rubble list
