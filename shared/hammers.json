@@ -24,6 +24,7 @@
    "w": 27,
    "h": 14
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/SLA.png",
    "data": "sprites/hammers/SLA.json"
@@ -54,6 +55,7 @@
    "w": 27,
    "h": 14
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/BEA.png",
    "data": "sprites/hammers/BEA.json"
@@ -84,6 +86,7 @@
    "w": 30,
    "h": 16
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/WAA.png",
    "data": "sprites/hammers/WAA.json"
@@ -114,6 +117,7 @@
    "w": 30,
    "h": 16
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/PDA.png",
    "data": "sprites/hammers/PDA.json"
@@ -147,6 +151,7 @@
    "w": 30,
    "h": 16
   },
+  "bonus": 2,
   "atlas": {
    "image": "sprites/hammers/SBA.png",
    "data": "sprites/hammers/SBA.json"
@@ -180,6 +185,7 @@
    "w": 27,
    "h": 14
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/BIA.png",
    "data": "sprites/hammers/BIA.json"
@@ -210,6 +216,7 @@
    "w": 27,
    "h": 14
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/VOA.png",
    "data": "sprites/hammers/VOA.json"
@@ -240,6 +247,7 @@
    "w": 27,
    "h": 14
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/SPA.png",
    "data": "sprites/hammers/SPA.json"
@@ -270,6 +278,7 @@
    "w": 27,
    "h": 14
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/FUA.png",
    "data": "sprites/hammers/FUA.json"
@@ -300,6 +309,7 @@
    "w": 27,
    "h": 14
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/APA.png",
    "data": "sprites/hammers/APA.json"
@@ -330,6 +340,7 @@
    "w": 35,
    "h": 18
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/SLB.png",
    "data": "sprites/hammers/SLB.json"
@@ -360,6 +371,7 @@
    "w": 26,
    "h": 17
   },
+  "bonus": 2,
   "atlas": {
    "image": "sprites/hammers/BEB.png",
    "data": "sprites/hammers/BEB.json"
@@ -390,6 +402,7 @@
    "w": 33,
    "h": 18
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/WAB.png",
    "data": "sprites/hammers/WAB.json"
@@ -420,6 +433,7 @@
    "w": 31,
    "h": 20
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/PDB.png",
    "data": "sprites/hammers/PDB.json"
@@ -453,6 +467,7 @@
    "w": 35,
    "h": 19
   },
+  "bonus": 2,
   "atlas": {
    "image": "sprites/hammers/SBB.png",
    "data": "sprites/hammers/SBB.json"
@@ -486,6 +501,7 @@
    "w": 29,
    "h": 20
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/BIB.png",
    "data": "sprites/hammers/BIB.json"
@@ -516,6 +532,7 @@
    "w": 33,
    "h": 17
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/VOB.png",
    "data": "sprites/hammers/VOB.json"
@@ -546,6 +563,7 @@
    "w": 23,
    "h": 20
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/SPB.png",
    "data": "sprites/hammers/SPB.json"
@@ -576,6 +594,7 @@
    "w": 29,
    "h": 19
   },
+  "bonus": 2,
   "atlas": {
    "image": "sprites/hammers/FUB.png",
    "data": "sprites/hammers/FUB.json"
@@ -606,6 +625,7 @@
    "w": 32,
    "h": 21
   },
+  "bonus": 2,
   "atlas": {
    "image": "sprites/hammers/APB.png",
    "data": "sprites/hammers/APB.json"
@@ -636,6 +656,7 @@
    "w": 39,
    "h": 19
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/SLC.png",
    "data": "sprites/hammers/SLC.json"
@@ -666,6 +687,7 @@
    "w": 35,
    "h": 20
   },
+  "bonus": 2,
   "atlas": {
    "image": "sprites/hammers/BEC.png",
    "data": "sprites/hammers/BEC.json"
@@ -696,6 +718,7 @@
    "w": 43,
    "h": 23
   },
+  "bonus": 2,
   "atlas": {
    "image": "sprites/hammers/WAC.png",
    "data": "sprites/hammers/WAC.json"
@@ -726,6 +749,7 @@
    "w": 37,
    "h": 22
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/PDC.png",
    "data": "sprites/hammers/PDC.json"
@@ -759,6 +783,7 @@
    "w": 43,
    "h": 25
   },
+  "bonus": 4,
   "atlas": {
    "image": "sprites/hammers/SBC.png",
    "data": "sprites/hammers/SBC.json"
@@ -792,6 +817,7 @@
    "w": 38,
    "h": 21
   },
+  "bonus": 2,
   "atlas": {
    "image": "sprites/hammers/BIC.png",
    "data": "sprites/hammers/BIC.json"
@@ -822,6 +848,7 @@
    "w": 38,
    "h": 19
   },
+  "bonus": 2,
   "atlas": {
    "image": "sprites/hammers/VOC.png",
    "data": "sprites/hammers/VOC.json"
@@ -852,6 +879,7 @@
    "w": 32,
    "h": 28
   },
+  "bonus": 1,
   "atlas": {
    "image": "sprites/hammers/SPC.png",
    "data": "sprites/hammers/SPC.json"
@@ -882,6 +910,7 @@
    "w": 36,
    "h": 25
   },
+  "bonus": 3,
   "atlas": {
    "image": "sprites/hammers/FUC.png",
    "data": "sprites/hammers/FUC.json"
@@ -912,6 +941,7 @@
    "w": 38,
    "h": 25
   },
+  "bonus": 3,
   "atlas": {
    "image": "sprites/hammers/APC.png",
    "data": "sprites/hammers/APC.json"
@@ -942,6 +972,7 @@
    "w": 46,
    "h": 24
   },
+  "bonus": 3,
   "atlas": {
    "image": "sprites/hammers/BFH.png",
    "data": "sprites/hammers/BFH.json"
@@ -972,6 +1003,7 @@
    "w": 43,
    "h": 21
   },
+  "bonus": 3,
   "atlas": {
    "image": "sprites/hammers/QUA.png",
    "data": "sprites/hammers/QUA.json"
@@ -1002,6 +1034,7 @@
    "w": 38,
    "h": 21
   },
+  "bonus": 4,
   "atlas": {
    "image": "sprites/hammers/GAL.png",
    "data": "sprites/hammers/GAL.json"
@@ -1032,6 +1065,7 @@
    "w": 38,
    "h": 21
   },
+  "bonus": 4,
   "atlas": {
    "image": "sprites/hammers/DRA.png",
    "data": "sprites/hammers/DRA.json"
@@ -1062,6 +1096,7 @@
    "w": 93,
    "h": 39
   },
+  "bonus": 5,
   "atlas": {
    "image": "sprites/hammers/MOO.png",
    "data": "sprites/hammers/MOO.json"
@@ -1092,6 +1127,7 @@
    "w": 43,
    "h": 21
   },
+  "bonus": 8,
   "atlas": {
    "image": "sprites/hammers/SPO.png",
    "data": "sprites/hammers/SPO.json"
@@ -1122,6 +1158,7 @@
    "w": 43,
    "h": 21
   },
+  "bonus": 8,
   "atlas": {
    "image": "sprites/hammers/GIT.png",
    "data": "sprites/hammers/GIT.json"

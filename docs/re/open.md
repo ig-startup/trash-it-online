@@ -5,7 +5,7 @@
 - Sound scripts 29–32 are a lone `skip` (op 14) whose five words the
   interpreter ignores — something else must read them.
 - `F.EXE`: what a gate node (kind 4) charges; node words 17 and 18; the
-  C/D one-object screens (`G.EXE` VA 0x10c1f builds them).
+  the T/U side levels (no bell — how is one won?).
 - `F.EXE`'s screen files `PROJ/*.DAT`: past the sheet names and the
   per-frame sizes, how the screens' objects and their animation rates are
   laid out (the map Jack's frame rate, the landmarks, `LEVSLBIN`).

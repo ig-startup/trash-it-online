@@ -66,11 +66,21 @@ export default class WorldMapScene extends Phaser.Scene {
     let note = '';
     if (this._result === 'won') {
       story.won(story.node);
-    } else if (this._result === 'lost' && !story.lost()) {
-      this._bigText('ИГРА ОКОНЧЕНА');
-      return;
+      // a world's exit won: straight on to the next world (state 5)
+      if (story.isExit(story.node)) {
+        if (!story.nextWorld()) {
+          this._bigText('ИГРА ПРОЙДЕНА!');
+          return;
+        }
+        this._arrived = true;
+      }
     } else if (this._result === 'lost') {
-      note = `ОСТАЛОСЬ ЖИЗНЕЙ: ${story.lives}`;
+      const before = story.lives;
+      if (!story.lost(story.node)) {
+        this._bigText('ИГРА ОКОНЧЕНА');
+        return;
+      }
+      if (story.lives < before) note = `ОСТАЛОСЬ ЖИЗНЕЙ: ${story.lives}`;
     }
     const map = story.map;
     const bgKey = `worldmap_${map.screen}`;
@@ -295,11 +305,7 @@ export default class WorldMapScene extends Phaser.Scene {
       });
       return true;
     }
-    if (r.act === 'bonus') {
-      story.won(id);
-      this._drawMarks();
-      this._say('БОНУС-РАУНД ЕЩЁ НЕ СДЕЛАН — ЗАСЧИТАН');
-    } else if (r.act === 'next') {
+    if (r.act === 'next') {
       if (!story.nextWorld()) {
         this._say('ИГРА ПРОЙДЕНА!', 0);
         this.time.delayedCall(4000, () => this.scene.start('MenuScene'));

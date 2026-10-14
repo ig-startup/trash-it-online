@@ -17,12 +17,12 @@ export const START_LIVES = 5;
 export const START_NODE = 1;
 
 /**
- * Rounds of G.EXE the clone does not build yet: the one-object bonus
- * screens (C, number 12; the world exits' D, number 13 — VA 0x10c1f) are
- * counted as won, so the story can go on past them; the side levels T and
- * U (numbers 29, 30) and the gates (kind 4) are refused.
+ * What the clone does not build yet, refused: the side levels T and U
+ * (numbers 29, 30 — the only levels with a demo, and no bell) and the gates
+ * (kind 4). The bonus screens, C (12) and the exits' D (13), are played
+ * (scenes/bonusRound.js).
  */
-const BONUS_NUMBERS = new Set([12, 13]);
+const SIDE_NUMBERS = new Set([29, 30]);
 
 export default class Story {
   /**
@@ -72,24 +72,23 @@ export default class Story {
    * Fire pressed with Jack stopped on `id` (map_fire_pressed, VA 0x1de35,
    * then map_process_node, 0x1ffe9).
    * @returns {{act: 'play', level: string}
-   *   | {act: 'next'} | {act: 'bonus'} | {act: 'refuse', why: string}
-   *   | {act: 'none'}}
+   *   | {act: 'next'} | {act: 'refuse', why: string} | {act: 'none'}}
    */
   fire(id) {
     const n = this.nodeAt(id);
+    if (n && n.kind === 'gate' && !this.isTrashed(id)) return { act: 'refuse', why: 'ВОРОТА ЕЩЁ НЕ СДЕЛАНЫ' };
     if (!n || n.number < 0) return { act: 'none' };
     const trashed = this.isTrashed(id);
-    if (n.kind === 'gate') return { act: 'refuse', why: 'ВОРОТА ЕЩЁ НЕ СДЕЛАНЫ' };
     if (n.kind === 'exit') {
-      // trashed, the world is done; else its bonus screen first
-      if (trashed) return { act: 'next' };
-      return { act: 'bonus' };
+      // trashed, the world is done; else its D screen first
+      if (trashed || !n.level) return { act: 'next' };
+      return { act: 'play', level: n.level };
     }
     if (n.number > 11) {
       // the bonus screens and the side levels: once each
       if (trashed) return { act: 'refuse', why: 'УЖЕ ПРОЙДЕНО' };
-      if (BONUS_NUMBERS.has(n.number)) return { act: 'bonus' };
-      return { act: 'refuse', why: 'ЭТОТ УРОВЕНЬ ЕЩЁ НЕ СДЕЛАН' };
+      if (SIDE_NUMBERS.has(n.number)) return { act: 'refuse', why: 'ЭТОТ УРОВЕНЬ ЕЩЁ НЕ СДЕЛАН' };
+      return { act: 'play', level: n.level };
     }
     // A level of a stage below the last one won is shut (VA 0x1df8c). A
     // won one may be played again while its timmy points are in hand —
@@ -106,10 +105,25 @@ export default class Story {
     if (n) this.stage = n.stage;
   }
 
-  /** The level was lost: a life gone. @returns {boolean} lives left */
-  lost() {
-    this.lives = Math.max(0, this.lives - 1);
-    return this.lives > 0;
+  /**
+   * The level on `id` was lost (F.EXE VA 0x20e1d). A bonus screen, a side
+   * level or an exit's D costs nothing. A level asks "continue?" — the
+   * clone's answer is always yes — and that costs a life (VA 0x1590e); with
+   * none left, the game is over.
+   * @returns {boolean} whether the game goes on
+   */
+  lost(id) {
+    const n = this.nodeAt(id);
+    if (n && (n.kind === 'exit' || n.number > 11)) return true;
+    if (this.lives === 0) return false;
+    this.lives -= 1;
+    return true;
+  }
+
+  /** Whether `id` is a world's exit: won, the world is done (VA 0x2117c). */
+  isExit(id) {
+    const n = this.nodeAt(id);
+    return !!n && n.kind === 'exit';
   }
 
   /** On to the next world, or null after the last. */

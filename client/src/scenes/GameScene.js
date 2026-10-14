@@ -24,6 +24,7 @@ import Seesaws from './seesaws';
 import Gits from './gits';
 import Bonuses from './bonuses';
 import Bell from './bell';
+import BonusRound, { preloadBonusRound } from './bonusRound';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -144,6 +145,7 @@ export default class GameScene extends Phaser.Scene {
   /** Takes a level's data, and queues the artwork it names. */
   _useLevel(level) {
     this._level = level;
+    if (level.bonusRound) preloadBonusRound(this, level.bonusRound);
     if (level.background) {
       this.load.image(this._bgKey(level), level.background);
     }
@@ -285,15 +287,23 @@ export default class GameScene extends Phaser.Scene {
     // (VA 0x340af) — the arcade's "trash NN% to free the bell". The share
     // is of every object in the level, the unbreakable ones included
     // (`destroyed_percent`, VA 0x68724).
-    const bell = level.bell;
+    // A bonus screen has no bell: its round is won on the object instead.
+    const bell = level.bell || { x: -1000, y: -1000 };
     const bellGround = level.ground ? level.ground.y : levelHeight;
     this._objectTotal = level.destructibles.length;
     this._destroyedCount = 0;
     this._bellTrash = bell.trash || 0;
     this._bell = new Bell(this, bell, (x, from, to) => (to >= bellGround ? bellGround
       : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)),
-    { hidden: this._bellTrash > 0, fallbackColor: WORLD_COLORS.bell });
+    { hidden: this._bellTrash > 0 || !level.bell, fallbackColor: WORLD_COLORS.bell });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bell.destroy());
+
+    // ── A bonus screen's object (G.EXE VA 0x10c1f; bonusRound.js) ─────────
+    this._bonusRound = null;
+    if (level.bonusRound) {
+      this._bonusRound = new BonusRound(this, level.bonusRound, () => this._bonusWon());
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bonusRound.destroy());
+    }
 
     // ── Dynamite ──────────────────────────────────────────────────────────
     // 202 placements across 42 levels, of two kinds: 63 that a hammer
@@ -791,6 +801,7 @@ export default class GameScene extends Phaser.Scene {
     this._checkHammerBell();
 
     this._bell.update(delta);
+    if (this._bonusRound && !this._over) this._bonusRound.update(delta);
     this._tickDynamite(time);
     if (this._cannons) this._tickCannons(delta);
     const stillIn = this._liveJacks();
@@ -893,6 +904,8 @@ export default class GameScene extends Phaser.Scene {
 
   /** Out of time at one keyboard: the level is lost (state 3) — play it again. */
   _timeUp() {
+    // the object burst: the round is won, whatever the clock says
+    if (this._bonusRound && this._bonusRound.burst) return;
     if (this._localBattle) {
       // those who rang are placed, the rest score nothing, the set goes on
       this._endLocalBattleLevel(true);
@@ -1103,6 +1116,14 @@ export default class GameScene extends Phaser.Scene {
     let reach;
     if (overhead) {
       reach = this._overheadBox(pl);
+    } else if (this._bonusRound) {
+      // On a bonus screen the blow strikes no block, only the object: its
+      // force times the hammer's `bonus`, at the blow's own point (VA 0x1f935).
+      const stats = pl.hammerStats;
+      const dir = pl.facingLeft ? -1 : 1;
+      this._bonusRound.hit(Math.round(pl.x) + dir * stats.reach.dx, Math.round(pl.y) + stats.reach.dy,
+        Math.imul(hammerForce(charge, stats), stats.bonus || 1));
+      return;
     } else {
       const stats = pl.hammerStats;
       const force = hammerForce(charge, stats);
@@ -1513,6 +1534,18 @@ export default class GameScene extends Phaser.Scene {
       }
       this.showResultOverlay('УРОВЕНЬ ПРОЙДЕН', order, { nextLevel: nextLevelId(this._levelId) });
     });
+  }
+
+  /** A bonus screen's object burst: the round is won, by everyone. */
+  _bonusWon() {
+    if (this._over) return;
+    this._over = true;
+    this._jacks.forEach((j) => { if (!j.rang) this._leaveLevel(j); });
+    if (this._story) {
+      this.showResultOverlay('БОНУС ПРОЙДЕН', '', { then: () => this._backToMap('won') });
+      return;
+    }
+    this.showResultOverlay('БОНУС ПРОЙДЕН', '', { nextLevel: nextLevelId(this._levelId) });
   }
 
   /** The story goes on on the world map, the level won or lost. */

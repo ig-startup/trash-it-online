@@ -31,6 +31,8 @@ The fields (see "What a hammer blow carries" in docs/re/logic/collapse.md):
                                 many blocks one blow strikes (VA 0x1fcd3)
   reach         +0x4a..+0x50    ahead, down, across, deep — from Jack's feet
   overBox       +0x5e +0x60 +0x62  the overhead strike's box: ahead, wide, high
+  bonus         +0x52           (player +0x92) what a blow is multiplied by on a
+                                bonus screen's object (VA 0x1f935)
 """
 import json
 import os
@@ -134,6 +136,7 @@ def main():
                       "w": _s16(rec, 0x4e), "h": _s16(rec, 0x50)},
             "overBox": {"dx": _s16(rec, 0x5e), "dy": OVER_DY,
                         "w": _s16(rec, 0x60), "h": _s16(rec, 0x62)},
+            "bonus": _s16(rec, 0x52),
             "atlas": {"image": "%s/%s.png" % (PREFIX, stem), "data": "%s/%s.json" % (PREFIX, stem)},
         }
         out.append(record)
