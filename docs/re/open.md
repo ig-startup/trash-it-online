@@ -9,7 +9,10 @@
 - `F.EXE`'s screen files `PROJ/*.DAT`: past the sheet names and the
   per-frame sizes, how the screens' objects and their animation rates are
   laid out (the map Jack's frame rate, the landmarks, `LEVSLBIN`).
-- The scripted sequence 1D's button starts (table 0x9ff42, CD track 10).
+- The scripted sequence 1D's button and the mystical dragon hammer's trick
+  start (table 0x9ff42, CD track 10); the apocalypse hammer's flight
+  script (0x93ddc, ops at 0x93d98); the sledge v3 trick's slam
+  (0x2a4d8, 0x34590). See [combos](jack/combos.md).
 - What sets the swing's starting frame — the operating range of the force
   ramp (see the collapse section; the formula itself is confirmed).
 - What the individual bits of the level's option byte (0x98224, and a

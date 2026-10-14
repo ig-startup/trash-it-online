@@ -193,7 +193,13 @@ def hand_named():
 NOT_CODE = ("bad instruction", "overlaps instruction")
 
 
+#: The blitters' step table (scale_step_table); everything Ghidra cut out of it.
+DATA_RANGES = ((0x3967b, 0x5c000),)
+
+
 def is_data(d, a):
+    if any(lo <= a < hi for lo, hi in DATA_RANGES):
+        return True
     body = d.bodies[a][1]
     return any(m in body for m in NOT_CODE) and not d.callers(a)
 

@@ -13,7 +13,7 @@
 0x1a199  f  hud_run_script                 ; give a record a script (+0x44) and start it
 0x1a1fb  f  hud_script_step                ; the script ops 0-19: set x, y, targets, speeds, wait, …
 0x1a4a7  f  hud_ease_axis                  ; accelerate toward a target, brake 4x as hard
-0x1a688  f  bell_finish_place              ; a player reaches the bell: place stored in level state +0x30, a tint per place (0x9818a), a panel icon; in game kind 1 the clock drops to 1:00 ?
+0x1a688  f  bell_finish_place              ; a player reaches the bell: place stored in level state +0x30, a tint per place (0x9818a), a panel icon; with one player in the game (0x3f209e) the clock is capped at 1:00 ?
 0x1a950  f  sum_by_table                   ; greedy: for each (step, add) pair in 0x981ac, add while ax ≥ step
 0x1aaa8  f  pause_hud                      ; the pause panel script; 0x287c50 = 2 with option 0x10000000
 0x1ab54  f  hud_wobble_step                ; sucker_cup_offsets on a HUD record

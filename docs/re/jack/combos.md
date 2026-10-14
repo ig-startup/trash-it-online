@@ -20,7 +20,9 @@ pad spelling and a keyboard spelling.
 | BUT1, release, BUT1, release, BUT1, release | the same | 0x1dead `arm_hammer_trick` | sets the player's flag for this hammer (`+0xb0 + hammer×2 = 1`) |
 | R, R, L, then BUT1 five times (released between) | 0x40 ×5 | 0x1e037 `warp_to_bell` | **Jack jumps to the bell** (0x3f209a, 10 px above) — a cheat |
 
-The armed flag is spent by:
+The armed flag lasts **one tick**: `logic_frame` clears every player's
+flag for his hammer each frame (0x2ba7d), so the combination has to end
+while Jack is already in the state that spends it. It is spent by:
 
 - **any hammer, in the hard hat** — `jack_in_hat` → 0x211d2: armed (or,
   on a pad, BUT1 + 0x40 held) → the palette flashes and Jack **flies back

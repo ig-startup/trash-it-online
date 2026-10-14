@@ -89,3 +89,70 @@
 0x1f804  f  dust_tick                      ; frames to 19, +0x56 ticks each
 0x1fc59  f  play_sound_staggered           ; a sound whose start is offset by the frame counter
 0x1fe9f  f  blam_puff                      ; frames to 6, 3 ticks each
+0x200e2  f  sequence_rise_step             ; a step of the 0x9ff42 sequence: something rises 12 px a tick from the level's bottom centre, the palette pulsing
+0x202f2  f  vm_expire                      ; VM.SPR: die_after_timer
+0x2030e  f  spawn_vm                       ; VM.SPR at the level's bottom centre, frame 1
+0x20370  f  vm_flicker                     ; jitters, frames 1-4, the palette flickering 100-131
+0x2053b  f  spawn_sized_effect             ; a template at (ax, dx - cx/2) with size bx × cx
+0x206a6  f  die_after_timer_2
+0x20710  f  play_sound_owned_staggered
+0x20737  f  overhead_contact_sparks        ; sparks where the hammer head's span meets solid cells
+0x207d4  f  git_strikes_cell               ; damage_up, a puff, an effect, a sound
+0x20976  f  hammer_dropped                 ; the hammer loose: physics; back to hammer_entity_tick when Jack has it again
+0x209ee  f  hammer_send_to_flag            ; the hammer leaves Jack for his flag (state_20a47)
+0x20a47  f  hammer_fly_to_flag             ; springs toward the player's flag, at most 8 px a tick
+0x20b58  f  ob_class_7_cannonball          ; CFIR.SPR, via dyna_other
+0x20c15  f  cannonball_tick                ; physics; falling, it searches for a barrel
+0x20c3e  f  cannonball_flying              ; smoke (frame 13) every other tick in the air, a sound on landing
+0x20cec  f  ball_rocking_in_bowl           ; follows the ball_rocking table, then drops into the barrel
+0x20d74  f  cannonball_physics
+0x20d9a  f  cannonball_physics_2
+0x20e04  f  friction_2000                  ; vx toward 0 by 2000, zero under 10000
+0x212d4  f  initialise_players             ; 0x3f209e counts them
+0x216a5  f  initialise_players_hammers
+0x308b2  f  git_watch_players              ; every 25 ticks: a player on the same row within 120 px — turn toward or away (random)
+0x313bc  f  git_turn_mark_steep            ; probe bit 0x40 → +0x42 |= 4, then 0x337b6
+0x313cc  f  git_step_call                  ; 0x337b6
+0x3384c  f  git_anim_table                 ; 0xa3f2c for a king timmy (0x3f), else 0xa3f24
+0x33861  f  drop_collected_timmies         ; as many timmies as the player holds (0x1a06f) flung up, roaming (git_32164)
+0x3392b  f  git_wander_speed               ; random push, friction five times over; tommies (0x5b) aim 12 px up
+0x33d1d  f  ob_class_13_bell
+0x33fdd  f  bell_wait_option_800          ; subtype 2: option 0x800 or its timer → pops up
+0x3404a  f  bell_wait_counter              ; subtype 4: some player's +0x28b9d8 reaches +0x56
+0x340af  f  bell_wait_percent              ; subtype 8: destroyed_percent ≥ +0x54, a sound, flashes 200 ticks
+0x343dc  f  bell_steer_vx                  ; push vx by the sign of *eax (16000, 0x1f400 against), stop near 0
+0x3443d  f  bell_ringer_tick               ; a child on the bell; frames 1/2 every 6 ticks while it rings
+0x34494  f  bell_glow_tick                 ; the flashing highlight while +0x5c counts down
+0x34590  f  sledge_trick_slam              ; hammer 20's trick: the hammer (frame 60) dropped to the floor ahead
+0x34686  f  sledge_trick_rise              ; up and decelerating with a trail; frames to 77
+0x34747  f  sledge_trick_settle            ; on the ground → hammer_dropped, the player's +0x160 cleared
+0x34794  f  sledge_trick_physics
+0x347c1  f  ob_class_27_teleporter
+0x34c7d  f  telly_queue_add                ; one of 8 riders (+0x9c)
+0x34cad  f  telly_queue_has_room
+0x34da6  f  telly_queues_clear
+0x34e8d  f  telly_beam_sparks              ; an effect every 4 ticks
+0x5f34d  f  dispenser_ball_ready           ; DIS: armed → waits (state_5f380), else collides (category 4)
+0x5f380  f  dispenser_ball_wait            ; until its block goes: then shown at the block's spot
+0x5f62b  f  dispenser_lamp_tick            ; on the dispenser; frames 1-5, 6 ticks each, while lit
+0x5f69a  f  ob_class_6_cannon              ; CFIR/CWHL/CFIX — see docs/re/objects/cannon.md
+0x5f802  f  cannon_facing                  ; payload word 1: 1 left, 2 right
+0x5f82b  f  cannon_base_spawn              ; on a wheel (bit 2) or fixed (bit 1)
+0x5f895  f  cannon_part_follow
+0x5fb2b  f  roll_on_floor                  ; floor probe for a rolling thing: hops 2 px over a step, stops at walls
+0x5fd78  f  cannon_fuse_wait               ; the barrel ready (frame 0) → the fuse lit: two sounds, a spark
+0x5fdec  f  cannon_fuse_follow
+0x5fe15  f  cannon_part_until_fired        ; shown while the barrel's frame is 10
+0x5fe42  f  spawn_fuse_spark               ; BLAM frame 9 walking the fuse_points
+0x5feef  f  fuse_spark_tick                ; along fuse_points, frames 9-13, a trail
+0x5ffb0  f  blam_trail_2                   ; the owner's +0x68/+0x6c eased toward table 0xa459a; an effect
+0x600ac  f  blam_debris_tick               ; light gravity 0x480, flickers its last 40 ticks
+0x6017f  f  cannon_wheel_frame             ; roll_friction; frame follows the barrel's
+0x601ac  f  hammer_head_tick               ; HAMHEA on the hammer in slot 34; slot 35 → flies off (state_6023e)
+0x6023e  f  hammer_head_fly                ; rising faster each tick, spinning; gone when unlinked
+0x60d5d  f  heat_tick                      ; HEAT: plays script 0xa46e2[mode] — 0 and 1 while Jack is in slot 4, 2 once then gone
+0x612e9  f  dust_grow_tick                 ; frames to 7, widening 4 px a frame
+0x6137f  f  spawn_rubble_dust              ; dust over a falling piece of rubble, one of 8 speeds
+0x6143f  f  dust_loop_tick                 ; frames 8-15, looping
+0x615ca  f  hoover_tick                    ; VAC on Jack: the suck list for his slot, the hoover sound
+0x617dc  f  hoover_dropped                 ; a dropped hoover falls, skids and stops
