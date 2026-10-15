@@ -143,6 +143,9 @@ export default class GameScene extends Phaser.Scene {
     if (level.background) {
       this.load.image(this._bgKey(level), level.background);
     }
+    if (level.floor) {
+      this.load.image(this._floorKey(level), level.floor);
+    }
     if (level.shapeAtlas) {
       // All of a level's block artwork in one packed texture.
       this.load.atlas(this._atlasKey(level),
@@ -153,6 +156,11 @@ export default class GameScene extends Phaser.Scene {
   /** @returns {string} texture key for a level's background wall */
   _bgKey(level) {
     return `lvlbg_${level.id}`;
+  }
+
+  /** @returns {string} texture key for a level's ground texture */
+  _floorKey(level) {
+    return `lvlfloor_${level.id}`;
   }
 
   /** @returns {string} texture key for a level's packed block artwork */
@@ -170,27 +178,40 @@ export default class GameScene extends Phaser.Scene {
     const streetRight = level.ground ? level.ground.x + level.ground.width : levelWidth;
 
     // ── Background ────────────────────────────────────────────────────────────
+    // The original's backdrop (docs/re/formats/scn.md): the street is the
+    // horizon; above it `.SCN` texture 1 stands upright, bottom row on the
+    // street (VA 0x1c895), carried on to the top when `.SDE` word 3 says so
+    // and filled with its top-left pixel's colour otherwise (0x6d2ab); below
+    // it texture 0 is the ground (VA 0x18f74). The original draws both in
+    // perspective from the camera's depth, which the clone does not model,
+    // so here they are flat, at their own scale. Everything runs well past
+    // the level, for the camera draws back to keep every player in view.
+    const groundY = level.ground ? level.ground.y : levelHeight;
+    const left = streetLeft - BACKDROP_PAD;
+    const width = streetRight - streetLeft + BACKDROP_PAD * 2;
+    const top = -BACKDROP_PAD * 2;
     if (level.background && this.textures.exists(this._bgKey(level))) {
-      // The original's own wall, repeated behind the level at its own
-      // scale. It is only the wall: the floor strip along the bottom of
-      // the `.SCN` screen is cropped off by the exporter, because tiling
-      // it laid a grey band across the level every 200 pixels.
-      // It runs well past the level every way, for the camera draws back
-      // to keep every player in view.
       const src = this.textures.get(this._bgKey(level)).getSourceImage();
-      const x0 = Math.floor((streetLeft - BACKDROP_PAD) / src.width) * src.width;
-      const y0 = -Math.ceil(BACKDROP_PAD * 2 / src.height) * src.height;
-      this.add.tileSprite(x0, y0, streetRight + BACKDROP_PAD - x0, levelHeight + BACKDROP_PAD - y0,
-        this._bgKey(level)).setOrigin(0, 0).setDepth(-10);
+      const x0 = Math.floor(left / src.width) * src.width;
+      const w = left + width - x0;
+      const toTop = !level.backdrop || level.backdrop.toTop;
+      const y0 = toTop ? groundY - Math.ceil((groundY - top) / src.height) * src.height
+        : groundY - src.height;
+      if (!toTop) {
+        this.add.rectangle(left, top, width, y0 - top, level.backdrop.fill)
+          .setOrigin(0, 0).setDepth(-10);
+      }
+      this.add.tileSprite(x0, y0, w, groundY - y0, this._bgKey(level))
+        .setOrigin(0, 0).setDepth(-10);
+      if (level.floor && this.textures.exists(this._floorKey(level))) {
+        const fsrc = this.textures.get(this._floorKey(level)).getSourceImage();
+        const fx0 = Math.floor(left / fsrc.width) * fsrc.width;
+        this.add.tileSprite(fx0, groundY, left + width - fx0, levelHeight - groundY + BACKDROP_PAD,
+          this._floorKey(level)).setOrigin(0, 0).setDepth(-10);
+      }
     } else {
       buildBackground(this, levelWidth, levelHeight);
     }
-    // Below the street the original draws its backdrop's floor in
-    // perspective (see the horizon, VA 0x1c759, in docs/re/formats/scn.md); until
-    // the clone does, that floor is the wall in shadow.
-    const groundY = level.ground ? level.ground.y : levelHeight;
-    this.add.rectangle(streetLeft - BACKDROP_PAD, groundY, streetRight - streetLeft + BACKDROP_PAD * 2,
-      levelHeight - groundY + BACKDROP_PAD, 0x000000, 0.6).setOrigin(0, 0).setDepth(-9);
     this._street = { left: streetLeft, right: streetRight, ground: groundY };
 
     // ── Platforms (concrete, original palette) ──────────────────────────────────

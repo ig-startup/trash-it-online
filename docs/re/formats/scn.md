@@ -22,6 +22,10 @@ mapper (VA 0x18acc, 256x256 source, both indices masked to 8 bits):
   (`0x287c70` / `0x287c72`, four presets at VA 0x1c69f-0x1c70d), not the
   level: at the lowest the backdrop is a plain fill (0x6d2f4).
 
-The clone draws texture 0 flat and tiled — the look of the lowest detail
-level with a texture. Doing it as the game does needs the camera's depth,
-which the clone does not model.
+The clone draws both planes flat, at their own scale, with the street as
+the horizon: texture 1 tiled sideways with its bottom row on the street,
+carried up when `.SDE` word 3 is set (51 of the 125 shipped levels) and
+filled with its top-left pixel's colour above otherwise; texture 0 tiled
+below the street (`export_level.py` writes `background.png`, `floor.png`
+and `backdrop: {toTop, fill}`; `GameScene.create`). Doing it in
+perspective needs the camera's depth, which the clone does not model.
