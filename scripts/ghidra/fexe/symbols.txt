@@ -26,3 +26,12 @@
 0x1a08d  f  arcade_level_select            ; game type 2: the K rows and their mission lines
 0x1b92a  f  hammer_shop                    ; trade-in value at shop record +4
 0x18144  f  level_score_screen             ; score and timmy points, five digits each
+#
+# Screen resources (docs/re/front/proj-dat.md).
+0x2424a  f  load_screen_resources          ; a 0x30-byte list: name, +0x20 kind (0 sheets from a PROJ .DAT, 2 a file)
+0x26d77  f  load_screen_sheets             ; read the .DAT, reset the pool, load every sheet it names
+0x26db1  f  dat_read_sheet_list            ; names and slots only; frames stepped over, the tail unread
+0x26bf4  f  load_sheets_into_slots         ; -1-ended slot list -> each .SPR, "Problem loading sprite"
+0x25b43  f  sprite_load_into_slot          ; into the 0x177000-byte pool at 0x39c3d8
+0x25b0c  f  sprite_pool_reset              ; 0x100 slots emptied
+0x23e40  f  load_file                      ; 1 loaded, 0 not found, 2 too big for the buffer?

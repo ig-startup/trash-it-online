@@ -7,7 +7,7 @@ How Jack gets about F.EXE's level-select screen; what the nodes are is in
 the client replays the pixels.
 
 **What is drawn.** A world's screen is `PROJ/LVSL<n>_E.DAT` (n as in
-`front-end.md`): it names the sheets the screen uses — the world's own
+`front-end.md`; the format is `proj-dat.md`): it names the sheets the screen uses — the world's own
 (`JUNKMP`, `CASTMP`, `CHEMMAP`, `LVSL4SPR` … `LVSL9SPR`; A's file names its
 film sheet `LVSL8FLM` first), then `LSJACK`, `LSSHOP`, `LEVSLBIN`,
 `YELMEDFT`, `LS_HAT`, `LSPANEL`. The picture is the world sheet's raw
@@ -15,9 +15,9 @@ film sheet `LVSL8FLM` first), then `LSJACK`, `LSSHOP`, `LEVSLBIN`,
 placed at their own origins. The paths are `FSPR/LVSPAT<n>.PAK`, the
 same size: 0 nothing, 255 path, 1..127 the point of node *id*.
 
-**Jack on the map** is `LSJACK.SPR`, 136 frames: the screen file's header
-for it is `OW`, 8, 0x88 — eight animations of seventeen, then a w, h per
-frame. Animation d-1 is direction d: 1 right, 2 down-right, 3 down (his
+**Jack on the map** is `LSJACK.SPR`, 136 frames (0x88 in the screen file —
+its `OW`, 8 before that are junk past the name's NUL), eight animations
+of seventeen. Animation d-1 is direction d: 1 right, 2 down-right, 3 down (his
 face to us), 4 down-left, 5 left, 6 up-left, 7 up (his back, the braces
 crossed), 8 up-right. **Inferred:** how fast the frames step — the clone
 steps one every two pixels.

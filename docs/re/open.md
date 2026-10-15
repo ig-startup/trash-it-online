@@ -5,9 +5,9 @@
   interpreter ignores — something else must read them.
 - `F.EXE`: what a gate node (kind 4) charges; node words 17 and 18; the
   the T/U side levels (no bell — how is one won?).
-- `F.EXE`'s screen files `PROJ/*.DAT`: past the sheet names and the
-  per-frame sizes, how the screens' objects and their animation rates are
-  laid out (the map Jack's frame rate, the landmarks, `LEVSLBIN`).
+- Where F.EXE's screens place their objects and how fast they animate:
+  in code (`map_screen_init` and its kin, through 0x24e39), not traced —
+  the map Jack's frame rate, the landmarks, `LEVSLBIN`.
 - Who reads option 0x98226 bit 2 and 0x28bfa4, both set during the
   apocalypse hammer's flight ([apocalypse](jack/apocalypse.md)).
 - Who reads 0x28bf7e (the dragon show lowers it by 1030 and lets it back —
@@ -20,7 +20,7 @@
   that sets them; nothing yet traces a reader.
 - Scoring beyond the packed-BCD adder and the rules record's +0x38.
 
-Closed since these notes last listed them: which `.SCN` texture each backdrop plane samples (0 the ground, 1 the backdrop, the third part unused) and `HEAT` (dead code); the sledge v3 trick; the apocalypse hammer's flight script; the dragon show (table 0x9ff42) and the camera's target list, which an old name had as a "hit queue"; the event/outcome tables
+Closed since these notes last listed them: the `PROJ/*.DAT` screen files (sheet names and slots; the frame rectangles and the tail are never read — [proj-dat](front/proj-dat.md)); which `.SCN` texture each backdrop plane samples (0 the ground, 1 the backdrop, the third part unused) and `HEAT` (dead code); the sledge v3 trick; the apocalypse hammer's flight script; the dragon show (table 0x9ff42) and the camera's target list, which an old name had as a "hit queue"; the event/outcome tables
 (Jack's, 0xa2f48, is read but for type 9, the unplaced generic thing); why 2T, 4T and BA ask for
 more trashing than they hold (a button demolishes the level); the last
 unnamed `.OB` classes (the crawler, the rocket, the buttons); `.OBT` field 6 is mass and

@@ -16,7 +16,6 @@ Writes client/public/worldmap/*.png and client/public/worldmap/worlds.json.
 """
 import json
 import os
-import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,6 +26,7 @@ import front
 import pak
 import pal
 import spr
+import projdat
 
 ORIG = os.path.join(REPO, "Trash-it-original")
 OUT = os.path.join(REPO, "client", "public", "worldmap")
@@ -50,8 +50,8 @@ GROUPS = {
 #: The came-from a move into each neighbour leaves behind (0x1e5c9).
 CAME = {0: 8, 1: 7, 2: 6, 3: 5, 5: 3, 6: 2, 7: 1, 8: 0}
 
-#: LSJACK.SPR: 8 animations of 17 frames (the screen file's "OW" header,
-#: 8 and 0x88); animation d-1 walks direction d of map_pick_jack_facing
+#: LSJACK.SPR: 8 animations of 17 frames (136; the screen file gives only
+#: the count, see docs/re/front/proj-dat.md); animation d-1 walks direction d of map_pick_jack_facing
 #: (0x1e788, table 0x1dbc1): 1 right, 2 down-right, 3 down, 4 down-left,
 #: 5 left, 6 up-left, 7 up, 8 up-right.
 JACK_ANIMS, JACK_FRAMES = 8, 17
@@ -127,9 +127,9 @@ def screen_picture(screen):
     The screen's picture: the 640 x 480 frame of the first sheet its PROJ
     file names that has one (A's names its film sheet, LVSL8FLM, first).
     """
-    dat = open(os.path.join(ORIG, "PROJ", "LVSL%d_E.DAT" % screen), "rb").read()
-    for m in re.finditer(rb"([A-Za-z0-9_]+)\.spr", dat, re.I):
-        sheet = os.path.join(ORIG, "FSPR", m.group(1).decode().upper())
+    dat = projdat.decode(os.path.join(ORIG, "PROJ", "LVSL%d_E.DAT" % screen))
+    for s in dat["sheets"]:
+        sheet = os.path.join(ORIG, "FSPR", os.path.splitext(s["name"].upper())[0])
         for f in spr.load(sheet + ".SPR"):
             if f["w"] == W and f["h"] == H:
                 return sheet, f
