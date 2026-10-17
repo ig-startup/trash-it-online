@@ -34,10 +34,9 @@ width + 2 further on. LSPANEL's frames 13, 14 (two bars) are not placed
 here.
 
 **Where the numbers come from:** a won level adds the record's `+0x10`
-to the score and `+0x18` to the timmy points (`map_node_trashed`
-0x20072); `+0x1c` is added to the lives after any level (0x20e1d).
-**Unsolved:** what G.EXE writes into `+0x10`, `+0x18`, `+0x1c` — the
-clone keeps the score and timmy points at 0.
+(its rubble) to the score and `+0x18` (player 1's timmies) to the timmy
+points (`map_node_trashed` 0x20072); `+0x1c` (panels taken) is added to
+the lives after any level — `level-record.md`.
 
 Clone: `client/src/scenes/WorldMapScene.js` (`_follow`, `_writeNumber`),
 the sheet from `scripts/export_worldmap.py` (`panel`).

@@ -34,9 +34,8 @@ export default class Story {
     this.lives = START_LIVES;
     /**
      * The score (+0x14) and the timmy points the shop spends (+0x1be): a
-     * won level adds what G.EXE left in the record's +0x10 and +0x18
-     * (map_node_trashed 0x20072). What G.EXE puts there is not read yet,
-     * so both stay 0.
+     * won level adds its rubble and player 1's timmies to them
+     * (map_node_trashed 0x20072, docs/re/front/level-record.md).
      */
     this.score = 0;
     this.timmies = 0;
@@ -105,12 +104,27 @@ export default class Story {
     return { act: 'play', level: n.level };
   }
 
-  /** The level or round on `id` was won (map_node_trashed, VA 0x20072). */
-  won(id) {
+  /**
+   * A level played to its end, won or lost (F.EXE VA 0x20e1d): the panels
+   * it took are lives (record +0x1c, G.EXE jack_touch_panel 0x1bacb).
+   * @param {{lives?: number}} tally
+   */
+  played(tally = {}) {
+    this.lives += tally.lives || 0;
+  }
+
+  /**
+   * The level or round on `id` was won (map_node_trashed, VA 0x20072): its
+   * rubble is added to the score, its timmies to the timmy points.
+   * @param {{score?: number, timmies?: number}} [tally]
+   */
+  won(id, tally = {}) {
     const n = this.nodeAt(id);
     this.node = Number(id);
     this.trashed.add(Number(id));
     if (n) this.stage = n.stage;
+    this.score += tally.score || 0;
+    this.timmies += tally.timmies || 0;
   }
 
   /**

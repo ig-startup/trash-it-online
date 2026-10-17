@@ -549,11 +549,13 @@ export default class GameScene extends Phaser.Scene {
     // at -6 px/tick with a random kick, and off his count.
     this._jacks.forEach(({ player }) => player.on('spill', (count) => {
       if (!this._gits) return;
-      const n = Math.min(count, this._gits.collected);
+      const own = this._gits.collectedBy.get(player) || 0;
+      const n = Math.min(count, own, this._gits.collected);
       for (let i = 0; i < n; i += 1) {
         this._gits.spawnFree(player.x, player.y - 20, (Math.random() * 2 - 1) * 2, -6);
       }
       this._gits.collected -= n;
+      this._gits.collectedBy.set(player, own - n);
       this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
     }));
 
@@ -1550,7 +1552,16 @@ export default class GameScene extends Phaser.Scene {
 
   /** The story goes on on the world map, the level won or lost. */
   _backToMap(result) {
-    this.scene.start('WorldMapScene', { players: this._players, story: this._story, result });
+    // What the level leaves in the shared record for F.EXE
+    // (print_level_counters 0x10a62, docs/re/front/level-record.md): the
+    // rubble as the score, player 1's timmies, a life per panel taken.
+    const first = this._jacks[0] && this._jacks[0].player;
+    const tally = {
+      score: this._rubbleTaken || 0,
+      timmies: (this._gits && first && this._gits.collectedBy.get(first)) || 0,
+      lives: this._secrets || 0,
+    };
+    this.scene.start('WorldMapScene', { players: this._players, story: this._story, result, tally });
   }
 
   /** A player has rung, or looks on: his Jack leaves the level, the others go on. */

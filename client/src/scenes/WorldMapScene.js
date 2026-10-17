@@ -89,6 +89,8 @@ export default class WorldMapScene extends Phaser.Scene {
     this._story = data.story || null;
     this._password = data.password || null;
     this._result = data.result || null;
+    /** What the level left in the record: score, timmies, lives. */
+    this._tally = data.tally || {};
     /** Just arrived in this world: its password is shown (VA 0x168d5). */
     this._arrived = !!data.arrived;
     this._ready = false;
@@ -109,8 +111,9 @@ export default class WorldMapScene extends Phaser.Scene {
     }
     const story = this._story;
     let note = '';
+    if (this._result === 'won' || this._result === 'lost') story.played(this._tally);
     if (this._result === 'won') {
-      story.won(story.node);
+      story.won(story.node, this._tally);
       // a world's exit won: straight on to the next world (state 5)
       if (story.isExit(story.node)) {
         if (!story.nextWorld()) {

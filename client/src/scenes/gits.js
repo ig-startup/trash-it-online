@@ -120,6 +120,11 @@ export default class Gits {
     this._acc = 0;
     this.all = [];
     this.collected = 0;
+    /**
+     * Each player's own count (player struct +0x68 timmies, +0x70 kings):
+     * F.EXE takes player 1's into the story (print_level_counters 0x10a62).
+     */
+    this.collectedBy = new Map();
     (level.timmies || []).forEach((t) => {
       const kind = t.king ? 'king' : 'timmy';
       const g = this._make(kind, t.x, t.y, t.flags || 0);
@@ -263,7 +268,12 @@ export default class Gits {
       for (const g of [...this.all]) {
         if (!g.sprite.active) { this._drop(g); continue; }
         if (g.state === 'hoovered') {
-          if (this._suck(g, nozzleOf(g))) { taken += 1; this._drop(g); g.sprite.destroy(); }
+          if (this._suck(g, nozzleOf(g))) {
+            taken += g.worth;
+            this.collectedBy.set(g.into, (this.collectedBy.get(g.into) || 0) + g.worth);
+            this._drop(g);
+            g.sprite.destroy();
+          }
           continue;
         }
         if (g.state === 'locked') {
@@ -292,6 +302,10 @@ export default class Gits {
           && g.state !== 'struck' && g.state !== 'dying'
           && hoovers.find((h) => h.box.contains(g.x, g.y - 6));
         if (by) {
+          // what it scores (git_hoovered 0x322c5: 1; one knocked flat or
+          // shaking it off, git_hoovered_8/_9 0x31b6e: 2, a king 20)
+          const knocked = g.state === 'knocked' || g.state === 'shaken';
+          g.worth = knocked ? (g.kind === 'king' ? 20 : 2) : 1;
           g.state = 'hoovered';
           g.into = by.who;
           g.nozzle = by.nozzle;

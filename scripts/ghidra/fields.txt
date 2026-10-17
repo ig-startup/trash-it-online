@@ -44,6 +44,10 @@ player 20 fix     rate           ; from the same profile
 player 4c sprite* hoover         ; made for each player at VA 0x21616
 player 54 sprite* hammer         ; the hammer entity
 player 58 ptr     hammer_list    ; per slot: which hammer frame goes with each of Jack's frames (play_anim)
+player 64 u32     timmies_bcd    ; BCD shown on the HUD; player_add_timmies 0x1a036 (docs/re/front/level-record.md)
+player 68 s32     timmies        ; +1 a timmy hoovered, +2 one knocked; player 1's goes to F.EXE (print_level_counters 0x10a62)
+player 6c u32     gits_bcd       ; BCD; player_add_gits 0x1a0b5
+player 70 s32     gits           ; +20 a knocked king hoovered, +1 a timmy binned; added to timmies for F.EXE
 player 9c s16     anim_changed   ; 1 when play_anim switched slots, else 0
 player ac ptr     squash_block   ; the block that landed on him without the hat (docs/re/jack/falling-block.md "A falling block on Jack")
 player 15c s16    ladder_regrab  ; 15 ticks after leaving a ladder before he can catch one in the air (docs/re/objects/ladders.md "Ladders")
