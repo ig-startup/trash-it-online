@@ -78,4 +78,4 @@ an exit's D costs nothing. A D won ends the world at once.
 **Not in the clone yet**: the T/U side levels and the gates are refused
 (the C/D bonus rounds are in: `levels/bonus-round.md`); the films; the landmarks and bins drawn over the picture
 (`LEVSLBIN`, the world sheet's other frames — the clone marks the levels
-with dots); the panel (`LSPANEL`, `LS_HAT`); the shop.
+with dots); the shop. The screen and its panel: `map-panel.md`.

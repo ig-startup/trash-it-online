@@ -16,6 +16,29 @@ import { loadKeySets, LocalKeys, SOLO_EXTRA } from '../input/keySets';
 
 const MAP_W = 640;
 const MAP_H = 480;
+/**
+ * F.EXE draws a 320 x 200 screen and shows the 640 x 480 map through it,
+ * the camera after Jack (docs/re/front/map-panel.md): each tick it closes
+ * 1/16 of the way (0x1348a, 16.16), its centre held to x 160..480 and
+ * y 128..408 (0x1fa7d) — the screen spans 128 above it and 72 below.
+ */
+const VIEW_W = 320;
+const VIEW_H = 200;
+const VIEW_ABOVE = 128;
+const CAM_MIN_X = 160;
+const CAM_MAX_X = MAP_W - 160;
+const CAM_MIN_Y = 128;
+const CAM_MAX_Y = MAP_H - 72;
+/**
+ * The panel (map_screen_init 0x1fcc2, 0x201a4), in screen pixels: LSPANEL
+ * icons, and the numbers in its digits (frame = character - 0x2e, each
+ * set its width + 2 on, 0x2025a) — timmy points (+0x1be), score (+0x14),
+ * lives (+0x28).
+ */
+const PANEL_ICONS = [[1, 20, 20], [0, 134, 20], [12, 264, 20]];
+const PANEL_NUMBERS = { timmies: [40, 30], score: [155, 30], lives: [287, 30] };
+/** The panel's own camera looks at a spot of the world nothing else uses. */
+const PANEL_AT = -10000;
 const TICK_MS = 1000 / 60;
 /** Arrows tried in map_walk_step's order. */
 const GROUPS = ['up', 'down', 'left', 'right'];
@@ -115,6 +138,7 @@ export default class WorldMapScene extends Phaser.Scene {
     const need = [];
     if (!this.textures.exists(bgKey)) need.push(() => this.load.image(bgKey, map.background));
     if (!this.textures.exists('lsjack')) need.push(() => this.load.image('lsjack', maps.jack.image));
+    if (!this.textures.exists('lspanel')) need.push(() => this.load.image('lspanel', maps.panel.image));
     new Set(map.icons.map((i) => i.sheet)).forEach((name) => {
       const key = sheetKey(name);
       if (!this.textures.exists(key)) need.push(() => this.load.image(key, maps.sheets[name].image));
@@ -131,8 +155,15 @@ export default class WorldMapScene extends Phaser.Scene {
   _build(maps, bgKey, note) {
     const story = this._story;
     const map = story.map;
-    const zoom = this.scale.width / MAP_W;
-    this.cameras.main.setZoom(zoom).centerOn(MAP_W / 2, MAP_H / 2);
+    const zoom = Math.min(this.scale.width / VIEW_W, this.scale.height / VIEW_H);
+    const vw = VIEW_W * zoom;
+    const vh = VIEW_H * zoom;
+    const vx = (this.scale.width - vw) / 2;
+    const vy = (this.scale.height - vh) / 2;
+    this.cameras.main.setViewport(vx, vy, vw, vh).setZoom(zoom);
+    this._panelCam = this.cameras.add(vx, vy, vw, vh).setZoom(zoom)
+      .centerOn(PANEL_AT + VIEW_W / 2, VIEW_H / 2);
+    this._textCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     this.add.image(0, 0, bgKey).setOrigin(0, 0);
 
     // Jack's sheet: eight standing poses, then eight walks of sixteen.
@@ -176,12 +207,35 @@ export default class WorldMapScene extends Phaser.Scene {
       edge: null, i: 0, lock: 0, auto: false, dir: 3, want: 3, wantTicks: 0,
     };
 
-    // The panel: what the original's LSPANEL shows, in text for now.
-    const ui = { fontSize: '13px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 };
-    this._title = this.add.text(8, 6, '', { ...ui, fontSize: '16px', color: '#ffff66' });
-    this._info = this.add.text(8, 28, '', ui);
-    this._msg = this.add.text(MAP_W / 2, MAP_H - 24, note, { ...ui, fontSize: '14px' }).setOrigin(0.5);
-    [this._title, this._info, this._msg].forEach((t) => t.setDepth(3000));
+    // the camera starts on Jack (map_screen_init: 0xc613c, 0xc6140)
+    this._cam = { x: p[0] * 0x10000, y: p[1] * 0x10000 };
+    this._follow();
+
+    // The panel, on its own camera: three icons and three numbers.
+    const panel = maps.panel;
+    cutFrames(this.textures.get('lspanel'), panel.frames);
+    this._panelSheet = panel;
+    const panelObjs = PANEL_ICONS.map(([f, x, y]) => this.add.image(PANEL_AT + x, y, 'lspanel', String(f)).setOrigin(0, 0));
+    this._digits = {};
+    Object.keys(PANEL_NUMBERS).forEach((k) => {
+      this._digits[k] = { value: null, imgs: [] };
+      for (let i = 0; i < 6; i++) {
+        const img = this.add.image(0, 0, 'lspanel', '2').setOrigin(0, 0).setVisible(false);
+        this._digits[k].imgs.push(img);
+        panelObjs.push(img);
+      }
+    });
+
+    // The clone's own lines, in the margins around the screen.
+    const ui = { fontSize: '14px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 };
+    this._title = this.add.text(8, Math.max(4, vy / 2 - 9), '', { ...ui, fontSize: '16px', color: '#ffff66' });
+    this._msg = this.add.text(this.scale.width / 2, this.scale.height - Math.max(12, vy / 2), note, ui).setOrigin(0.5);
+    const texts = [this._title, this._msg];
+    texts.forEach((t) => t.setDepth(3000));
+    const world = this.children.list.filter((o) => !panelObjs.includes(o) && !texts.includes(o));
+    this.cameras.main.ignore([...panelObjs, ...texts]);
+    this._panelCam.ignore([...world, ...texts]);
+    this._textCam.ignore([...world, ...panelObjs]);
     if (this._arrived) this._say(`МИР: ${map.name.toUpperCase()} — ПАРОЛЬ ${map.password.toUpperCase()}`, 5000);
 
     // Every player's keys steer the one Jack on the map.
@@ -210,6 +264,7 @@ export default class WorldMapScene extends Phaser.Scene {
       this._ticks += 1;
       this._tickIcons();
       if (this._tick()) return;
+      this._follow();
     }
     this._show();
   }
@@ -427,7 +482,45 @@ export default class WorldMapScene extends Phaser.Scene {
     this._jack.setFrame(String(i)).setPosition(w.x + ox, w.y + oy).setDepth(drawDepth(null, w.y));
     this._icons.forEach((o) => o.img.setDepth(drawDepth(o.depth, o.icon.y)));
     this._title.setText(`${story.map.name.toUpperCase()}  (мир ${story.world + 1} из ${story.maps.worlds.length})`);
-    this._info.setText(`Жизни: ${story.lives}`);
+    this._writeNumber('timmies', story.timmies);
+    this._writeNumber('score', story.score);
+    this._writeNumber('lives', story.lives);
+  }
+
+  /** 0x1348a: the camera closes 1/16 of the way to Jack, then is held in. */
+  _follow() {
+    const c = this._cam;
+    const clamp = (v, lo, hi) => {
+      // only the whole part is held; the fraction stays
+      const whole = Math.floor(v / 0x10000);
+      const frac = v - whole * 0x10000;
+      return Math.min(Math.max(whole, lo), hi) * 0x10000 + frac;
+    };
+    c.x = clamp(c.x + Math.trunc((this._w.x * 0x10000 - c.x) / 16), CAM_MIN_X, CAM_MAX_X);
+    c.y = clamp(c.y + Math.trunc((this._w.y * 0x10000 - c.y) / 16), CAM_MIN_Y, CAM_MAX_Y);
+    const left = Math.floor(c.x / 0x10000) - VIEW_W / 2;
+    const top = Math.floor(c.y / 0x10000) - VIEW_ABOVE;
+    this.cameras.main.centerOn(left + VIEW_W / 2, top + VIEW_H / 2);
+  }
+
+  /** 0x2025a: a number in LSPANEL's digits, each its width + 2 on. */
+  _writeNumber(key, value) {
+    const d = this._digits[key];
+    if (d.value === value) return;
+    d.value = value;
+    const text = String(value).slice(0, d.imgs.length);
+    let [x] = PANEL_NUMBERS[key];
+    const [, y] = PANEL_NUMBERS[key];
+    d.imgs.forEach((img, i) => {
+      if (i >= text.length) {
+        img.setVisible(false);
+        return;
+      }
+      const frame = text.charCodeAt(i) - 0x2e;
+      const [, , w, , ox, oy] = this._panelSheet.frames[frame];
+      img.setFrame(String(frame)).setPosition(PANEL_AT + x + ox, y + oy).setVisible(true);
+      x += w + 2;
+    });
   }
 
   /** A line across the screen, then back to the menu. */

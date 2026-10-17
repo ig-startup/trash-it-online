@@ -288,6 +288,9 @@ def main():
         "groups": {g: list(came) for g, (_, came) in GROUPS.items()},
         "jack": export_jack(),
         "continue": export_continue(),
+        # the panel over the map (map_screen_init 0x1fcc2): its icons and
+        # the digits its numbers are written in
+        "panel": export_sheet("LSPANEL", "sheet_lspanel.png"),
         "sheets": sheets,
         "worlds": worlds,
     }

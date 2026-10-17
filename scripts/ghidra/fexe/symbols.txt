@@ -16,6 +16,12 @@
 0x20072  f  map_node_trashed               ; +0x188[node] = 1, stage, timmy points
 0x200e8  f  map_enter_world                ; node 1, stage 0, open flags from node word 4
 0x1fcc2  f  map_screen_init                ; the world's row, icons, panel objects
+0x1348a  f  camera_follow                  ; camera += (target - camera) / 16, whole part clamped; clip box
+0x13579  f  camera_clip_centred            ; clip box -160..160, -150..100
+0x1fa7d  f  map_camera_tick                ; camera after Jack, x 160..480, y 128..408; picture scrolled; panel
+0x1fc24  f  map_sheet_init                 ; the world sheet as 20 x 15 tiles of 32
+0x201a4  f  map_panel_numbers              ; hide the digits, write timmy points, score, lives
+0x2025a  f  panel_number                   ; "%d" in LSPANEL digits: frame = char - 0x2e, width + 2 on
 0x12896  f  play_node_film                 ; record +0xdc != -1 -> play it
 0x12bbb  f  film_gives_hammer              ; films 36..40 hand player 1 a special hammer
 0x12daa  f  play_smacker                   ; D\SMK\<name>.SMK from the film table

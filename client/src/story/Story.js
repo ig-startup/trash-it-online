@@ -32,6 +32,14 @@ export default class Story {
   constructor(maps, start = {}) {
     this.maps = maps;
     this.lives = START_LIVES;
+    /**
+     * The score (+0x14) and the timmy points the shop spends (+0x1be): a
+     * won level adds what G.EXE left in the record's +0x10 and +0x18
+     * (map_node_trashed 0x20072). What G.EXE puts there is not read yet,
+     * so both stay 0.
+     */
+    this.score = 0;
+    this.timmies = 0;
     this.hammer = Number.isInteger(start.hammer) ? start.hammer : FIRST_HAMMER;
     this.enterWorld(start.world || 0);
   }
