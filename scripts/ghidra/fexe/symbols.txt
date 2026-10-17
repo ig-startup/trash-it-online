@@ -22,6 +22,16 @@
 0x15d44  f  password_of_world              ; the word shown for record +0x26
 0x15d55  f  check_password                 ; nine words -> world, 5 lives, nothing in hand
 0x159a2  f  password_screen
+0x1590e  f  continue_screen                ; no lives -> 0; else ask, a yes costs a life -> 1
+0x154cb  f  continue_screen_init           ; CONTIN_E.DAT: tubes for lives, mist, YES NO CONTINUE?
+0x15415  f  continue_word_tick             ; wait +0x9c, fly, stop at speed 0, flash if picked
+0x154b0  f  continue_mist_tick             ; x += +0x40, wraps past 155
+0x20e1d  f  front_after_level              ; the level's result: trash, ask continue?, next state
+0x1aaff  f  fade_start                     ; AL = step a tick, + in, - out; clears 0xd6d5d
+0x1ab8d  f  fade_step                      ; 0xd6d5c += step; 0xd6d5d = 1 when done
+0x1ab4c  f  fade_wait
+0x1c947  f  obj_move                       ; position += velocity (16.16)
+0x1c991  f  obj_accelerate                 ; velocity += acceleration
 0x167c5  f  world_arrival_screen           ; "password is" in state 5
 0x1a08d  f  arcade_level_select            ; game type 2: the K rows and their mission lines
 0x1b92a  f  hammer_shop                    ; trade-in value at shop record +4

@@ -71,12 +71,11 @@ map_process_node 0x1ffe9 when the front end comes round:
 Winning trashes the node (map_node_trashed 0x20072), sets the stage, and
 adds the level's timmy points to the shop's money.
 
-**Lost** (VA 0x20e1d): a level asks "continue?" (0x1590e) and a yes costs
-a life — with none left the game is over; a bonus screen, a side level or
+**Lost** (VA 0x20e1d): a level asks "continue?" (0x1590e, `continue.md`)
+and a yes costs a life — with none left the game is over; a bonus screen, a side level or
 an exit's D costs nothing. A D won ends the world at once.
 
 **Not in the clone yet**: the T/U side levels and the gates are refused
-(the C/D bonus rounds are in: `levels/bonus-round.md`); the continue
-screen (the clone always goes on); the films; the landmarks and bins drawn over the picture
+(the C/D bonus rounds are in: `levels/bonus-round.md`); the films; the landmarks and bins drawn over the picture
 (`LEVSLBIN`, the world sheet's other frames — the clone marks the levels
 with dots); the panel (`LSPANEL`, `LS_HAT`); the shop.

@@ -107,17 +107,20 @@ export default class Story {
 
   /**
    * The level on `id` was lost (F.EXE VA 0x20e1d). A bonus screen, a side
-   * level or an exit's D costs nothing. A level asks "continue?" — the
-   * clone's answer is always yes — and that costs a life (VA 0x1590e); with
-   * none left, the game is over.
-   * @returns {boolean} whether the game goes on
+   * level or an exit's D costs nothing and asks nothing. A level asks
+   * "continue?" (continue_screen 0x1590e, docs/re/front/continue.md) —
+   * unless no lives are left: then the game is over unasked.
+   * @returns {'free'|'ask'|'over'}
    */
   lost(id) {
     const n = this.nodeAt(id);
-    if (n && (n.kind === 'exit' || n.number > 11)) return true;
-    if (this.lives === 0) return false;
+    if (n && (n.kind === 'exit' || n.number > 11)) return 'free';
+    return this.lives === 0 ? 'over' : 'ask';
+  }
+
+  /** "Continue?" answered yes: it costs a life (VA 0x15988). */
+  carryOn() {
     this.lives -= 1;
-    return true;
   }
 
   /** Whether `id` is a world's exit: won, the world is done (VA 0x2117c). */

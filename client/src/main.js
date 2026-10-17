@@ -4,6 +4,7 @@ import LobbyScene from './scenes/LobbyScene.js';
 import GameScene from './scenes/GameScene.js';
 import KeysScene from './scenes/KeysScene.js';
 import WorldMapScene from './scenes/WorldMapScene.js';
+import ContinueScene from './scenes/ContinueScene.js';
 
 class BootScene extends Phaser.Scene {
   constructor() {
@@ -37,7 +38,7 @@ const config = {
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, LobbyScene, GameScene, KeysScene, WorldMapScene],
+  scene: [BootScene, MenuScene, LobbyScene, GameScene, KeysScene, WorldMapScene, ContinueScene],
 };
 
 const game = new Phaser.Game(config);

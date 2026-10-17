@@ -914,7 +914,7 @@ export default class GameScene extends Phaser.Scene {
     this._over = true;
     this._jacks.forEach((j) => { if (!j.rang) this._leaveLevel(j); });
     if (this._story) {
-      this.showResultOverlay('ВРЕМЯ ВЫШЛО', 'Минус жизнь', { then: () => this._backToMap('lost') });
+      this.showResultOverlay('ВРЕМЯ ВЫШЛО', 'Уровень проигран', { then: () => this._backToMap('lost') });
       return;
     }
     this.showResultOverlay('ВРЕМЯ ВЫШЛО', 'Попробуйте ещё раз', { nextLevel: this._levelId });

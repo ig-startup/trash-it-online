@@ -12,6 +12,8 @@ map sprite, LSJACK.SPR, as one atlas: eight walks of 17 frames.
 
     python3 scripts/export_worldmap.py
 
+Plus the sheets of the "continue?" screen a lost level asks.
+
 Writes client/public/worldmap/*.png and client/public/worldmap/worlds.json.
 """
 import json
@@ -206,6 +208,19 @@ def export_jack():
     return jack
 
 
+def export_continue():
+    """
+    The "continue?" screen's sheets, PROJ/CONTIN_E.DAT (continue_screen_init
+    0x154cb, docs/re/front/continue.md), and colour 254 of their shared
+    palette — the silhouette the answer picked flashes in.
+    """
+    out = {}
+    for name in ("CONTINBG", "CNTGRB_E", "CONMIST", "CONTPANL"):
+        out[name.lower()] = export_sheet(name, "continue_%s.png" % name.lower())
+    r, g, b = pal.decode(os.path.join(ORIG, "FSPR", "CONTINBG.PAL"))[254]
+    return {"sheets": out, "flash": (r << 16) | (g << 8) | b}
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     f = front.Front()
@@ -272,6 +287,7 @@ def main():
     data = {
         "groups": {g: list(came) for g, (_, came) in GROUPS.items()},
         "jack": export_jack(),
+        "continue": export_continue(),
         "sheets": sheets,
         "worlds": worlds,
     }

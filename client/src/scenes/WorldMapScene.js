@@ -59,7 +59,7 @@ export default class WorldMapScene extends Phaser.Scene {
 
   /**
    * @param {{players: object[], story?: Story, password?: string,
-   *   result?: 'won'|'lost', arrived?: boolean}} data
+   *   result?: 'won'|'lost'|'continued', arrived?: boolean}} data
    */
   init(data) {
     this._players = data.players || [];
@@ -97,12 +97,17 @@ export default class WorldMapScene extends Phaser.Scene {
         this._arrived = true;
       }
     } else if (this._result === 'lost') {
-      const before = story.lives;
-      if (!story.lost(story.node)) {
+      const r = story.lost(story.node);
+      if (r === 'over') {
         this._bigText('ИГРА ОКОНЧЕНА');
         return;
       }
-      if (story.lives < before) note = `ОСТАЛОСЬ ЖИЗНЕЙ: ${story.lives}`;
+      if (r === 'ask') {
+        this.scene.start('ContinueScene', { players: this._players, story });
+        return;
+      }
+    } else if (this._result === 'continued') {
+      note = `ОСТАЛОСЬ ЖИЗНЕЙ: ${story.lives}`;
     }
     const map = story.map;
     const bgKey = `worldmap_${map.screen}`;
