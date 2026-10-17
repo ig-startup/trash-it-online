@@ -9,7 +9,7 @@ F.EXE's; the paths and the walk are in `world-map.md`, the screen file in
 +0x8c, word 1 → +0x9a (the draw depth; Jack's is 0x1cb, the landmarks' 3), dword 4 the
 behaviour run every tick → +8, dword 0x18 → the slot's entry in 0xd66ac.
 An object's x is +0x22, y +0x26, frame +0x94, and it is drawn at x, y
-plus the frame's origin (0x2375x); bit 8 of +0x92 pins it to the screen
+plus the frame's origin (`obj_draw` 0x234bf); bit 8 of +0x92 pins it to the screen
 (the panel); `obj_remove` 0x2561c (bit 4 of +0x90) queues it for deletion.
 A smaller depth is drawn nearer: T's node 15 goes to 0x1cd, behind Jack's
 0x1cb, once he is lower on the screen than it, and the landmarks (3) are

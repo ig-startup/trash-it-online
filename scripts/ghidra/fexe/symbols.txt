@@ -50,3 +50,4 @@
 0x1f5f7  f  map_bin_tick                   ; scripts 0x89dfa rattle, 0x89e36 flat, 0x89efe crushed now
 0x1f73f  f  map_hat_tick                   ; scripts 0x89e4a, 0x89e9e, 0x89ebe
 0x1f689  f  map_t_node15_tick              ; T's node 15: frames 0-7, depth by Jack's y
+0x234bf  f  obj_draw                       ; x + frame ox, y + frame oy; +0x90 bit 8 mirrored
