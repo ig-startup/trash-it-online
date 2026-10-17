@@ -28,7 +28,7 @@ So a screen's objects, where they stand and how fast they animate are
 not in these files: they are made in code — `map_screen_init` 0x1fcc2
 creates the map's objects through 0x24e39 and sets each one's x (+0x22),
 y (+0x26) and frame (+0x94) by hand. The file only says LSJACK has 0x88
-frames; the 8 animations of 17 are not in it.
+frames; how they split is the code's (`map-objects.md`).
 
 **What the frames and the tail are — Inferred.** The `ff` rectangles all
 fall in x 640..2042, y 0..511: a 2048 x 512 page addressed a byte a pixel,

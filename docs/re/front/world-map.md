@@ -16,11 +16,11 @@ placed at their own origins. The paths are `FSPR/LVSPAT<n>.PAK`, the
 same size: 0 nothing, 255 path, 1..127 the point of node *id*.
 
 **Jack on the map** is `LSJACK.SPR`, 136 frames (0x88 in the screen file —
-its `OW`, 8 before that are junk past the name's NUL), eight animations
-of seventeen. Animation d-1 is direction d: 1 right, 2 down-right, 3 down (his
-face to us), 4 down-left, 5 left, 6 up-left, 7 up (his back, the braces
-crossed), 8 up-right. **Inferred:** how fast the frames step — the clone
-steps one every two pixels.
+its `OW`, 8 before that are junk past the name's NUL): eight standing
+poses, then eight walks of sixteen — direction d stands on frame d-1 and
+walks 8 + 16 (d-1) on, a frame every 2 ticks (`map-objects.md`). The
+directions: 1 right, 2 down-right, 3 down (his face to us), 4 down-left,
+5 left, 6 up-left, 7 up (his back, the braces crossed), 8 up-right.
 
 **The walk** (map_fire_pressed 0x1de35 runs once a tick): Jack stands on
 a pixel `(x, y)` (0xd9810, 0xd980a) and knows the neighbour he came from,
@@ -78,5 +78,4 @@ an exit's D costs nothing. A D won ends the world at once.
 **Not in the clone yet**: the T/U side levels and the gates are refused
 (the C/D bonus rounds are in: `levels/bonus-round.md`); the continue
 screen (the clone always goes on); the films; the landmarks and bins drawn over the picture
-(`LEVSLBIN`, the world sheet's other frames — the clone marks the levels
-with dots); the panel (`LSPANEL`, `LS_HAT`); the shop.
+(`map-objects.md` — the clone marks the levels with dots); the panel (`LSPANEL`, `LS_HAT`); the shop.
