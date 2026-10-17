@@ -27,8 +27,30 @@ const LOOK_AHEAD = 32;
 const FLAT = 0x102c;
 const STEEP = 0x3cf0;
 const FACING = [1, 8, 7, 5, 6, 7, 1, 2, 3, 5, 4, 3];
-/** The clone's choice: a walk frame every two pixels (the anim rate is not traced). */
-const PX_PER_FRAME = 2;
+/** Jack's draw depth (template 0x8a01a): a smaller depth is drawn nearer. */
+const JACK_DEPTH = 0x1cb;
+/** A held frame. */
+const HOLD = Infinity;
+
+/**
+ * The bins' and hats' scripts (docs/re/front/map-objects.md), as
+ * [frame, ticks] steps: the loop of a level not yet trashed, from a random
+ * step (eaac); the pose of one trashed; and the one just won, played once.
+ */
+const SCRIPTS = {
+  // 0x89dfa, 0x89e36, 0x89efe: the lid rattles; the bin crushed flat
+  bin: {
+    loop: [0, 1, 2, 3, 2, 1].map((f) => [f, 3]),
+    trashed: [[6, HOLD]],
+    won: [[0, 45], [4, 5], [5, 5], [6, HOLD]],
+  },
+  // 0x89e4a, 0x89e9e, 0x89ebe
+  hat: {
+    loop: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((f) => [f, 4]),
+    trashed: [[15, HOLD]],
+    won: [[0, 44], [12, 4], [13, 4], [14, 4], [15, HOLD]],
+  },
+};
 
 export default class WorldMapScene extends Phaser.Scene {
   constructor() {
@@ -88,6 +110,10 @@ export default class WorldMapScene extends Phaser.Scene {
     const need = [];
     if (!this.textures.exists(bgKey)) need.push(() => this.load.image(bgKey, map.background));
     if (!this.textures.exists('lsjack')) need.push(() => this.load.image('lsjack', maps.jack.image));
+    new Set(map.icons.map((i) => i.sheet)).forEach((name) => {
+      const key = sheetKey(name);
+      if (!this.textures.exists(key)) need.push(() => this.load.image(key, maps.sheets[name].image));
+    });
     if (!need.length) {
       start();
       return;
@@ -104,26 +130,45 @@ export default class WorldMapScene extends Phaser.Scene {
     this.cameras.main.setZoom(zoom).centerOn(MAP_W / 2, MAP_H / 2);
     this.add.image(0, 0, bgKey).setOrigin(0, 0);
 
-    // Jack's sheet: eight walks of 17 frames, cut out of the atlas once.
-    const tex = this.textures.get('lsjack');
-    if (!tex.has('0')) {
-      maps.jack.frames.forEach(([x, y, w, h], i) => tex.add(String(i), 0, x, y, w, h));
-    }
-    this._frames = maps.jack.frames;
-    this._perAnim = maps.jack.framesPerAnim;
+    // Jack's sheet: eight standing poses, then eight walks of sixteen.
+    cutFrames(this.textures.get('lsjack'), maps.jack.frames);
+    this._jackSheet = maps.jack;
     this._groups = maps.groups;
+    this._ticks = 0;
 
-    // The levels: a mark on each, green once trashed (the clone's own —
-    // the original draws its bins and landmarks, not traced yet).
-    this._marks = this.add.graphics();
-    this._drawMarks();
+    // What stands on the picture: a bin on each level, a hat on each side
+    // level, the landmarks Jack passes behind (map_place_jack 0x1dbd9).
+    const justWon = this._result === 'won' ? story.node : null;
+    this._icons = map.icons.map((icon) => {
+      const sheet = maps.sheets[icon.sheet];
+      cutFrames(this.textures.get(sheetKey(icon.sheet)), sheet.frames);
+      const o = {
+        icon, frames: sheet.frames, depth: icon.depth, steps: null, step: 0, left: 0,
+        img: this.add.image(0, 0, sheetKey(icon.sheet), String(icon.frame)).setOrigin(0, 0),
+      };
+      const script = SCRIPTS[icon.kind];
+      if (script) {
+        if (icon.node === justWon) {
+          o.steps = script.won;
+        } else if (story.isTrashed(icon.node)) {
+          o.steps = script.trashed;
+        } else {
+          o.steps = script.loop;
+          o.loops = true;
+          o.step = Math.floor(Math.random() * Math.min(o.steps.length, icon.kind === 'bin' ? 6 : 8));
+        }
+        o.left = o.steps[o.step][1];
+      }
+      this._placeIcon(o, o.steps ? o.steps[o.step][0] : icon.frame);
+      return o;
+    });
 
     this._jack = this.add.image(0, 0, 'lsjack', '0').setOrigin(0, 0);
     // map_screen_init / 0x1dbd9: stopped on the record's node, from nowhere
     const p = map.points[story.node];
     this._w = {
       x: p[0], y: p[1], moving: false, came: 4, at: story.node, prev: story.node,
-      edge: null, i: 0, lock: 0, auto: false, dir: 3, want: 3, wantTicks: 0, step: 0,
+      edge: null, i: 0, lock: 0, auto: false, dir: 3, want: 3, wantTicks: 0,
     };
 
     // The panel: what the original's LSPANEL shows, in text for now.
@@ -131,6 +176,7 @@ export default class WorldMapScene extends Phaser.Scene {
     this._title = this.add.text(8, 6, '', { ...ui, fontSize: '16px', color: '#ffff66' });
     this._info = this.add.text(8, 28, '', ui);
     this._msg = this.add.text(MAP_W / 2, MAP_H - 24, note, { ...ui, fontSize: '14px' }).setOrigin(0.5);
+    [this._title, this._info, this._msg].forEach((t) => t.setDepth(3000));
     if (this._arrived) this._say(`МИР: ${map.name.toUpperCase()} — ПАРОЛЬ ${map.password.toUpperCase()}`, 5000);
 
     // Every player's keys steer the one Jack on the map.
@@ -156,6 +202,8 @@ export default class WorldMapScene extends Phaser.Scene {
     this._acc += Math.min(delta, 100);
     while (this._acc >= TICK_MS) {
       this._acc -= TICK_MS;
+      this._ticks += 1;
+      this._tickIcons();
       if (this._tick()) return;
     }
     this._show();
@@ -245,7 +293,6 @@ export default class WorldMapScene extends Phaser.Scene {
     const ny = path[w.i + 1];
     if (nx !== w.x || ny !== w.y) {
       w.came = cameFrom(nx - w.x, ny - w.y);
-      w.step += 1;
     }
     w.x = nx;
     w.y = ny;
@@ -334,26 +381,46 @@ export default class WorldMapScene extends Phaser.Scene {
     if (ms) this._sayTimer = this.time.delayedCall(ms, () => this._msg.setText(''));
   }
 
-  _drawMarks() {
-    const story = this._story;
-    const g = this._marks;
-    g.clear();
-    Object.entries(story.map.nodes).forEach(([id, n]) => {
-      const p = story.map.points[id];
-      if (!p || n.number < 0) return;
-      g.fillStyle(story.isTrashed(id) ? 0x33dd55 : 0xdd3333, 0.9);
-      g.fillCircle(p[0], p[1], 3);
+  /** An icon's frame, drawn at its point plus the frame's origin. */
+  _placeIcon(o, frame) {
+    const [, , , , ox, oy] = o.frames[frame];
+    o.img.setFrame(String(frame)).setPosition(o.icon.x + ox, o.icon.y + oy);
+    const shown = o.icon.kind === 'untilTrashed' ? !this._story.isTrashed(o.icon.node)
+      : o.icon.kind === 'onceTrashed' ? this._story.isTrashed(o.icon.node) : true;
+    o.img.setVisible(shown);
+    // the bin crushed flat (frame 6) lies at Jack's own depth (0x1f5f7)
+    if (o.icon.kind === 'bin' && frame === 6) o.depth = JACK_DEPTH;
+  }
+
+  /** One tick of every icon's script, or its loop on the tick count. */
+  _tickIcons() {
+    this._icons.forEach((o) => {
+      const { icon } = o;
+      if (icon.loop) {
+        this._placeIcon(o, icon.loop[Math.floor(this._ticks / icon.ticks) % icon.loop.length]);
+      } else if (o.steps && (o.left -= 1) <= 0) {
+        if (o.step + 1 < o.steps.length) o.step += 1;
+        else if (o.loops) o.step = 0;
+        o.left = o.steps[o.step][1];
+        this._placeIcon(o, o.steps[o.step][0]);
+      }
+      // 0x1f689: T's node 15 goes behind Jack once he is low enough
+      if (icon.behindJackBelow) o.depth = this._w.y >= icon.behindJackBelow ? 0x1cd : 1;
     });
   }
 
   _show() {
     const w = this._w;
     const story = this._story;
-    const anim = w.dir - 1;
-    const k = w.moving ? Math.floor(w.step / PX_PER_FRAME) % this._perAnim : 0;
-    const i = anim * this._perAnim + k;
-    const [, , , , ox, oy] = this._frames[i];
-    this._jack.setFrame(String(i)).setPosition(w.x + ox, w.y + oy);
+    // map_jack_tick 0x1f941: stopped, his pose; walking, a new frame every
+    // two ticks
+    const sheet = this._jackSheet;
+    const i = w.moving
+      ? sheet.walk[w.dir - 1] + (Math.floor(this._ticks / 2) % sheet.walkFrames)
+      : sheet.stand[w.dir - 1];
+    const [, , , , ox, oy] = sheet.frames[i];
+    this._jack.setFrame(String(i)).setPosition(w.x + ox, w.y + oy).setDepth(drawDepth(null, w.y));
+    this._icons.forEach((o) => o.img.setDepth(drawDepth(o.depth, o.icon.y)));
     this._title.setText(`${story.map.name.toUpperCase()}  (мир ${story.world + 1} из ${story.maps.worlds.length})`);
     this._info.setText(`Жизни: ${story.lives}`);
   }
@@ -365,6 +432,27 @@ export default class WorldMapScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.time.delayedCall(3000, () => this.scene.start('MenuScene'));
   }
+}
+
+/** @returns {string} the texture key of an FSPR sheet */
+function sheetKey(name) {
+  return `wmsheet_${name}`;
+}
+
+/** Cut an atlas's [x, y, w, h, ...] frames into a texture once. */
+function cutFrames(tex, frames) {
+  if (tex.has('0')) return;
+  frames.forEach(([x, y, w, h], i) => tex.add(String(i), 0, x, y, w, h));
+}
+
+/**
+ * Phaser's depth for one of F.EXE's: a smaller depth is nearer, and none
+ * (bit 0x40 of +0x91, -1 in the node) is the object's y — Jack's own way.
+ * Jack's depth or more is behind him, less in front of him.
+ */
+function drawDepth(depth, y) {
+  if (depth === null || depth === undefined) return y;
+  return depth < JACK_DEPTH ? 1000 + (JACK_DEPTH - depth) : -1 - (depth - JACK_DEPTH);
 }
 
 /** The neighbour index (0x1e539's numbering) a step of (dx, dy) came from. */

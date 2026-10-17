@@ -158,6 +158,9 @@ class Front:
                 # the map-screen object drawn for it, and where
                 "icon": icon,
                 "x": w[8], "y": w[9],
+                # its draw depth, -1 for drawn in y order, and first frame
+                # (map_place_jack 0x1dbd9; docs/re/front/map-objects.md)
+                "depth": w[10], "frame": w[12],
                 "movie": w[13],
                 # copied to the record's +0x1bc when won (VA 0x20072)
                 "stage": w[14],

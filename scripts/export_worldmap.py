@@ -50,11 +50,31 @@ GROUPS = {
 #: The came-from a move into each neighbour leaves behind (0x1e5c9).
 CAME = {0: 8, 1: 7, 2: 6, 3: 5, 5: 3, 6: 2, 7: 1, 8: 0}
 
-#: LSJACK.SPR: 8 animations of 17 frames (the screen file's "OW" header,
-#: 8 and 0x88); animation d-1 walks direction d of map_pick_jack_facing
-#: (0x1e788, table 0x1dbc1): 1 right, 2 down-right, 3 down, 4 down-left,
-#: 5 left, 6 up-left, 7 up, 8 up-right.
-JACK_ANIMS, JACK_FRAMES = 8, 17
+#: LSJACK.SPR's 136 frames (map_jack_tick 0x1f941, docs/re/front/map-objects.md):
+#: direction d of map_pick_jack_facing (0x1e788, table 0x1dbc1 — 1 right,
+#: 2 down-right, 3 down, 4 down-left, 5 left, 6 up-left, 7 up, 8 up-right)
+#: stands on frame d-1 (table 0x1e9d1) and walks 16 frames from 8 + 16 (d-1)
+#: (table 0x1e9c8), one every two ticks.
+JACK_STAND = list(range(8))
+JACK_WALK = [8 + 16 * d for d in range(8)]
+JACK_WALK_FRAMES = 16
+
+#: The map's object templates (0x89f7a + 0x20 k) a node may carry: what
+#: the clone does with it, the sheet it draws from (None: the world's own)
+#: and, for one that loops, its frames and the ticks each is shown.
+ICONS = {
+    0x89f7a: ("loop", "LVSL8FLM", list(range(8)), 5),       # 0x1f6c9, on A
+    0x89f9a: ("loop", "LVSL8FLM", list(range(8, 16)), 5),   # 0x1f6f1
+    0x89fba: ("loop", "LVSL8SPR", [8, 4], 30),              # 0x1f713
+    0x8a03a: ("bin", "LEVSLBIN", None, 0),                  # 0x1f5f7
+    0x8a05a: ("loop", None, list(range(8)), 3),             # 0x1f689, T's node 15
+    0x8a07a: ("hat", "LS_HAT", None, 0),                    # 0x1f73f
+    0x8a09a: ("landmark", None, None, 0),                   # 0x1c9ba
+    0x8a0ba: ("untilTrashed", None, None, 0),               # 0x1f7ad
+    0x8a0da: ("untilTrashed", None, None, 0),               # 0x1f7cd
+    0x8a0fa: ("onceTrashed", None, None, 0),                # 0x1f7ed
+    0x8a15a: ("onceTrashed", None, None, 0),                # 0x1f80a
+}
 
 
 def neighbours(mask, x, y):
@@ -130,31 +150,42 @@ def screen_picture(screen):
     dat = open(os.path.join(ORIG, "PROJ", "LVSL%d_E.DAT" % screen), "rb").read()
     for m in re.finditer(rb"([A-Za-z0-9_]+)\.spr", dat, re.I):
         sheet = os.path.join(ORIG, "FSPR", m.group(1).decode().upper())
-        for f in spr.load(sheet + ".SPR"):
+        for i, f in enumerate(spr.load(sheet + ".SPR")):
             if f["w"] == W and f["h"] == H:
-                return sheet, f
+                return sheet, f, i
     raise ValueError("screen %d has no picture" % screen)
 
 
 def export_background(screen, out_path):
-    sheet, frame = screen_picture(screen)
+    sheet, frame, _ = screen_picture(screen)
     palette = pal.decode(sheet + ".PAL")
     _, _, img = spr.frame_bitmap(frame)
     _png.write_rgb(out_path, W, H, [tuple(palette[v]) for row in img for v in row])
 
 
-def export_jack():
-    """LSJACK.SPR as one atlas, a row per animation."""
-    palette = pal.decode(os.path.join(ORIG, "FSPR", "LSJACK.PAL"))
-    frames = spr.load(os.path.join(ORIG, "FSPR", "LSJACK.SPR"))
-    assert len(frames) == JACK_ANIMS * JACK_FRAMES
-    cw = max(f["w"] for f in frames)
-    ch = max(f["h"] for f in frames)
-    aw, ah = cw * JACK_FRAMES, ch * JACK_ANIMS
+def export_sheet(name, out_name, skip=()):
+    """
+    A whole FSPR sheet as one atlas in its own palette, a frame per cell;
+    -> {"image", "frames": [[x, y, w, h, ox, oy]]}, the origin being where
+    the frame's top left sits from the object's point. Frames in `skip`
+    (a world's 640 x 480 picture) are left empty.
+    """
+    path = os.path.join(ORIG, "FSPR", name)
+    palette = pal.decode(path + ".PAL")
+    frames = spr.load(path + ".SPR")
+    keep = [f for i, f in enumerate(frames) if i not in skip]
+    cw = max(f["w"] for f in keep)
+    ch = max(f["h"] for f in keep)
+    cols = max(1, min(len(frames), 2048 // cw))
+    rows = (len(frames) + cols - 1) // cols
+    aw, ah = cw * cols, ch * rows
     rgba = [(0, 0, 0, 0)] * (aw * ah)
     rects = []
     for i, f in enumerate(frames):
-        bx, by = (i % JACK_FRAMES) * cw, (i // JACK_FRAMES) * ch
+        bx, by = (i % cols) * cw, (i // cols) * ch
+        if i in skip:
+            rects.append([bx, by, 1, 1, 0, 0])
+            continue
         w, h, img = spr.frame_bitmap(f, transparent=0)
         for y in range(h):
             for x in range(w):
@@ -162,11 +193,17 @@ def export_jack():
                 if v:
                     r, g, b = palette[v]
                     rgba[(by + y) * aw + bx + x] = (r, g, b, 255)
-        # the origin is where the frame's top left sits from Jack's point
         rects.append([bx, by, f["w"], f["h"], f["ox"], f["oy"]])
-    _png.write_rgba(os.path.join(OUT, "lsjack.png"), aw, ah, rgba)
-    return {"image": "worldmap/lsjack.png", "anims": JACK_ANIMS,
-            "framesPerAnim": JACK_FRAMES, "frames": rects}
+    _png.write_rgba(os.path.join(OUT, out_name), aw, ah, rgba)
+    return {"image": "worldmap/" + out_name, "frames": rects}
+
+
+def export_jack():
+    """LSJACK.SPR: eight standing poses, then eight walks of sixteen."""
+    jack = export_sheet("LSJACK", "lsjack.png")
+    assert len(jack["frames"]) == len(JACK_STAND) + 8 * JACK_WALK_FRAMES
+    jack.update(stand=JACK_STAND, walk=JACK_WALK, walkFrames=JACK_WALK_FRAMES)
+    return jack
 
 
 def main():
@@ -174,12 +211,35 @@ def main():
     f = front.Front()
     names = {world: (word, name, hammer) for word, world, name, hammer in f.passwords()}
     worlds = []
+    sheets = {}
     for world in range(front.WORLD_COUNT):
         screen = f.screen(world)
         mask = pak.load(os.path.join(ORIG, "FSPR", "LVSPAT%d.PAK" % screen))
         points = {v: (i % W, i // W) for i, v in enumerate(mask) if 0 < v < 255}
         background = "map_%d.png" % screen
         export_background(screen, os.path.join(OUT, background))
+        # The world's objects (map_place_jack 0x1dbd9): what each node
+        # carries — its bin, hat, landmark — from the world's own sheet
+        # (its picture left out) or a shared one.
+        sheet, _, picture = screen_picture(screen)
+        own = os.path.basename(sheet)
+        if own not in sheets:
+            sheets[own] = export_sheet(own, "sheet_%s.png" % own.lower(), skip=(picture,))
+        icons = []
+        for n in f.nodes(world):
+            if not n["icon"]:
+                continue
+            kind, name, loop, ticks = ICONS[n["icon"]]
+            name = name or own
+            if name not in sheets:
+                sheets[name] = export_sheet(name, "sheet_%s.png" % name.lower())
+            icons.append({"node": n["id"], "kind": kind, "sheet": name,
+                          "frame": n["frame"], "x": n["x"], "y": n["y"],
+                          "depth": None if n["depth"] == -1 else n["depth"],
+                          **({"loop": loop, "ticks": ticks} if loop else {}),
+                          # 0x1f689 puts T's node 15 behind Jack once he is
+                          # at y 152 or lower, in front of him above
+                          **({"behindJackBelow": 152} if n["icon"] == 0x8a05a else {})})
         nodes = {}
         for n in f.nodes(world):
             level = n["level"]
@@ -205,13 +265,14 @@ def main():
             "hammer": hammer,
             "screen": screen, "background": "worldmap/" + background,
             "points": {k: list(v) for k, v in sorted(points.items())},
-            "nodes": nodes, "moves": moves,
+            "nodes": nodes, "moves": moves, "icons": icons,
         })
         print("world %d %s: %d points, %d nodes" % (world, front.SECTIONS[world],
                                                     len(points), len(nodes)))
     data = {
         "groups": {g: list(came) for g, (_, came) in GROUPS.items()},
         "jack": export_jack(),
+        "sheets": sheets,
         "worlds": worlds,
     }
     with open(os.path.join(OUT, "worlds.json"), "w") as fh:
