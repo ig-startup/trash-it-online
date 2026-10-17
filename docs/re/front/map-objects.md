@@ -8,13 +8,23 @@ F.EXE's; the paths and the walk are in `world-map.md`, the screen file in
 (template in EAX; the new object in 0x39a0cc): word 0 the sheet's slot →
 +0x8c, word 1 → +0x9a (the draw depth; Jack's is 0x1cb, the landmarks' 3), dword 4 the
 behaviour run every tick → +8, dword 0x18 → the slot's entry in 0xd66ac.
-An object's x is +0x22, y +0x26, frame +0x94; bit 0x40 of +0x91 hides
-it; `obj_remove` 0x2561c (bit 4 of +0x90) queues it for deletion.
+An object's x is +0x22, y +0x26, frame +0x94, and it is drawn at x, y
+plus the frame's origin (0x2375x); bit 8 of +0x92 pins it to the screen
+(the panel); `obj_remove` 0x2561c (bit 4 of +0x90) queues it for deletion.
+A smaller depth is drawn nearer: T's node 15 goes to 0x1cd, behind Jack's
+0x1cb, once he is lower on the screen than it, and the landmarks (3) are
+the picture's own fences and signs, cut out for Jack to pass behind.
+**Inferred:** bit 0x40 of +0x91 draws by y instead — Jack sets it on
+himself, a node's depth -1 sets it, and a bin drops it when crushed flat
+(0x1f5f7 gives it 0x1cb then); its reader is not found.
 
-**The map's templates** (0x89fda + 0x20 k):
+**The map's templates** (0x89f7a + 0x20 k):
 
 | template | sheet | behaviour | what |
 |---|---|---|---|
+| 0x89f7a | LVSL8FLM | 0x1f6c9 | on A: frame (tick / 5) & 7 |
+| 0x89f9a | LVSL8FLM | 0x1f6f1 | on A: 8 + (tick / 5) & 7 |
+| 0x89fba | LVSL8SPR | 0x1f713 | on A: frame 4 or 8, by turns every 30 ticks |
 | 0x89fda | LSPANEL | 0x202ea | the panel's pieces (`map_screen_init` makes 3 + 6 + 6 + 2) |
 | 0x89ffa | YELMEDFT | 0x1e9da | the panel's font |
 | 0x8a01a | LSJACK | 0x1f941 | Jack (`map_jack_tick`) |
@@ -33,7 +43,7 @@ it; `obj_remove` 0x2561c (bit 4 of +0x90) queues it for deletion.
 **Which node has what** — `map_place_jack` 0x1dbd9 walks the world's
 nodes and, for each with a template (node words 6-7, `icon` in
 `front.py`), makes one at x = word 8, y = word 9, frame = word 12; word
-10 is its depth, or -1 to start hidden; word 11 goes to 0x3724b8 first.
+10 is its depth, -1 for by y (bit 0x40); word 11 goes to 0x3724b8 first.
 The object keeps its node's index (+0xbc) and is listed at 0x139648; the
 node just won (0x13971c) is flagged (+0xc0 = 1). The world sheet's
 landmarks stand at 0,0 — their frames carry their place as the origin.
@@ -79,3 +89,8 @@ Stopped on a point, the standing pose.
 **The tick** is one frame of the screen: `frame_end` 0x1a88a counts
 0xd6d4c and waits for the vertical retrace (0x50990). **Inferred:** 60
 a second, 640 x 480's refresh.
+
+**In the clone**: `scripts/export_worldmap.py` writes each node's object
+(`icons`) and the sheets; `WorldMapScene.js` plays the bin and hat scripts
+above as [frame, ticks] steps, the loops off the tick count, and orders
+them by these depths (a node's -1 and Jack by y). The sounds are not in.
