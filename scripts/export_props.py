@@ -105,6 +105,11 @@ PROPS = {
     # for +1, +2 and +20; and the puff it — or a prize taken — goes in
     # (puff_tick 0x11d4b, seven frames).
     "got": ("GOT.SPR", list(range(9))),
+    # The pause panel (pause_hud 0x1aaa8, list 0x973c4): PAUSE (55), the
+    # menu plates — 52 resume / quit level / quit game, 53 are you sure?
+    # yeah / naah, 54 resume / quit game — Jack's face (12) and the arrow
+    # (56-58).
+    "pause": ("PANEL.SPR", [55, 52, 53, 54, 12, 56, 57, 58]),
     "bloi": ("BLOI.SPR", list(range(7))),
 }
 

@@ -72,6 +72,7 @@ wobbling, the menu plate by the pause state 0x287c50 — 52 "resume / quit
 level / quit game", 53 "are you sure? yeah / naah", 54 "resume / quit
 game" (battle and arcade) — the arrow (PANEL 56-57) moved by the pad, and
 Jack (PANEL 12) zooming in. Bit 0x8000 of 0x287c50 takes them all away.
+The menu and what quitting does: [pause](pause.md).
 
 **The forklift** (`jack_touch_forklift`, table 0x98434 per player): FORK
 17 and 18 + gear (`forklift_panel_gear` 0x1c553) and, for player 0, the

@@ -30,6 +30,7 @@ import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
 import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
+import { QUIT_LEVEL } from './PauseScene';
 import { LAST_ONE_SECONDS } from '../battle/LocalBattle';
 import { ARCADE_MAX_TENTHS, formatTenths, missionText } from '../battle/LocalArcade';
 
@@ -647,6 +648,7 @@ export default class GameScene extends Phaser.Scene {
     this._timeLeft = level.timeLimit || DEFAULT_TIME;
     this._clockMs = 0;
     this._over = false;
+    this._quitting = false; // quit from the pause menu, the level ending
     // In the arcade the clock starts at 0 and counts up, in tenths.
     this._tenths = 0;
     if (this._arcade) this.timerText.setText(formatTenths(0));
@@ -739,9 +741,9 @@ export default class GameScene extends Phaser.Scene {
       this._flashBonus(missionText(this._arcade.entry.mission), 3500);
     }
 
-    // Esc leaves a game played at this keyboard for the menu.
+    // Esc pauses a game played at this keyboard (PauseScene.js).
     if (this._local) {
-      this.input.keyboard.on('keydown-ESC', () => this.scene.start('MenuScene'));
+      this.input.keyboard.on('keydown-ESC', () => this._pause());
     }
 
     console.log('[GameScene] created', {
@@ -1561,6 +1563,41 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
     this.showResultOverlay('БОНУС ПРОЙДЕН', '', { nextLevel: nextLevelId(this._levelId) });
+  }
+
+  /** Esc: the game stops under the pause menu (pause_game 0x1007c). */
+  _pause() {
+    if (this._over || this._quitting) return;
+    this.scene.pause();
+    // the story's and the arcade's menu has quit level, battle's not
+    // (pause_hud 0x1aaa8 tests option 0x10000000 only); the coop is the clone's
+    this.scene.launch('PauseScene', {
+      menu: this._story || this._arcade ? 0 : 2,
+      players: this._jacks.length,
+      done: (state) => this._unpause(state),
+    });
+  }
+
+  /**
+   * The pause over: resumed, or quit — then, as in G.EXE, the level plays
+   * on for 25 more ticks before it ends (0xa2f16 = 25, logic_frame
+   * 0x2cbb9). Quitting a story level is state 0x11: back to the map, which
+   * takes a life for it (F.EXE 0x20e1d, Story.quit); quitting the game is
+   * 0x10, back to the menu — as is an arcade level quit, which keeps no
+   * time (F.EXE 0x214c2).
+   */
+  _unpause(state) {
+    this.scene.resume();
+    // a button that picked from the menu is not a press in the game
+    this._keys.settle();
+    if (state === null) return;
+    this._quitting = true;
+    this.time.delayedCall(25 * 1000 / 60, () => {
+      if (this._over) return;
+      this._over = true;
+      if (state === QUIT_LEVEL && this._story) this._backToMap('quit');
+      else this.scene.start('MenuScene');
+    });
   }
 
   /** The story goes on on the world map, the level won or lost. */

@@ -2760,6 +2760,70 @@
       "ay": 7,
       "src": "GOT.SPR:8"
     },
+    "pause_00": {
+      "file": "sprites/props/pause_00.png",
+      "w": 92,
+      "h": 28,
+      "ax": 68,
+      "ay": 16,
+      "src": "PANEL.SPR:55"
+    },
+    "pause_01": {
+      "file": "sprites/props/pause_01.png",
+      "w": 78,
+      "h": 45,
+      "ax": 69,
+      "ay": 9,
+      "src": "PANEL.SPR:52"
+    },
+    "pause_02": {
+      "file": "sprites/props/pause_02.png",
+      "w": 78,
+      "h": 45,
+      "ax": 69,
+      "ay": 9,
+      "src": "PANEL.SPR:53"
+    },
+    "pause_03": {
+      "file": "sprites/props/pause_03.png",
+      "w": 78,
+      "h": 45,
+      "ax": 69,
+      "ay": 9,
+      "src": "PANEL.SPR:54"
+    },
+    "pause_04": {
+      "file": "sprites/props/pause_04.png",
+      "w": 45,
+      "h": 46,
+      "ax": 59,
+      "ay": 60,
+      "src": "PANEL.SPR:12"
+    },
+    "pause_05": {
+      "file": "sprites/props/pause_05.png",
+      "w": 23,
+      "h": 16,
+      "ax": 16,
+      "ay": 19,
+      "src": "PANEL.SPR:56"
+    },
+    "pause_06": {
+      "file": "sprites/props/pause_06.png",
+      "w": 16,
+      "h": 16,
+      "ax": 16,
+      "ay": 19,
+      "src": "PANEL.SPR:57"
+    },
+    "pause_07": {
+      "file": "sprites/props/pause_07.png",
+      "w": 9,
+      "h": 17,
+      "ax": 16,
+      "ay": 19,
+      "src": "PANEL.SPR:58"
+    },
     "bloi_00": {
       "file": "sprites/props/bloi_00.png",
       "w": 11,
@@ -3218,6 +3282,16 @@
       "got_06",
       "got_07",
       "got_08"
+    ],
+    "pause": [
+      "pause_00",
+      "pause_01",
+      "pause_02",
+      "pause_03",
+      "pause_04",
+      "pause_05",
+      "pause_06",
+      "pause_07"
     ],
     "bloi": [
       "bloi_00",

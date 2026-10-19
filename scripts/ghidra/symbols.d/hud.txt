@@ -46,9 +46,16 @@
 0x1a146  f  hud_banner_97b2c               ; script 0x97b2c (same list)
 0x1a151  f  hud_banner_97b8c               ; script 0x97b8c (same list)
 0x1a15c  f  hud_banner_97c04               ; script 0x97c04 (same list), with 0x287c48
-0x1aadc  f  pause_menu_tick                ; PANEL 52/53/54 by the pause state 0x287c50 (0 resume/quit level/quit game, 1 are you sure, 2 resume/quit game); bit 0x8000 removes it
-0x1ab36  f  pause_word_tick                ; PANEL 55, PAUSE, wobbling (hud_wobble_step)
+0x1aadc  f  pause_menu_tick                ; PANEL 52/53/54/53 by the pause state 0x287c50 (0 resume/quit level/quit game, 1 are you sure, 2 resume/quit game, 3 are you sure); bit 0x8000 removes it
+0x1ab36  f  pause_word_tick                ; PANEL 55, PAUSE, bobbing 0-12 px down and back a step a tick (table 0x96fe6, hud_wobble_step)
 0x1ab5c  f  demo_sign_tick                 ; DEMO.SPR, wobbling — game 0x14, a demo playing
-0x1ab60  f  pause_jack_tick                ; PANEL 12: zooms in from 128 by 6 a tick, frames 12-15 at random
-0x1ac13  f  pause_cursor_tick              ; PANEL 56-57, the arrow; the pad's up/down move it through 0x9821c's rows, a sound each
+0x1ab60  f  pause_jack_tick                ; PANEL 12 + (word 0x3187c4 & 3), which nothing writes by address: Jack's face (13-15 are "up" signs); drawn 128 px too big, 6 less a tick to 1; x eases 1/8 to 140, there it blinks (hidden 12 ticks of 32)
+0x1ac13  f  pause_cursor_tick              ; PANEL 56-58, the arrow; the pad's up/down move it through 0x9821c's rows, a sound each; a button picks: resume, or state 0x11/0x10 and "are you sure", yeah ends the pause and the level in 25 ticks (0xa2f16)
 0x1c5fe  f  forklift_rev_needle            ; REV.SPR: 0x982f0 eased two a tick toward 0x982f2
+0x2cc9f  f  pause_tick                     ; the tick while paused: the HUD lists, 0xa2f10 +1, 0x287c50 bit 0x8000 ends it (0xb5ba8 = 1)
+0x287c50 d  pause_state                    ; 0-3 the pause menu shown (pause_cursor_tick); bit 0x8000 the pause over
+0x9821c  d  pause_last_row                 ; s16 x4, the last row of each pause menu: 2 1 1 1
+0x981ec  d  pause_arrow_y                  ; fix x3 a menu, the arrow's y under each row: 0 14 29 / 14 26 / 4 22 / 14 26
+0xa2f16  d  level_end_countdown            ; ticks until logic_frame ends the level: 25 after "yeah", 300 after a bonus object burst
+0xb5ba8  d  pause_over                     ; pause_game loops until it is set
+0x96fe6  d  pause_bob_table                ; s16, 0 1 1 2 2 3 4 5 6 8 9 10 12 10 … 0, then 0x4d3 (go round) — PAUSE's y

@@ -422,8 +422,8 @@
 # ── the frame around a level ──────────────────────────────────────────────
 0x2ca01  f  game_init                      ; buffers, input devices, player_count from TRASHIT.DAT, font
 0x2ca9a  f  start_game                     ; resets counters, random_bits = 0x12345678 — the same every game — load_level
-0x10167  f  level_finish                   ; stops the music; a won level (state 3, or 0x11 with +0x24 = 0) gets the end sequence
-0x1007c  f  pause_game                     ; ? loops until 0xb5ba8 is set, option bit 0x2000000 on, volumes 0x78 for 0x80
+0x10167  f  level_finish                   ; stops the music; a level lost (state 3) — or quit (0x11) with no lives left (+0x24 = 0) — gets the end sequence, the screen shattering; not in battle, arcade or a bonus round (options 0x30400000), nor a .J
+0x1007c  f  pause_game                     ; Esc in a level: option 0x2000000 on, every other pixel black, volumes 0x78 for 0x80; pause_tick until 0xb5ba8 (docs/re/front/pause.md)
 0x6b90f  f  poll_input                     ; read_joypad for each player not under demo playback
 0x14fe4  f  palette_tint_update            ; R, G, B brightness (0xcd834/6/2e) eased toward targets; on a change rebuilds the palette (palette_tint)
 0x1cf6d  f  run_task_list                  ; ? 32 slots: flag bit 0, routine at +4

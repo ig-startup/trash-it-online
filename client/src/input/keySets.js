@@ -147,6 +147,11 @@ export class LocalKeys {
     });
   }
 
+  /** Forgets presses not yet read: after a pause, they were the menu's. */
+  settle() {
+    this._byCode.forEach((keys) => keys.forEach((k) => { k._justDown = false; }));
+  }
+
   destroy() {
     window.removeEventListener('keydown', this._onDown);
     window.removeEventListener('keyup', this._onUp);

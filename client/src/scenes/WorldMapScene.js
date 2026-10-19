@@ -101,7 +101,7 @@ export default class WorldMapScene extends Phaser.Scene {
 
   /**
    * @param {{players: object[], story?: Story, password?: string,
-   *   result?: 'won'|'lost'|'continued', arrived?: boolean}} data
+   *   result?: 'won'|'lost'|'quit'|'continued', arrived?: boolean}} data
    */
   init(data) {
     this._players = data.players || [];
@@ -130,6 +130,8 @@ export default class WorldMapScene extends Phaser.Scene {
     }
     const story = this._story;
     let note = '';
+    // A quit with no lives left is a level lost (0x11 → 3, F.EXE 0x20e1d).
+    if (this._result === 'quit' && story.lives === 0) this._result = 'lost';
     if (this._result === 'won' || this._result === 'lost') story.played(this._tally);
     if (this._result === 'won') {
       story.won(story.node, this._tally);
@@ -151,6 +153,9 @@ export default class WorldMapScene extends Phaser.Scene {
         this.scene.start('ContinueScene', { players: this._players, story });
         return;
       }
+    } else if (this._result === 'quit') {
+      story.quit(story.node);
+      note = `ОСТАЛОСЬ ЖИЗНЕЙ: ${story.lives}`;
     } else if (this._result === 'continued') {
       note = `ОСТАЛОСЬ ЖИЗНЕЙ: ${story.lives}`;
     }

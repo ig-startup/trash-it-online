@@ -191,6 +191,18 @@ export default class Story {
     return this.lives === 0 ? 'over' : 'ask';
   }
 
+  /**
+   * The level on `id` quit from the pause menu (state 0x11, F.EXE 0x20e1d):
+   * no "continue?" — a level below number 12 takes a life, a bonus screen
+   * or a side level nothing; the panels it took are not kept. With no
+   * lives left it is not a quit but a loss (state 3): the caller plays
+   * it as `lost` instead.
+   */
+  quit(id) {
+    const n = this.nodeAt(id);
+    if (n && n.number < 12) this.lives -= 1;
+  }
+
   /** "Continue?" answered yes: it costs a life (VA 0x15988). */
   carryOn() {
     this.lives -= 1;
