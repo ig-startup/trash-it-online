@@ -10,3 +10,4 @@
 0x1114a  f  bonus_meter_segment            ; frame 7 once the notches taken reach it
 0x11160  f  bonus_piece_fly                ; a part or piece: gravity 0x900, gone after +0x4a ticks
 0x111a0  f  bonus_part_tick                ; the two parts break off at the object's fourth frame
+0x10d76  f  bonus_round_setup_tail         ; not a routine of its own: bonus_round_setup runs on into it (edx = 6) and Ghidra cuts there — the two parts (0x93438, frames 5 and 4), a camera point, the meter segments
