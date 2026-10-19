@@ -208,6 +208,30 @@ def time_limit(records):
     return DEFAULT_TIME
 
 
+#: The rules record's words that set the low bits of the level's option
+#: word, the ones about the hammer and the hoover: (offset, mask, bit)
+#: (VA 0x1ae49; docs/re/levels/level-options.md).
+HAND_OPTIONS = (
+    (0x0e, 2, 0x10),  # every player starts with the hammer out
+    (0x0e, 4, 0x20),  # … with the hoover out
+    (0x12, 2, 0x01),  # no hammer
+    (0x16, 2, 0x02),  # the hammer stays in hand
+    (0x1a, 2, 0x04),  # no hoover
+    (0x1e, 2, 0x08),  # the hoover stays in hand
+)
+
+
+def hand_options(records):
+    """Bits 0x01-0x20 of the level's option word, from its rules record."""
+    bits = 0
+    for cid, _off, payload in records:
+        if cid == 16:
+            for off, mask, bit in HAND_OPTIONS:
+                if struct.unpack_from('<H', payload, off)[0] & mask:
+                    bits |= bit
+    return bits
+
+
 def bell_trash_percent(records):
     """The share of the level to destroy before the bell shows, or None."""
     for cid, _off, payload in records:

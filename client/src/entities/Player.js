@@ -298,6 +298,21 @@ const CRUSH = {
   wobbleH: -0x20000 / 65536,
 };
 
+/**
+ * The level's option word, its hammer and hoover bits (0x98224, set from
+ * the rules record — docs/re/levels/level-options.md). Only 8K forbids the
+ * hoover in the story; every bonus round starts with the hammer out, keeps
+ * the hoover in the hat, and 3T (a show) forbids both.
+ */
+const HAND = {
+  noHammer: 0x01,    // BUT1 never takes the hammer out (jack_stand 0x22892, jack_run 0x22275)
+  keepHammer: 0x02,  // BUT1 with it out does nothing (jack_stand_hammer 0x23499, jack_walk 0x236b9)
+  noHoover: 0x04,    // UP+BUT1 never takes the hoover out
+  keepHoover: 0x08,  // BUT1 with it out does nothing (jack_hoover_held 0x24e55, jack_hoover_walk 0x250d9)
+  startHammer: 0x10, // load_level 0x1074b: every Jack draws the hammer, unless noHammer
+  startHoover: 0x20, // … or the hoover, unless noHoover
+};
+
 /** States in which the hoover is out and sucking. */
 const HOOVER_STATES = new Set(['hooverIdle', 'hooverWalk']);
 
@@ -401,7 +416,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
    * @param {string} color  hex color, e.g. '#ff4444' — the overalls colour
    * @param {string} playerId
    * @param {boolean} isLocal
-   * @param {{hammer?: number}} [opts] which of the 37 hammers he swings
+   * @param {{hammer?: number, hand?: number}} [opts] which of the 37 hammers he
+   *   swings; the level's hammer and hoover bits (HAND)
    */
   constructor(scene, x, y, color, playerId, isLocal = true, opts = {}) {
     ensureHitboxTexture(scene);
@@ -414,6 +430,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.isLocal = isLocal;
     /** His hammer's record (shared/hammers.json): its blow and its look. */
     this.hammerStats = hammerAt(opts.hammer ?? FIRST_HAMMER);
+    /** The level's hammer and hoover rules, bits of HAND. */
+    this._hand = opts.hand || 0;
 
     /** Current state — a key of STATES, named after the game's own. */
     this.state = 'stand';
@@ -798,7 +816,9 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     // ── The hoover: BUT1 puts it away (0x2ab7a, 0x25468) ──────────────────
     if (HOOVER_STATES.has(this.state)) {
-      if (but1) {
+      // UP+BUT1 swaps it for the hammer — not where there is none.
+      if (but1 && !(this._hand & HAND.keepHoover)
+          && !(cursors.up.isDown && (this._hand & HAND.noHammer))) {
         body.setVelocityX(0);
         this._enter('hooverStow', now);
         return;
@@ -809,9 +829,14 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     // ── BUT1: the hammer in and out of the hat; with UP, the hoover ───────
-    if (but1 && onGround) {
+    // The level may forbid either, or keep the hammer in hand once out.
+    const hoover = cursors.up.isDown;
+    const allowed = this._armed
+      ? !(this._hand & HAND.keepHammer) && !(hoover && (this._hand & HAND.noHoover))
+      : !(this._hand & (hoover ? HAND.noHoover : HAND.noHammer));
+    if (but1 && onGround && allowed) {
       body.setVelocityX(0);
-      if (cursors.up.isDown) this._enter('hooverDraw', now);
+      if (hoover) this._enter('hooverDraw', now);
       else this._enter(this._armed ? 'hammerStow' : 'hammerDraw', now);
       return;
     }
@@ -1532,6 +1557,16 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   }
 
   /** True while the hammer is out of the hat and in his hands. */
+  /**
+   * The level's start: with its rules, every Jack draws the hammer, or the
+   * hoover, as he appears (load_level 0x1074b → 0x22fa5 / 0x24bb6) — only
+   * at the level's load; nothing else in G.EXE reads these two bits.
+   */
+  drawAtStart(now) {
+    if ((this._hand & HAND.startHammer) && !(this._hand & HAND.noHammer)) this._enter('hammerDraw', now);
+    else if ((this._hand & HAND.startHoover) && !(this._hand & HAND.noHoover)) this._enter('hooverDraw', now);
+  }
+
   get _armed() {
     return this._hammerOut;
   }

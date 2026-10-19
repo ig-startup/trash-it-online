@@ -39,6 +39,11 @@ sweep, not the decompiler, so none hides in a folded routine).
 So no shipped level forbids the hammer but 3T (a show), and every bonus
 round starts with the hammer out and the hoover forbidden.
 
-Clone: the bits that change play — 0x01-0x20 — are not applied yet
-(`jack/keyboard.md` says so); the bonus rounds set the hammer in hand
-their own way.
+Clone: bits 0x01-0x20 are exported per level as `handOptions`
+(`ob.hand_options`, left out when 0: 3T 0x05, 8K 0x04, every C and D
+0x1c) and applied in `client/src/entities/Player.js` (`HAND`,
+`drawAtStart`): BUT1 and UP+BUT1 as the tests above, and the draw at the
+level's start. Where the clone's hoover BUT1 swaps it for the hammer
+(slot 71) whether or not UP is held, it is blocked only with UP held under
+0x01, as in jack_hoover_held; the DOWN actions it gates are not in the
+clone.

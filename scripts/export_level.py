@@ -513,6 +513,11 @@ def export(name):
         "destructibles": destructibles,
         "bell": bell,
     }
+    # What the level allows with the hammer and the hoover, bits 0x01-0x20
+    # of its option word (ob.hand_options, VA 0x1ae49); left out when none.
+    hand = ob.hand_options(placed)
+    if hand:
+        data["handOptions"] = hand
     if is_bonus(name):
         # no bell: the round is won by wearing the object down; it stands
         # mid-screen on the floor (level_half_width, level_bottom)

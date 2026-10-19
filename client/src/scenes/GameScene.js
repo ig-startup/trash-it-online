@@ -367,7 +367,8 @@ export default class GameScene extends Phaser.Scene {
       const spawnIndex = Math.max(0, this._players.findIndex((p) => p.id === pd.id));
       const spawn = level.spawnPoints[spawnIndex] || level.spawnPoints[0];
       const player = new Player(this, spawn.x, spawn.y, pd.color || '#ff4444', pd.id, true,
-        { hammer: this._hammerIndex });
+        { hammer: this._hammerIndex, hand: level.handOptions || 0 });
+      player.drawAtStart(this.time.now);
       const set = keySets[pd.pad ?? i] || keySets[0];
       const pad = this._keys.pad(set, here.length === 1 ? SOLO_EXTRA : {});
       const j = {

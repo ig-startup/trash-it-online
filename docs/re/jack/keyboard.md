@@ -68,7 +68,7 @@ hammer, 2 putting it away (BUT1 or DOWN with it out), 4 the hoover, 8 putting th
 
 The clone plays this layout with Z as BUT1 and X (or Space) as BUT2.
 Not yet in it: the hammer's and the
-hoover's DOWN actions, and the hat's BUT2. Two choices are its own:
+hoover's DOWN actions, and the hat's BUT2. One choice is its own:
 putting a carried thing down takes a fresh press of Down (the game tests
-Down held, so keeping it held after the lift would drop it at once), and
-the level's option byte is not applied.
+Down held, so keeping it held after the lift would drop it at once).
+The level's option bits 0x01-0x20 are applied (`HAND` in `Player.js`).
