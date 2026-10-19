@@ -63,7 +63,7 @@ map_process_node 0x1ffe9 when the front end comes round:
 
 | node | not trashed | trashed |
 |---|---|---|
-| level (kind 1) | play it — unless its stage is below the last won (+0x1bc), refused | play again, while the timmy points it paid are in hand and the stage allows |
+| level (kind 1) | play it — unless its stage is below the last won (+0x1bc), refused | play again, while the timmy points it paid (+0x20a) are in hand and the stage allows |
 | number > 11 (kind 2: C bonus 12, T/U 29/30) | play it | refused |
 | exit (kind 3) | play its D screen (number 13) | the world is done: next world |
 | gate (kind 4) | 0x24e39 mode 1 — what it charges is not traced | — |
@@ -75,7 +75,8 @@ adds the level's timmy points to the shop's money.
 and a yes costs a life — with none left the game is over; a bonus screen, a side level or
 an exit's D costs nothing. A D won ends the world at once.
 
+**The second button** on a point calls the hammer shop: `hammer-shop.md`.
+
 **Not in the clone yet**: the T/U side levels and the gates are refused
-(the C/D bonus rounds are in: `levels/bonus-round.md`); the films; the landmarks and bins drawn over the picture
-(`LEVSLBIN`, the world sheet's other frames — the clone marks the levels
-with dots); the shop. The screen and its panel: `map-panel.md`.
+(the C/D bonus rounds are in: `levels/bonus-round.md`); the films. The
+screen and its panel: `map-panel.md`.

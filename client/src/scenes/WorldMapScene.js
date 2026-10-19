@@ -3,7 +3,8 @@
  * docs/re/front/world-map.md). Jack walks the paths of the world's LVSPAT
  * picture pixel by pixel, stops on every point, may only turn back on a
  * level not yet trashed, and fire on a level plays it with everyone at
- * this keyboard.
+ * this keyboard. The second button calls the hammer shop: it flies down
+ * for Jack and away with him (0x1f3a1, docs/re/front/hammer-shop.md).
  *
  * The walking itself was worked out once, by scripts/export_worldmap.py,
  * which follows F.EXE's own steps (map_walk_step 0x1e1c1, 0x1e09f): for
@@ -54,6 +55,21 @@ const FACING = [1, 8, 7, 5, 6, 7, 1, 2, 3, 5, 4, 3];
 const JACK_DEPTH = 0x1cb;
 /** A held frame. */
 const HOLD = Infinity;
+
+/**
+ * The shop's flight (0x1f3a1, LSSHOP frame 0): it starts at Jack's x - 90,
+ * y -240, drops to Jack's y - 225 and on, slowed by 0x15f90 a tick, until
+ * it stops; 90 ticks later it rises — 10 before, Jack is gone into it —
+ * after 100 more ticks it climbs at 0x9c40 a tick per tick, and past
+ * y -440 the screen fades out (4 of 128 a tick) for the shop. The speed
+ * it falls at is not read: the clone's 8 px a tick.
+ */
+const SHOP = {
+  dx: -90, startY: -240, landDy: -225, fall: 8, brake: 0x15f90 / 0x10000,
+  sit: 90, jackIn: 10, wait: 100, climb: 0x9c40 / 0x10000, gone: -440, fade: 32,
+};
+/** Drawn in front of every other thing on the map. */
+const SHOP_DEPTH = 5000;
 
 /**
  * The bins' and hats' scripts (docs/re/front/map-objects.md), as
@@ -142,6 +158,7 @@ export default class WorldMapScene extends Phaser.Scene {
     if (!this.textures.exists(bgKey)) need.push(() => this.load.image(bgKey, map.background));
     if (!this.textures.exists('lsjack')) need.push(() => this.load.image('lsjack', maps.jack.image));
     if (!this.textures.exists('lspanel')) need.push(() => this.load.image('lspanel', maps.panel.image));
+    if (!this.textures.exists('shop_lsshop')) need.push(() => this.load.image('shop_lsshop', maps.shop.sheets.lsshop.image));
     new Set(map.icons.map((i) => i.sheet)).forEach((name) => {
       const key = sheetKey(name);
       if (!this.textures.exists(key)) need.push(() => this.load.image(key, maps.sheets[name].image));
@@ -203,6 +220,11 @@ export default class WorldMapScene extends Phaser.Scene {
     });
 
     this._jack = this.add.image(0, 0, 'lsjack', '0').setOrigin(0, 0);
+    this._shopSheet = maps.shop.sheets.lsshop;
+    cutFrames(this.textures.get('shop_lsshop'), this._shopSheet.frames);
+    this._shopImg = this.add.image(0, 0, 'shop_lsshop', '0').setOrigin(0, 0)
+      .setDepth(SHOP_DEPTH).setVisible(false);
+    this._flight = null;
     // map_screen_init / 0x1dbd9: stopped on the record's node, from nowhere
     const p = map.points[story.node];
     this._w = {
@@ -277,14 +299,22 @@ export default class WorldMapScene extends Phaser.Scene {
     return this._pads.some((p) => p[group].isDown);
   }
 
-  /** Whether any player pressed fire (F.EXE: any button, input & 0xf0). */
+  /**
+   * Whether any player pressed fire. F.EXE takes any button (input &
+   * 0xf0) — the second (0x20) also calls the shop; the clone gives that
+   * button to the shop alone.
+   */
   _fire() {
     let fired = Phaser.Input.Keyboard.JustDown(this._enter);
     this._pads.forEach((p) => {
       if (Phaser.Input.Keyboard.JustDown(p.but1)) fired = true;
-      if (Phaser.Input.Keyboard.JustDown(p.but2)) fired = true;
     });
     return fired;
+  }
+
+  /** Whether any player pressed the second button (input & 0x20). */
+  _shopKey() {
+    return this._pads.some((p) => Phaser.Input.Keyboard.JustDown(p.but2));
   }
 
   /** One tick of map_fire_pressed (VA 0x1de35). @returns {boolean} left the scene */
@@ -293,7 +323,9 @@ export default class WorldMapScene extends Phaser.Scene {
     const story = this._story;
     const moves = story.map.moves;
     const fire = this._fire();
+    const shopKey = this._shopKey();
     if (w.lock > 0) w.lock -= 1;
+    if (this._flight) return this._flightTick();
 
     if (!w.moving) {
       // map_take_warp: a warp node sends him to its pair, walking on
@@ -310,6 +342,21 @@ export default class WorldMapScene extends Phaser.Scene {
       const g = GROUPS.find((k) => moves[w.at] && moves[w.at][k]
         && (open || this._groups[k].includes(w.came))
         && ((this._held(k) && w.lock === 0) || w.auto));
+      // 0x1f3a1: stopped on a point that is no warp, the second button
+      // calls the shop — not with a special hammer in hand
+      const here = story.nodeAt(w.at);
+      if (shopKey && !g && !(here && here.warp)) {
+        if (!story.canShop()) {
+          this._say('С ЭТИМ МОЛОТКОМ В МАГАЗИН НЕЛЬЗЯ');
+        } else {
+          this._flight = {
+            x: w.x + SHOP.dx, y: SHOP.startY, vy: SHOP.fall, phase: 'fall', left: 0,
+          };
+          this._shopImg.setVisible(true);
+          this._msg.setText('');
+        }
+        return false;
+      }
       if (g) {
         const m = moves[w.at][g];
         w.edge = { path: m.path, to: m.to, came: m.came, from: w.at };
@@ -345,6 +392,53 @@ export default class WorldMapScene extends Phaser.Scene {
     }
 
     if (w.moving) this._step();
+    return false;
+  }
+
+  /** One tick of the shop's flight (0x1f3a1). @returns {boolean} left the scene */
+  _flightTick() {
+    const f = this._flight;
+    const w = this._w;
+    const land = w.y + SHOP.landDy;
+    if (f.phase === 'fall') {
+      f.y += f.vy;
+      if (f.y >= land) {
+        f.y = land;
+        f.phase = 'land';
+      }
+    } else if (f.phase === 'land') {
+      // on down past the mark, slowing until it stops
+      if (f.vy > 0) {
+        f.y += f.vy;
+        f.vy -= SHOP.brake;
+      } else {
+        f.vy = 0;
+        f.phase = 'sit';
+        f.left = SHOP.sit;
+      }
+    } else if (f.phase === 'sit') {
+      f.left -= 1;
+      if (f.left === SHOP.jackIn) this._jack.setVisible(false);
+      if (f.left === 0) {
+        f.phase = 'wait';
+        f.left = SHOP.wait;
+      }
+    } else if (f.phase === 'wait') {
+      if (f.left > 0) f.left -= 1;
+      else f.phase = 'climb';
+    } else if (f.phase === 'climb') {
+      f.vy -= SHOP.climb;
+      f.y += f.vy;
+      if (f.y < SHOP.gone) {
+        f.phase = 'gone';
+        // Jack is on this point when he is back (+0x1b8 = d981f)
+        this._story.node = w.at;
+        this.cameras.main.fadeOut(SHOP.fade * TICK_MS, 0, 0, 0);
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+          this.scene.start('ShopScene', { players: this._players, story: this._story });
+        });
+      }
+    }
     return false;
   }
 
@@ -484,6 +578,10 @@ export default class WorldMapScene extends Phaser.Scene {
     const [, , , , ox, oy] = sheet.frames[i];
     this._jack.setFrame(String(i)).setPosition(w.x + ox, w.y + oy).setDepth(drawDepth(null, w.y));
     this._icons.forEach((o) => o.img.setDepth(drawDepth(o.depth, o.icon.y)));
+    if (this._flight) {
+      const [, , , , ox, oy] = this._shopSheet.frames[0];
+      this._shopImg.setPosition(this._flight.x + ox, Math.floor(this._flight.y) + oy);
+    }
     this._title.setText(`${story.map.name.toUpperCase()}  (мир ${story.world + 1} из ${story.maps.worlds.length})`);
     this._writeNumber('timmies', story.timmies);
     this._writeNumber('score', story.score);

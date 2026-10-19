@@ -40,5 +40,29 @@
 0x1c991  f  obj_accelerate                 ; velocity += acceleration
 0x167c5  f  world_arrival_screen           ; "password is" in state 5
 0x1a08d  f  arcade_level_select            ; game type 2: the K rows and their mission lines
-0x1b92a  f  hammer_shop                    ; trade-in value at shop record +4
+0x1b92a  f  hammer_shop                    ; trade in on entry, back on leaving unbought (docs/re/front/hammer-shop.md)
+0x1b632  f  shop_init                      ; HAMSHP_E.DAT: picture, grid, buttons, cursor, rings, plate; money += worth
+0x1ba69  f  shop_fire                      ; state 0xd6dba: 1 browse, 2 buttons, 3 yes/no, 5 wait, 6 bought, 7 film
+0x1b31a  f  shop_cursor_tick               ; arrows: column 0..5 (5 the buttons), row 0..5; buttons 0..2
+0x1b182  f  shop_yes_no_pointer            ; left yes, right no (0xd6dc6); YELMEDFT 42/43, swaying
+0x1b2c0  f  shop_button_lit                ; browsing only "back" lit
+0x1bf01  f  shop_buy                       ; points < price: "can't afford"; else bought
+0x1ba04  f  shop_bought                    ; "bought it!", record +6 = the hammer
+0x1bfb2  f  shop_money_init                ; five digit objects
+0x1bfed  f  shop_money_digits              ; record +0x1be in five digits, leading noughts hidden
+0x1c659  f  shop_cover_closed              ; a ? over each cell the world does not sell (0x8d90c)
+0x1c70c  f  shop_owned_glow                ; the cell of the hammer in hand (0x89ad0), browsing
+0x1c82b  f  shop_grid_tick                 ; HSHAMS, a frame every 4 ticks, 20 frames
+0x1c34f  f  shop_card_tick                 ; the card, a step every 5 ticks
+0x1c2e4  f  shop_bar                       ; a bar: x - 62, y - 61, length, part
+0x1c7e6  f  shop_card_label                ; HAMSHP_E 54 + n at (-205, dy - 156)
+0x1c273  f  shop_ring_tick                 ; STATSPR stretched, +3 a tick
+0x1c0bb  f  shop_plate_tick                ; shown in state 2 only
+0x1b5f0  f  shop_play_film                 ; state 7: the hammer's SMK, back to state 2
+0x26efb  f  draw_bars                      ; ten bars of 4 rows, 0xf2 0xf3 / 0x28 0x27, +5 a tick
+0x27004  f  clear_bars
+0x1f3a1  f  map_shop_flight                ; button 0x20 on a point: LSSHOP drops, takes Jack, flies off -> state 10
+0x1d45e  f  write_text                     ; '@' a new line, line height template +0x18
+0x1d4e0  f  write_line                     ; a glyph object each; flag 0x8000 centres on x
+0x1d20c  f  font_frame                     ; character -> frame by the font template
 0x18144  f  level_score_screen             ; score and timmy points, five digits each

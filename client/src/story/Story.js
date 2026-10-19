@@ -6,7 +6,8 @@
  *
  * What the front end keeps in TRASHIT.DAT's record, this keeps: the world
  * (+0x26), the lives (+0x28), a trashed flag per node (+0x188), the node
- * Jack stands on (+0x1b8), the stage of the last node won (+0x1bc).
+ * Jack stands on (+0x1b8), the stage of the last node won (+0x1bc), player
+ * 1's hammer (+6) and the timmy points each node paid (+0x20a).
  */
 import { FIRST_HAMMER } from '../entities/hammers';
 
@@ -24,6 +25,9 @@ export const START_NODE = 1;
  */
 const SIDE_NUMBERS = new Set([29, 30]);
 
+/** The thirty shop hammers come first; a special one cannot be traded (0x1f424). */
+export const SHOP_HAMMERS = 30;
+
 export default class Story {
   /**
    * @param {object} maps worldmap/worlds.json
@@ -40,6 +44,8 @@ export default class Story {
     this.score = 0;
     this.timmies = 0;
     this.hammer = Number.isInteger(start.hammer) ? start.hammer : FIRST_HAMMER;
+    /** The timmy points a node paid when last won, by node (+0x20a). */
+    this.paid = {};
     this.enterWorld(start.world || 0);
   }
 
@@ -98,9 +104,12 @@ export default class Story {
       return { act: 'play', level: n.level };
     }
     // A level of a stage below the last one won is shut (VA 0x1df8c). A
-    // won one may be played again while its timmy points are in hand —
-    // the clone has no shop yet, so they always are.
+    // won one may be played again only while the timmy points it paid are
+    // still in hand — not spent in the shop (0x1e037).
     if (n.stage < this.stage) return { act: 'refuse', why: 'СЮДА УЖЕ НЕ ВЕРНУТЬСЯ' };
+    if (trashed && this.timmies < (this.paid[id] || 0)) {
+      return { act: 'refuse', why: 'ТИММИ ЭТОГО УРОВНЯ ПОТРАЧЕНЫ' };
+    }
     return { act: 'play', level: n.level };
   }
 
@@ -125,6 +134,7 @@ export default class Story {
     if (n) this.stage = n.stage;
     this.score += tally.score || 0;
     this.timmies += tally.timmies || 0;
+    this.paid[Number(id)] = tally.timmies || 0;
   }
 
   /**
@@ -137,6 +147,8 @@ export default class Story {
   lost(id) {
     const n = this.nodeAt(id);
     if (n && (n.kind === 'exit' || n.number > 11)) return 'free';
+    // a level lost pays nothing: replaying it is open again (0x21106)
+    this.paid[Number(id)] = 0;
     return this.lives === 0 ? 'over' : 'ask';
   }
 
@@ -155,6 +167,48 @@ export default class Story {
   nextWorld() {
     if (this.world + 1 >= this.maps.worlds.length) return false;
     this.enterWorld(this.world + 1);
+    // the timmy points do not come along to a new world (0x2125f)
+    this.timmies = 0;
+    this.paid = {};
     return true;
+  }
+
+  /**
+   * Whether the shop will come (0x1f3a1): not for a special hammer —
+   * the bfh, quality and the rest are never traded in.
+   */
+  canShop() {
+    return this.hammer < SHOP_HAMMERS;
+  }
+
+  /**
+   * Into the shop (0x1b632): the hammer in hand is traded in, its worth
+   * added to the timmy points; leaving without buying takes it back
+   * (hammer_shop 0x1b92a). docs/re/front/hammer-shop.md
+   * @param {number[]} worth the shop's worth of each hammer index
+   */
+  enterShop(worth) {
+    this._worth = worth;
+    this._bought = false;
+    this.timmies += worth[this.hammer] || 0;
+  }
+
+  /**
+   * Buy (0x1bf01): refused when it is the hammer in hand ('owned') or
+   * costs more than the points ('poor'); else it is player 1's.
+   * @param {{hammer: number, price: number}} item
+   * @returns {'owned'|'poor'|'bought'}
+   */
+  buy(item) {
+    if (item.hammer === this.hammer) return 'owned';
+    if (this.timmies < item.price) return 'poor';
+    this.hammer = item.hammer;
+    this.timmies -= item.price;
+    this._bought = true;
+    return 'bought';
+  }
+
+  leaveShop() {
+    if (!this._bought) this.timmies -= this._worth[this.hammer] || 0;
   }
 }

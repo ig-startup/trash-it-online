@@ -12,13 +12,15 @@ map sprite, LSJACK.SPR, as one atlas: eight walks of 17 frames.
 
     python3 scripts/export_worldmap.py
 
-Plus the sheets of the "continue?" screen a lost level asks.
+Plus the sheets of the "continue?" screen a lost level asks, and the
+hammer shop's: its screen, its tables and words (export_shop).
 
 Writes client/public/worldmap/*.png and client/public/worldmap/worlds.json.
 """
 import json
 import os
 import re
+import struct
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -165,7 +167,7 @@ def export_background(screen, out_path):
     _png.write_rgb(out_path, W, H, [tuple(palette[v]) for row in img for v in row])
 
 
-def export_sheet(name, out_name, skip=()):
+def export_sheet(name, out_name, skip=(), palette_of=None):
     """
     A whole FSPR sheet as one atlas in its own palette, a frame per cell;
     -> {"image", "frames": [[x, y, w, h, ox, oy]]}, the origin being where
@@ -173,7 +175,8 @@ def export_sheet(name, out_name, skip=()):
     (a world's 640 x 480 picture) are left empty.
     """
     path = os.path.join(ORIG, "FSPR", name)
-    palette = pal.decode(path + ".PAL")
+    # a screen shows every sheet in its own one palette
+    palette = pal.decode(os.path.join(ORIG, "FSPR", (palette_of or name) + ".PAL"))
     frames = spr.load(path + ".SPR")
     keep = [f for i, f in enumerate(frames) if i not in skip]
     cw = max(f["w"] for f in keep)
@@ -219,6 +222,68 @@ def export_continue():
         out[name.lower()] = export_sheet(name, "continue_%s.png" % name.lower())
     r, g, b = pal.decode(os.path.join(ORIG, "FSPR", "CONTINBG.PAL"))[254]
     return {"sheets": out, "flash": (r << 16) | (g << 8) | b}
+
+
+#: The shop's tables in F.EXE (docs/re/front/hammer-shop.md).
+SHOP_ITEMS = 0x897e8      # 30 records in cursor order: column * 6 + row
+SHOP_OPEN = 0x8d90c       # per world, 30 flags by row * 5 + column
+SHOP_CELL = 0x89ad0       # hammer index -> its cell, row * 5 + column
+SHOP_WORDS = {"bought": 0x89784, "buyThe": 0x89798, "yesNo": 0x897ac,
+              "poor": 0x897c0, "owned": 0x897d4}
+#: The font template the shop writes with (0x89b2c): the YELMEDFT frame of
+#: 'a'/'A' and '0', of each sign, and the widths (space, gap, line).
+FONT = 0x89b2c
+FONT_SIGNS = {"!": 4, "?": 5, '"': 6, ",": 7, ".": 8, "+": 9, "-": 10,
+              "'": 11, "%": 12, ":": 15, "*": 16}
+
+
+def export_shop():
+    """
+    The hammer shop (hammer_shop 0x1b92a): HAMSHP_E's screen parts and
+    words, HSHAMS's twenty frames of the hammer grid, STATSPR's two rings,
+    YELMEDFT's letters — all in HAMSHP_E's palette, as the screen shows
+    them — and LSSHOP, the shop that flies to Jack on the map.
+    """
+    f = front.Front()
+    c = f.c
+    items = []
+    for i in range(30):
+        rec = f.u32(SHOP_ITEMS + 4 * i)
+        w = struct.unpack("<14h", c.read(rec + 4, 28))
+        items.append({
+            "name": f.text(f.u32(rec)), "price": w[0], "hammer": w[1],
+            # the name plate: HAMSHP_E frame 23 + this
+            "plate": w[2],
+            "girth": [w[3], w[4]], "splat": [w[5], w[6]],
+            # words: HAMSHP_E frame 54 + this
+            "control": w[7], "range": w[8], "restrike": w[9],
+            "area": [w[10], w[11]], "spread": [w[12], w[13]],
+        })
+    flags = c.read(SHOP_OPEN, 30 * front.WORLD_COUNT)
+    font = c.read(FONT, 0x19)
+    sheets = {}
+    for name, own in (("HAMSHP_E", False), ("HSHAMS", False), ("STATSPR", False),
+                      ("YELMEDFT", False), ("LSSHOP", True)):
+        sheets[name.lower()] = export_sheet(name, "shop_%s.png" % name.lower(),
+                                            palette_of=None if own else "HAMSHP_E")
+    palette = pal.decode(os.path.join(ORIG, "FSPR", "HAMSHP_E.PAL"))
+    rgb = lambda i: (palette[i][0] << 16) | (palette[i][1] << 8) | palette[i][2]
+    return {
+        "sheets": sheets,
+        "items": items,
+        "open": [list(flags[30 * w:30 * w + 30]) for w in range(front.WORLD_COUNT)],
+        "cell": list(struct.unpack("<30h", c.read(SHOP_CELL, 60))),
+        # what a hammer is worth traded in, by hammer index (0x89860 + 4)
+        "worth": [p for _, p in f.shop()],
+        "words": {k: c.cstring(c.u32(va)) for k, va in SHOP_WORDS.items()},
+        "font": {"upper": font[1], "lower": font[2], "digits": font[3],
+                 "signs": {ch: font[i] for ch, i in FONT_SIGNS.items()},
+                 "space": font[0x16], "gap": font[0x17], "line": font[0x18]},
+        # the bars (0x26efb): rows of colours 0xf2 0xf3 0xf3 0xf2, or for
+        # the second part 0x28 0x27 0x27 0x28
+        "bar": [[rgb(0xf2), rgb(0xf3)], [rgb(0x28), rgb(0x27)]],
+        "silhouette": rgb(254),
+    }
 
 
 def main():
@@ -288,6 +353,7 @@ def main():
         "groups": {g: list(came) for g, (_, came) in GROUPS.items()},
         "jack": export_jack(),
         "continue": export_continue(),
+        "shop": export_shop(),
         # the panel over the map (map_screen_init 0x1fcc2): its icons and
         # the digits its numbers are written in
         "panel": export_sheet("LSPANEL", "sheet_lspanel.png"),

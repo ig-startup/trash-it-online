@@ -32,7 +32,8 @@ uncompressed 8x8 pixels (72 bytes each) — it is the text font, not a
 sprite sheet. `spr.is_font()` / `spr.font_glyphs()` handle it.
 
 A frame wider than 253 pixels cannot be a scanline (a row's length is one
-byte), and the front end's screens are stored **raw** instead: `w * h`
+byte), and the front end's screens are stored **raw** instead (or as
+wide scanlines, `formats/rle.md`): `w * h`
 pixels row by row after the 8-byte header (and a few bytes of padding).
 "5362/5362 decoding" above counted those as decoding — to a single row.
 Nine of them are the world maps, the 640 x 480 frame of each map sheet

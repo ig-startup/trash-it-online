@@ -55,11 +55,20 @@ def parse(buf):
         w, h, ox, oy = struct.unpack_from("<4h", buf, p)
         end = table + offs[i + 1] if i + 1 < n else len(buf)
         data = buf[p + 8:end]
-        if w > 253 and len(data) >= w * h:
-            # Too wide for a scanline (its length is a byte): stored raw,
-            # w * h pixels — the front end's 640 x 480 screens.
-            rows = [(0, data[y * w:(y + 1) * w], False) for y in range(h)]
-        else:
+        rows = None
+        if w > 253:
+            # Too wide for a byte's length: scanlines whose size is a
+            # u16 (HAMSHP_E's 320-wide parts), else raw, w * h pixels —
+            # the front end's 640 x 480 screens.
+            rows = decode_rows(data, max_rows=h, wide=True)
+            if rows is None or len(rows) != h or any(len(px) + s > w for s, px, _ in rows):
+                rows = None
+                if len(data) >= w * h:
+                    # rows padded to a whole stride when the frame's data
+                    # divides evenly (HSHAMS: 254 wide, 256 a row)
+                    stride = len(data) // h if len(data) % h == 0 else w
+                    rows = [(0, data[y * stride:y * stride + w], False) for y in range(h)]
+        if rows is None:
             rows = decode_rows(data, max_rows=h)
         frames.append(dict(w=w, h=h, ox=ox, oy=oy, off=p, rows=rows))
     return frames

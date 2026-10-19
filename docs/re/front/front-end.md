@@ -71,7 +71,7 @@ hammers its own way — the ten v1s, the ten v2s, the ten v3s, then the
 specials — each record carrying a name and the word the shop adds back
 when a hammer is traded in (VA 0x1b92a), 0 to 3945 for the
 thirty, 12000 to 30000 for the specials. The specials' names are blank
-in the table.
+in the table. The shop itself: `hammer-shop.md`.
 
 **Arcade** (VA 0x8d6f0, rows `section, number, hammer, picture`): the
 fifteen K levels with their mission lines (above, under "Objectives").
