@@ -113,7 +113,9 @@
 0x2d285  f  draw_block                     ; a block, opaque (blit_rle)
 0x2d381  f  draw_rubble                    ; rubble, see-through (blit_rle_blend)
 0x60f60  f  rubble_state                   ; flying, then resting on the bottom
-0x6109e  f  rubble_fly_to_point            ; second mode, towards a point (0x41044e); not traced
+0x6109e  f  rubble_fly_to_point            ; rubble_mode 1 (the dragon blast): flung sideways, pulled back toward 0x28b96a
+0x610f0  f  rubble_column_rise             ; heading in: up 8000 a tick to 600 px above the bottom, held to the point
+0x6118d  f  rubble_column_fall             ; falls back swaying across the point; below 600 px above the bottom → rubble_state
 0x61205  f  rubble_sink                    ; count out: sinks a pixel a tick and is gone
 0x6125c  f  spawn_dust                     ; DUST.SPR puff
 0x1f784  f  spawn_dust_variant             ; dust puff cycling eight variants

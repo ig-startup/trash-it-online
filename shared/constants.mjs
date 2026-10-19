@@ -66,13 +66,17 @@ export const MAX_CHARGE = 6;
 /**
  * What a blow carries at a given charge: `lo + ((hi - lo) >> (6 - charge))`
  * (VA 0x23d54), halved for this hammer's type. A tap is worth 5, a full
- * charge 75.
+ * charge 75. An aimed hammer (type 0) is halved only when neither UP (4)
+ * nor DOWN (8) is in `held`, the keys down as the blow lands (VA 0x1fcd3).
  * @param {number} charge 0..MAX_CHARGE
+ * @param {object} [hammer]
+ * @param {number} [held] the input word: 4 UP, 8 DOWN
  */
-export function hammerForce(charge, hammer = HAMMER) {
+export function hammerForce(charge, hammer = HAMMER, held = 0) {
   const c = Math.max(0, Math.min(MAX_CHARGE, charge | 0));
   const f = hammer.lo + ((hammer.hi - hammer.lo) >>> (MAX_CHARGE - c));
-  return hammer.halves ? f >>> 1 : f;
+  const halves = hammer.aimed ? (held & 12) === 0 : hammer.halves;
+  return halves ? f >>> 1 : f;
 }
 
 /** The overhead windup charges to 3, not 6 (VA 0x23f7e). */

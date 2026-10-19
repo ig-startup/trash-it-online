@@ -160,7 +160,13 @@ a direction walks it, 0x250d9 (slot 29); and the same keys again run
 The hammer type (record `+0x48` low u16, wielder `+0x88`) then shapes it
 at VA 0x1fcd3: types 1 and 4 halve the force, and every type also sets
 how many blocks one blow may strike (1..3; type 4 picks 2 or 3 at random).
-Type 0 depends on two flag bits passed in, not read further. The
+Type 0 is **aimed**: `jack_strike` (0x23d71) passes the input word held
+as the blow lands, and with UP (4) the blow strikes one block at full
+force, with DOWN (8) two at full force, with neither three at half. The
+type-0 hammers are the specials — the apocalypse hammers, the bfh, the
+dragon, the future v2 and v3 and the rest of the 16 (`shared/hammers.json`
+`aimed`). Clone: `hammerForce` / `hammerStrikes` take the keys
+(`Player.heldAim`). The
 upper u16 of that same u32 (53 for a sledge v1, 51 for a warhammer) lands
 in the wielder's `+0x8a`, which VA 0x1f83d uses as the blow's horizontal
 reach in front of Jack — so reach is per-hammer too. Block hit points run

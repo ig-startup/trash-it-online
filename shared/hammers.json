@@ -313,7 +313,8 @@
   "atlas": {
    "image": "sprites/hammers/APA.png",
    "data": "sprites/hammers/APA.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 10,
@@ -536,7 +537,8 @@
   "atlas": {
    "image": "sprites/hammers/VOB.png",
    "data": "sprites/hammers/VOB.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 17,
@@ -598,7 +600,8 @@
   "atlas": {
    "image": "sprites/hammers/FUB.png",
    "data": "sprites/hammers/FUB.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 19,
@@ -629,7 +632,8 @@
   "atlas": {
    "image": "sprites/hammers/APB.png",
    "data": "sprites/hammers/APB.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 20,
@@ -722,7 +726,8 @@
   "atlas": {
    "image": "sprites/hammers/WAC.png",
    "data": "sprites/hammers/WAC.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 23,
@@ -852,7 +857,8 @@
   "atlas": {
    "image": "sprites/hammers/VOC.png",
    "data": "sprites/hammers/VOC.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 27,
@@ -883,7 +889,8 @@
   "atlas": {
    "image": "sprites/hammers/SPC.png",
    "data": "sprites/hammers/SPC.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 28,
@@ -914,7 +921,8 @@
   "atlas": {
    "image": "sprites/hammers/FUC.png",
    "data": "sprites/hammers/FUC.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 29,
@@ -945,7 +953,8 @@
   "atlas": {
    "image": "sprites/hammers/APC.png",
    "data": "sprites/hammers/APC.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 30,
@@ -976,7 +985,8 @@
   "atlas": {
    "image": "sprites/hammers/BFH.png",
    "data": "sprites/hammers/BFH.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 31,
@@ -1007,7 +1017,8 @@
   "atlas": {
    "image": "sprites/hammers/QUA.png",
    "data": "sprites/hammers/QUA.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 32,
@@ -1038,7 +1049,8 @@
   "atlas": {
    "image": "sprites/hammers/GAL.png",
    "data": "sprites/hammers/GAL.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 33,
@@ -1069,7 +1081,8 @@
   "atlas": {
    "image": "sprites/hammers/DRA.png",
    "data": "sprites/hammers/DRA.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 34,
@@ -1100,7 +1113,8 @@
   "atlas": {
    "image": "sprites/hammers/MOO.png",
    "data": "sprites/hammers/MOO.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 35,
@@ -1131,7 +1145,8 @@
   "atlas": {
    "image": "sprites/hammers/SPO.png",
    "data": "sprites/hammers/SPO.json"
-  }
+  },
+  "aimed": true
  },
  {
   "index": 36,
@@ -1162,6 +1177,7 @@
   "atlas": {
    "image": "sprites/hammers/GIT.png",
    "data": "sprites/hammers/GIT.json"
-  }
+  },
+  "aimed": true
  }
 ]

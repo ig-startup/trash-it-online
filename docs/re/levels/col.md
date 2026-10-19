@@ -19,5 +19,16 @@ for the object it finds:
 
 Kinds 3 (overhead only, VA 0x60666) and 6 (floor from above) are in the
 code and in no level. In 0A, 328 of 371 objects are kind 0 and only 7 are
-solid. Words 1 (0..9) and 2 (mostly 0) are read by the hammer's code
-(0x1fb66, 0x1fc64, 0x2fc51) and not traced.
+solid. **Word 1 is the block's material — what it sounds like** (0..9; over
+the 147 levels 0: 9406, 1: 8392, 2: 1341, 3: 3369, 4: 5047, 5: 6115,
+6: 14189, 7: 1672, 8: 1945, 9: 251). Two tables of ten sound ids turn it
+into a sound: 0x9fefe when a blow lands — the hammer's (`blow_walk_cells`
+0x1fb66, each cell its own, offset by the cell's order) and a git's
+(`git_strikes_cell` 0x20874) — sounds 1-10; and 0x9ff14 when something
+strikes or lands on the block (`play_sound_staggered` 0x1fca1, from
+`sprite_strikes_block_x/_y` and `group_landed`) — sounds 36 38 3 4 37 34
+35 8 9 33, the same for materials 2, 3, 7, 8, a duller one for the rest.
+The samples carry no names (`sound.py`), so which material is glass or
+wood is for the ear.
+
+**Word 2 is the gits' marker** (`git_marker_at` 0x2fc51): `objects/gits.md`.

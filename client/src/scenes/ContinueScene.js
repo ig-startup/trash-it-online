@@ -103,9 +103,11 @@ export default class ContinueScene extends Phaser.Scene {
       this._writeNumber(` + ${lives - 5}`, 40, 36);
     }
 
-    // Drawn with +0x1c = -2, a blitter mode not read yet; the clone guesses
-    // a see-through mist.
-    this._mist = MIST.map((m) => ({ ...m, img: put('conmist', m.frame, m.x, m.y).setAlpha(0.6) }));
+    // Drawn with +0x1c = -2: through MIST.STP, light added to what is
+    // behind (see docs/re/front/continue.md, obj_draw_blend 0x26347).
+    this._mist = MIST.map((m) => ({
+      ...m, img: put('conmist', m.frame, m.x, m.y).setBlendMode(Phaser.BlendModes.ADD),
+    }));
     this._words = WORDS.map((w) => ({ ...w, ay0: w.ay, img: put('cntgrb_e', w.frame, w.x, w.y), lit: false }));
 
     this._choice = YES;

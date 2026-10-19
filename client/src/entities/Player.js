@@ -705,6 +705,9 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const ms = Math.min(delta, MAX_STEP_MS);
     const dt = ms / 1000;
     const across = cursors.left.isDown || cursors.right.isDown;
+    // UP / DOWN as the input word has them (4, 8): an aimed hammer reads
+    // them when its blow lands (VA 0x1fcd3).
+    this.heldAim = (cursors.up.isDown ? 4 : 0) | (cursors.down.isDown ? 8 : 0);
 
     this._advanceAnim(now);
     const spec = STATES[this.state] || STATES.stand;

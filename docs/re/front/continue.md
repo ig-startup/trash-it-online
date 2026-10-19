@@ -55,9 +55,16 @@ choice can no longer change (0x15415 stops looking).
 32 ticks); after fire it runs 60 more ticks (0x12bf2 with 0x3c), then fades
 out at 16 a tick (8 ticks) before the answer is taken.
 
-**Unsolved:** what `+0x1c` = -2 does to the mist (a mode of the blitter,
-not the remap path); **Inferred:** that 0x12bf2's argument is a count of
-ticks.
+**The mist is added light.** `+0x1c` = -2 is F.EXE's blend mode, as in
+G.EXE (`formats/stp.md`): the object pass (`draw_objects` 0x26ce2) sends
+it to `obj_draw_blend` (0x26347) and the scaled blitter 0x539bc, which
+writes `table[src × 256 + dst]` through the 64 KB table at 0xc6148. The
+screen's init loads that table from `FSPR/MIST.STP` (`load_blend_table`
+0x135b2, called from 0x154cb; the shop loads `HAMSHP_E.STP` the same way,
+0x1b632, and 0x21857 `SHARDS.STP`). Checked against the screen's palette,
+MIST.STP is the saturating sum — mean error 46 against 220 for half and
+half: the green strips brighten the tubes behind them.
+**Inferred:** that 0x12bf2's argument is a count of ticks.
 
-Clone: `client/src/scenes/ContinueScene.js`, sheets from
+Clone: `client/src/scenes/ContinueScene.js` (the mist in Phaser's ADD blend), sheets from
 `scripts/export_worldmap.py` (`continue` in `worlds.json`), `Story.js`.

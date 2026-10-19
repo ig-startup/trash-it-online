@@ -55,12 +55,13 @@ OUT_JSON = os.path.join(REPO, "shared", "hammers.json")
 PREFIX = "sprites/hammers"
 
 # VA 0x1fcd3: per type, whether the force is halved and how many blocks one
-# blow may strike. Type 4 picks 2 or 3 at random; type 0 is 3 and halved
-# unless the caller passes flag bits the clone has not traced.
+# blow may strike. Type 4 picks 2 or 3 at random. Type 0 is aimed by the
+# keys held as the blow lands (jack_strike passes the input word): UP one
+# block at full force, DOWN two at full force, neither three at half.
 POINTERS_VA = 0xa2d0c
 
 TYPES = {
-    0: {"halves": True, "strikes": 3},
+    0: {"halves": True, "strikes": 3, "aimed": True},
     1: {"halves": True, "strikes": 3},
     2: {"halves": False, "strikes": 1},
     3: {"halves": False, "strikes": 2},

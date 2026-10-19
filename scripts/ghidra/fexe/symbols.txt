@@ -94,3 +94,9 @@
 0x1f73f  f  map_hat_tick                   ; scripts 0x89e4a, 0x89e9e, 0x89ebe
 0x1f689  f  map_t_node15_tick              ; T's node 15: frames 0-7, depth by Jack's y
 0x234bf  f  obj_draw                       ; x + frame ox, y + frame oy; +0x90 bit 8 mirrored
+#
+# Blending (docs/re/front/continue.md "The mist is added light").
+0x135b2  f  load_blend_table               ; "%s.STP" into 0xc6148: MIST (continue), HAMSHP_E (shop), SHARDS
+0x26ce2  f  draw_objects                   ; the 500 depth lists; +0x1c 0 plain, -2 blend, -1 none, else remap
+0x26347  f  obj_draw_blend                 ; mode -2: the frame scaled through table[src * 256 + dst]
+0x539bc  f  blit_scaled_blend              ; the blitter behind it, clipped to 320 x 200

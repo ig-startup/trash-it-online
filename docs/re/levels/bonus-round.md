@@ -12,7 +12,8 @@ The clone: `scenes/bonusRound.js`, the data from `export_level.py --bonus`
 D): u32 the force a notch takes, s16 notches, s16 the hit sound (an index
 into 0x9fefe), s16 how many pieces it bursts into, s16 the sprite file
 (G.EXE's list at 0x9984c, 102-byte records — the one `load_spr` 0x6a380
-indexes), s16 unknown (1).
+indexes), s16 the draw mode of the round's four templates (their +0x18,
+`set_draw_mode` 0x2d50e: without bit 0x8000 a plain draw — 1 in every row).
 
 | level | sheet | per notch | notches | pieces | clock |
 |---|---|---|---|---|---|
@@ -69,6 +70,7 @@ to -4, 240 + rand 32 ticks), the object goes, `level_state +0x26 = 2`
 **The story** (F.EXE VA 0x20e1d): a bonus screen won trashes its node; a
 D won also ends the world. Lost, neither costs a life — only a level does.
 
-**Open**: whether a type-0 hammer's force is halved here (0x1fcd3 depends
-on flags the clone has not traced) — it decides what the specials do,
-their force wrapping round in 32 bits; the sixth row field.
+A type-0 hammer's force is halved here as anywhere unless UP or DOWN is
+held as the blow lands (`logic/collapse.md`, 0x1fcd3) — so a special
+aimed up or down hits the object at full force, its force wrapping round
+in 32 bits as before.

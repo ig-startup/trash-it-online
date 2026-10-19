@@ -36,8 +36,14 @@ export function hammerFrameInfo(scene, hammer, frame) {
   return { w: f.width, h: f.height, ax: f.customData.ax, ay: f.customData.ay };
 }
 
-/** How many blocks one blow may strike (type 4 picks 2 or 3, VA 0x1fcd3). */
-export function hammerStrikes(hammer) {
+/**
+ * How many blocks one blow may strike (VA 0x1fcd3): type 4 picks 2 or 3;
+ * an aimed one (type 0) strikes 1 with UP held, 2 with DOWN, else 3.
+ * @param {object} hammer
+ * @param {number} [held] the input word as the blow lands: 4 UP, 8 DOWN
+ */
+export function hammerStrikes(hammer, held = 0) {
+  if (hammer.aimed) return held & 4 ? 1 : held & 8 ? 2 : 3;
   const s = hammer.strikes;
   return Array.isArray(s) ? s[Math.floor(Math.random() * s.length)] : s;
 }

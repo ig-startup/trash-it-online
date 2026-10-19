@@ -14,8 +14,11 @@ and `parse_level_name()` (VA 0x2c499) does the reverse for a name given on
 the command line (`USAGE: TRASHIT LevelName`). So **the letter is the
 section** and the first character the number in it — which is why `AA`,
 `BK`, `EK` exist: numbers 10-14 of sections A, K and B. Sections 0-8 run
-**J, H, C, S, L, I, A, T, M**; 9-17 repeat those letters (the loader adds
-9 to the section for numbers 12-28 in one case, VA 0x10890 — not traced);
+**J, H, C, S, L, I, A, T, M**; 9-17 repeat those letters (for numbers 12-28 — the C and D bonus
+screens — `load_level` adds 9 to the section at VA 0x10890 and takes the
+9 and 12 off again before `bonus_round_setup(section, number - 12)` at
+0x1097d; nothing between reads it, so the round trip does nothing — a
+leftover);
 18-21 are B, K, D and X. Each letter is one look — the wall behind a
 section's levels is the same from 0 to 9.
 

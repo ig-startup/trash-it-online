@@ -1136,14 +1136,14 @@ export default class GameScene extends Phaser.Scene {
       const stats = pl.hammerStats;
       const dir = pl.facingLeft ? -1 : 1;
       this._bonusRound.hit(Math.round(pl.x) + dir * stats.reach.dx, Math.round(pl.y) + stats.reach.dy,
-        Math.imul(hammerForce(charge, stats), stats.bonus || 1));
+        Math.imul(hammerForce(charge, stats, pl.heldAim), stats.bonus || 1));
       return;
     } else {
       const stats = pl.hammerStats;
-      const force = hammerForce(charge, stats);
+      const force = hammerForce(charge, stats, pl.heldAim);
       const cells = this._hammerCells(pl);
       const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
-      let left = hammerStrikes(stats);
+      let left = hammerStrikes(stats, pl.heldAim);
       for (const c of cells) {
         if (left <= 0) break;
         const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(c.x, c.y));
