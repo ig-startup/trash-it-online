@@ -63,8 +63,8 @@ Carrying: see "Carrying and throwing" — DOWN puts down, UP aims, BUT1 or
 BUT2 throws. In the air: DOWN held + BUT2 pressed goes to 0x2b3ac (not
 traced).
 
-The level's option byte (0x98224) switches actions off: bit 1 the
-hammer, 2 the hammer's DOWN action, 4 the hoover, 8 the hoover's.
+The level's option word (0x98224, [level-options](../levels/level-options.md)) switches actions off: bit 1 the
+hammer, 2 putting it away (BUT1 or DOWN with it out), 4 the hoover, 8 putting the hoover away.
 
 The clone plays this layout with Z as BUT1 and X (or Space) as BUT2.
 Not yet in it: the hammer's and the

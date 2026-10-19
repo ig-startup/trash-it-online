@@ -50,10 +50,12 @@ Steps 2, 4 and 6 are the `ret` at 0x200b3 — the waits. Entry 15 is the
 
 0x28bf7e goes down 10 a tick for the last 70 ticks of step 9 and 6 a
 tick through step 11 (−1030 in all), then back to 0 in step 13. Nothing
-in the code reads it by address; it sits after the camera's globals
-(0x28bf38…0x28bf6c) and `apocalypse_script` zeroes the dword at 0x28bf7c.
-Likely a vertical offset of the backdrop — **unsolved**, as is the
-reader of 0xa2f0e (2 during the show's first half, 1 otherwise).
+reads it: a sweep of every instruction for its address, the dword at
+0x28bf7c, and any register loaded with an address near it (a base for an
+offset) finds only these steps and `apocalypse_script` zeroing 0x28bf7c.
+The same holds for 0xa2f0e (2 during the show's first half, 1 otherwise).
+Both are written and never read — whatever they were meant to move (a
+backdrop offset, a palette mode) was left unwired.
 
 ## What is left
 

@@ -21,7 +21,6 @@
 0x1074b  f  load_level                     ; load_level(section, number); logs "section %d level %d"
 0x10a46  f  level_file_name                ; name = "0123…Z"[number] + "JHCSLIATMJHCSLIATMBKDX"[section]
 0x10ad0  f  measure_frame_rate             ; elapsed_ms / 13 → logic steps per frame, clamped 1..4
-0x10be9  f  read_debug_dump                ; reads a written debug dump back into a 64 KB buffer
 0x2c496  f  parse_level_name               ; "USAGE: TRASHIT LevelName" → section, number
 0x2cb6e  f  wait_retrace_and_tick          ; port 0x3da, then logic_frame once or elapsed/13 times
 0x2cbb9  f  logic_frame                    ; one 60 Hz tick of the game
@@ -215,7 +214,6 @@
 0x33e79  f  bell_subtype_dispatch          ; 1, 2, 4, 8, 16
 0x33f58  f  bell_locked_tick               ; waits for its block to die
 0x34114  f  bell_touch_tick                ; touched → +0x162 on the player, level over
-0x11edd  f  clock_hit                      ; CLOK.SPR: bursts into twelve pieces
 0x5f3c0  f  sign_swing                     ; DIS.SPR: amplitude force >> 5, 3..32
 0x19b9d  f  bcd_add_score                  ; packed-BCD adder, in fives
 # dynamite
@@ -363,7 +361,6 @@
 0x18584  f  grip_detect                    ; "Found GRIP"
 0x185e5  f  grip_load_library              ; GRIP.GLL
 0x197e8  f  panel_icon_alloc               ; "out of panel icons"
-0x1b304  f  generic_pickup_create          ; "couldn't spawn pickup", "generic pickup (gp)"
 0x1e788  f  process_obj_on_something       ; "BUG1/BUG2: in 'process_obj_on_something()'" — what Jack holds or stands on
 0x1e7d5  f  remove_obj_from_something      ; "BUG2: in 'remove_obj_from_something()'" — lets go of what he holds
 0x2c34e  f  choose_camera                  ; "BUG: Tried 'choose_camera( %d )'"
@@ -388,7 +385,6 @@
 0x2eee1  f  kill_entity                    ; flags it (+0x40 |= 2) and queues it on 0x3f1d40 for removal
 0x2f9ce  f  random_next                    ; next of 256 table values (0xa38a2) into 0x3f2080
 0x6a15c  f  key_down                       ; byte table 0xa4990 by scancode, bit 0
-0x30462  f  sprite_set_anim                ; the sprite at 0x3f2084: anim tables 0xa4030 / 0xa406a / 0xa40be
 0x33820  f  event_list_for_type            ; outcome list for an event type (0x35, 0x3f, 0x5b …)
 0x3f1d40 d  kill_queue
 0x3f2068 d  kill_queue_count
@@ -478,7 +474,11 @@
 0x1c759  f  backdrop_horizon               ; row 100 + 20.0 / (SDE[0] - camera z) × camera y, held to 0..199
 0x18f74  f  backdrop_near_plane            ; horizon..199 at scale SDE[1], scrolled by SDE[4], SDE[5] a tick
 0x1c895  f  backdrop_far_plane             ; horizon..0, step (SDE[0] - z) / 320 >> SDE[2]; SDE[3] carries it to the top
-0x1c69f  f  detail_none                    ; graphics detail presets: which backdrop planes are drawn (0x287c70..76)
+0x1c69c  f  detail_none                    ; graphics detail presets (table 0x98b7c by 0x98500): which backdrop planes are drawn (0x287c70..76) — none
+0x1c6bd  f  detail_1                       ; plane 0x287c70 only
+0x1c6e5  f  detail_2                       ; 0x287c70, 0x287c72
+0x1c70d  f  detail_3                       ; 0x287c70..74
+0x1c735  f  detail_all                     ; all four
 0x1c6bd  f  detail_near
 0x1c6e5  f  detail_both
 0x1c70d  f  detail_most

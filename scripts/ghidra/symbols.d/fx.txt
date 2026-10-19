@@ -19,3 +19,5 @@
 0x12039  f  clock_falling                  ; physics + 0x1ceeb
 0x11e63  f  clock_hop                      ; the hop-about state: jiggles, bounces up 1.8-5.8 px; a blow from above → clock_hit
 0x1483d  f  expl_tick                      ; EXPL.SPR: five frames, 4 ticks each, drifting with its v
+0x11ba9  f  got_ease_up                    ; motion 2: 1/32 of the way a tick toward a point 64-191 px above (table 0x9372c)
+0x11bc4  f  got_bounce                     ; motion 3: falls under that point and bounces, keeping a quarter of its speed

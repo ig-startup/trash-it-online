@@ -21,3 +21,8 @@ All Miles Sound System 3.x; `sound.py` reads all four.
   — run by the interpreter at 0x1631c through 21 handlers at 0x9641c.
   The sound ids quoted in these notes (0x58, 0x59, 0x37 …) are indexes
   into it: `sound.py scripts G.EXE` names the sample each one plays.
+  The handlers are named `sound_op_*` (`symbols.d/sound.txt`). Scripts
+  29–32 play nothing — priority 0, a lone `skip` (op 14, its five words
+  stepped over) and `end`: they are what the rules record's +0x2a picks
+  into 0x287c6c (1/2/4/8 → 29/30/31/32), which nothing reads — an
+  ambience per level that was never wired up (`levels/rules-record.md`).

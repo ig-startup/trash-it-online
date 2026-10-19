@@ -83,34 +83,34 @@ CLASSES = {
 
 #: Class 16 is in 146 of the 147 levels and carries the largest payload
 #: (72 bytes). Its constructor (VA 0x1ae49) is nothing but a bank of
-#: switches: each word either sets a bit in the global option byte at
-#: VA 0x98224 or is copied into a global of its own. It is what makes one
+#: switches: each word either sets a bit in the global option word at
+#: VA 0x98224 (docs/re/levels/level-options.md) or is copied into a global of its own. It is what makes one
 #: level play differently from another.
 #:
 #: offset -> what the constructor does with it, and how the 146 levels
 #: are spread across the values.
 RULES = {
-    0x0e: 'bit 1 -> option 0x10, bit 2 -> option 0x20   (12 levels)',
-    0x12: 'bit 1 -> option 0x01                          (1 level)',
-    0x16: 'bit 1 -> option 0x02                          (no level uses it)',
-    0x1a: 'bit 1 -> option 0x04                         (14 levels)',
-    0x1e: 'bit 1 -> option 0x08                         (12 levels)',
-    0x2a: 'selector: 1/2/4/8 pick one of four           (1 in 122, 4 in 14, 8 in 10)',
+    0x0e: 'bit 1 -> option 0x10 (start with the hammer out), bit 2 -> 0x20 (the hoover)  (12: every C, D)',
+    0x12: 'bit 1 -> option 0x01, no hammer               (1 level: 3T)',
+    0x16: 'bit 1 -> option 0x02, the hammer stays in hand (no level uses it)',
+    0x1a: 'bit 1 -> option 0x04, no hoover              (14 levels)',
+    0x1e: 'bit 1 -> option 0x08, the hoover stays in hand (12 levels)',
+    0x2a: 'sound id 29/30/31/32 for 1/2/4/8 into 0x287c6c, which nothing reads  (1 in 122, 4 in 14, 8 in 10)',
     0x22: 'bit 1 -> option 0x40 + demolish every object at load (no level)',
     0x26: 'what option 0x1000 (a button) sets off: 1 nothing, 2 the 1D sequence (0x204be), 4 the demolition (0x1b0f6; 2T 4T BA)',
-    0x2e: 'bit 1 -> option 0x1000                       (10 levels)',
-    0x32: 'bit 1 -> option 0x2000, and sets 0x9385c      (10 levels)',
-    0x36: '== 2 -> option 0x400000                      (0 in 84, 2 in 39, 1 in 23)',
+    0x2e: 'bit 1 -> option 0x100000, no story panel     (10: the T and U shows)',
+    0x32: 'bit 1 -> option 0x200000 and 0x9385c: the pad buttons on screen (the same 10)',
+    0x36: '== 2 -> option 0x40000000, the % still to trash on the panel  (0 in 84, 2 in 39, 1 in 23)',
     0x38: 'the time limit, minutes and seconds as decimal digits (315 = 3:15), '
           'made packed BCD five at a time (VA 0x19b9d); 0 keeps 20:00 — '
           'see time_limit()',
-    0x3a: 'overwrites a pointer-table word when non-zero (1 level)',
-    0x3c: 'a count, 5..20                                (17 levels)',
-    0x3e: 'a count, 4..30                                (77 levels)',
-    0x40: 'large: 150, 1000, 15000                      (9 levels)',
-    0x42: 'never non-zero in any level',
-    0x44: 'large: 2000..30000                           (14 levels)',
-    0x46: '2 or 3                                        (8 levels)',
+    0x3a: 'timmies the bin wants (0xa3578, default 10)   (1 level: 8K, 10)',
+    0x3c: 'the most bomb gits alive at once (0x287c62; objects/gits.md)  (17 levels)',
+    0x3e: 'the most spike gits alive at once (0x287c66)  (77 levels)',
+    0x40: 'the force of a Tommy striking a block (git_strike_block)  (11 levels)',
+    0x42: 'the same for the other gits; never non-zero in any level',
+    0x44: 'a bomb\'s force, shifted left by +0x46 (bomb_force; jack/hurt.md)  (14 levels)',
+    0x46: 'the shift for +0x44, 2 or 3                  (8 levels)',
 }
 
 #: What holds a bell back (VA 0x33e79 picks the routine; the constructor,

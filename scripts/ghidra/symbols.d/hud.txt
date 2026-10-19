@@ -1,5 +1,5 @@
 # The panel (HUD): icons, numbers, its little scripts, the clock's BCD. Read in the sweep of 2026-10-14.
-0x195e5  f  hud_setup                      ; clears, then panel scripts by game kind (0, 1, 2) and options 0x100000/0x400000
+0x195e5  f  hud_setup                      ; clears, then the panel lists by game type (0 story, 1 battle, 2 arcade) and options 0x100000 / 0x400000 / 0x40000000 (docs/re/front/hud.md)
 0x197c8  f  hud_objects_clear              ; 16 records at 0x28729c (stride 0x94)
 0x19910  f  panel_icons_clear              ; 10 records at 0x287044 (stride 0x1e)
 0x19931  f  panel_icon_add                 ; a free icon slot: owner, frame, flags, x - 18
@@ -21,3 +21,34 @@
 0x1ade8  f  players_bade_clear             ; player +0x13e = 0, all four
 0x1ae0a  f  players_bade_set               ; player +0x13e = 1, unless game 0x1d/0x1e
 0x1b12f  f  level_counters_reset           ; 0x287c58-66: UFOs, timmies, counts; 0x287c5e = 70
+#
+# The panel's ticks: reached only through the lists' `tick*` words, so they were
+# no functions to Ghidra (scripts/formats/hud.py dumps every list; docs/re/front/hud.md).
+0x19dce  f  hud_clock_tick                 ; the count-down clock: frozen while option 0x01000000 or 0x02000000; -1 s per 60 ticks; 0 → level state +0x26 = 3 (lost); < 0:20 flashes, ≤ 0:10 beeps (0x63); a clock taken (0x96fb8) swells it
+0x19edb  f  hud_stopwatch_tick             ; the arcade's: counts up a step per 7 ticks to 0x60000, frozen like the clock
+0x19f38  f  hud_rubble_icon_tick           ; PANEL 1: jitters while +0x20 (hud_shake); wobbles under double points (0x97798)
+0x1a9b0  f  hud_rubble_number_tick         ; the rubble score (0x287bec): flashes 64 ticks when it passes 10000?
+0x1a7e8  f  hud_percent_tick               ; option 0x40000000: the % at 0x96fb4 ticked down toward what is left (0x3f208c - 0x410464, sum_by_table); slides in to x 55
+0x1aa5d  f  hud_percent_icon_tick          ; PANEL 46, the bomb and %: slides in to x 30; flashes 120 ticks when 0x96fba is 1
+0x1a84f  f  hud_target_tick                ; the arcade's target number: held 100 ticks, then the countdown (list 0x97374) and it shrinks into the corner
+0x1aa4f  f  hud_target_banner              ; PANEL 51 → script 0x980b4: drops in, waits, squeezes away
+0x1a986  f  hud_countdown_3                ; PANEL 47 → script 0x97d5c ("3", then 2 and 1 by `frame`)
+0x1a994  f  hud_countdown_2                ; PANEL 48 → script 0x97f20
+0x1a9a2  f  hud_countdown_go               ; PANEL 50 → script 0x98040: GO drops, the shake, `go` lets the players move (option 0x01000000 off)
+0x1a0de  f  hud_double_way0_word1          ; double points banner (one of three ways, random & 7 into 0x98148), way 0: DOUBLE → script 0x977b8
+0x1a10f  f  hud_double_way0_word2          ; RUBBLE → script 0x97844
+0x1a0f9  f  hud_double_way1_word1          ; way 1: script 0x978c4
+0x1a11a  f  hud_double_way1_word2          ; script 0x978e8
+0x1a104  f  hud_double_way2_word1          ; way 2: script 0x9790c
+0x1a125  f  hud_double_way2_word2          ; script 0x97984
+0x1a130  f  hud_super_hoover_banner        ; FORK 16 → script 0x979e4, flown across the screen
+0x1a13b  f  hud_banner_97acc               ; script 0x97acc (list at 0x9762c, not run by any code found)
+0x1a146  f  hud_banner_97b2c               ; script 0x97b2c (same list)
+0x1a151  f  hud_banner_97b8c               ; script 0x97b8c (same list)
+0x1a15c  f  hud_banner_97c04               ; script 0x97c04 (same list), with 0x287c48
+0x1aadc  f  pause_menu_tick                ; PANEL 52/53/54 by the pause state 0x287c50 (0 resume/quit level/quit game, 1 are you sure, 2 resume/quit game); bit 0x8000 removes it
+0x1ab36  f  pause_word_tick                ; PANEL 55, PAUSE, wobbling (hud_wobble_step)
+0x1ab5c  f  demo_sign_tick                 ; DEMO.SPR, wobbling — game 0x14, a demo playing
+0x1ab60  f  pause_jack_tick                ; PANEL 12: zooms in from 128 by 6 a tick, frames 12-15 at random
+0x1ac13  f  pause_cursor_tick              ; PANEL 56-57, the arrow; the pad's up/down move it through 0x9821c's rows, a sound each
+0x1c5fe  f  forklift_rev_needle            ; REV.SPR: 0x982f0 eased two a tick toward 0x982f2

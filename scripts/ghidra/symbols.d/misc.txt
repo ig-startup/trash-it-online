@@ -116,7 +116,7 @@
 0x33861  f  drop_collected_timmies         ; as many timmies as the player holds (0x1a06f) flung up, roaming (git_32164)
 0x3392b  f  git_wander_speed               ; random push, friction five times over; tommies (0x5b) aim 12 px up
 0x33d1d  f  ob_class_13_bell
-0x33fdd  f  bell_wait_option_800          ; subtype 2: option 0x800 or its timer → pops up
+0x33fdd  f  bell_wait_option_800           ; subtype 2: option 0x800 or its timer → pops up
 0x3404a  f  bell_wait_counter              ; subtype 4: some player's +0x28b9d8 reaches +0x56
 0x340af  f  bell_wait_percent              ; subtype 8: destroyed_percent ≥ +0x54, a sound, flashes 200 ticks
 0x343dc  f  bell_steer_vx                  ; push vx by the sign of *eax (16000, 0x1f400 against), stop near 0
@@ -156,3 +156,19 @@
 0x615ca  f  hoover_tick                    ; VAC on Jack: the suck list for his slot, the hoover sound
 0x617dc  f  hoover_dropped                 ; a dropped hoover falls, skids and stops
 0x1cd94  f  scn_picture_double             ; ? unreferenced: the 320x200 picture at 0x277634 (the .SCN's third part) doubled to 320x400
+#
+# Effect particles (start_effect 0x1e053, table 0x991d3: 20 bytes — ?, colour, start, move, gravity).
+# Found by their pointers only.
+0x1e386  f  effect_move_ballistic          ; v += gravity, position += v
+0x1e426  f  effect_move_to_floor           ; the same, stopped at the level's bottom
+0x1e3b0  f  effect_move_smoke              ; gravity every other tick, tripled every 16 — kind 9, rising (gravity -0x1000)
+0x1e472  f  effect_start_spray             ; vx ±rand >> 14, vy up rand >> 14
+0x1e4a3  f  effect_start_spray_wide        ; the same, >> 13
+0x1e4cc  f  effect_start_carried           ; >> 16, plus the carried velocity 0x28b91c / 0x28b918
+0x1e5a6  f  effect_start_ranged            ; velocities from random_range 13 (0x2fa6d, 0x2fa90)
+0x1e51b  f  effect_start_still             ; v = 0
+0x2065d  f  blow_puff_tick                 ; grows by +0x4e a tick, sinks half that, +0x4a ticks; then gone, 0x9fe4c - 1
+0x175fe  f  generic_thing_ride             ; while +0x58 bit 0: at its holder's (+0x54) point
+0x1775b  f  generic_thing_dispatch         ; table 0x96b94 by +0x6a
+0x17790  f  generic_thing_brake            ; vx -= vx / 4
+0x1c5a0  f  touch_super_hoover_fork        ; sound 0x99, forklift_rev_limit, the super-hoover banner (0x97608), the thing gone (template 0x98310)

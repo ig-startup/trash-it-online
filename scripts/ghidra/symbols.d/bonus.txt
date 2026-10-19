@@ -8,7 +8,6 @@
 0x33559  f  bonus_swell                    ; landed: swells 1 << (t / 2); past 50 bursts — seven pieces, the prize (0x123c0), a sound
 0x337b6  f  bonus_sparkle                  ; a BON spark every 4 ticks while it is struck
 0x123c0  f  bonus_prize                    ; by +0x68: 0 a clock, 1 +0x76 timmies flung up (at least 1), 2 a super hoover (BVAC), 3 a bubble
-0x12238  f  bon_spawn_spark                ; a BON child, frame 0x15 → 0x17, gone
 0x1b2a9  f  pickup_wait_for_block          ; locked (+0x42 bit 1): when the block dies, unlocked and thrown up at vy -6; 1 while locked
 0x1b304  f  generic_pickup_create          ; "couldn't spawn pickup": at (ax, dx), frame param, locked to the block there when bx is 2
 0x11d83  f  spawn_clock                    ; CLOK at a point, frame 0, ten turns

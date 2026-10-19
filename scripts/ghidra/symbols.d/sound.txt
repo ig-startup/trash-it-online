@@ -15,4 +15,26 @@
 0x16f84  f  ail_startup                    ; AIL_startup, drivers from "dosdrv"
 0x16fa1  f  ail_shutdown                   ; drivers out, AIL_shutdown
 0x17059  f  music_pause_resume             ; flags 0x96474: 2 stop, 4 resume the XMI sequence
-0x170b6  f  music_start                    ; option 0x400000 (rules +0x36 == 2): a CD track instead; else the sequence, looping
+0x170b6  f  music_start                    ; option 0x400000 (a bonus round): 0x6d48f(?) instead; else the level's XMI sequence, looping
+#
+# The script interpreter's 21 op handlers (table 0x9641c, sound.py OPS); found from the table, not by Ghidra.
+0x1633f  f  sound_op_play                  ; op 0: 5 words; sample, rate (-1 = file rate), -, -
+0x163da  f  sound_op_stop_sample           ; op 1: 1 word
+0x163fa  f  sound_op_wait                  ; op 2: 2 words; ticks  (yield)
+0x16447  f  sound_op_rate                  ; op 3: 2 words; Hz
+0x164be  f  sound_op_lr                    ; op 4: 3 words; left, right  (pan weights)
+0x164f1  f  sound_op_pan_sweep             ; op 5: 6 words; phase, step(sign = direction), min, max, ticks
+0x1654f  f  sound_op_pitch_slide           ; op 6: 4 words; step Hz, steps, every n ticks
+0x16584  f  sound_op_vibrato               ; op 7: 3 words; depth Hz, period ticks
+0x165ab  f  sound_op_pitch_slide_off       ; op 8: 1 word
+0x165d4  f  sound_op_vibrato_off           ; op 9: 1 word
+0x165f9  f  sound_op_end                   ; op 10: 1 word; (yield, frees the voice)
+0x16646  f  sound_op_sound                 ; op 11: 2 words; start another sound id
+0x16661  f  sound_op_nop                   ; op 12 and 13: 1 word
+0x1666f  f  sound_op_skip                  ; op 14: 6 words; (five words ignored)
+0x16678  f  sound_op_lr_wobble             ; op 15: 7 words; Lmin, Lmax, Rmin, Rmax, Lstep, Rstep
+0x166be  f  sound_op_lr_wobble_off         ; op 16: 1 word
+0x166d7  f  sound_op_play_rand             ; op 17: 7 words; sample, rate, -, -, rate_mask, -  (rate + (random & mask))
+0x16779  f  sound_op_rate_jitter           ; op 18: 3 words; mask, every n ticks
+0x167a3  f  sound_op_rate_jitter_off       ; op 19: 1 word
+0x16416  f  sound_op_wait_rand             ; op 20: 3 words; ticks, mask  (yield; ticks + (random & mask))

@@ -34,6 +34,28 @@ list (0xa3dbb) of 8 actions, one picked at random, which index the
 behaviour table 0xa3fc4. In the shipped levels the markers are 0, 1, 2
 and 28-30 — so they pace between their turn marks.
 
+**Marker 28: a git strikes the block.** Its list is action 15 eight times
+(26 and 27 mix it with "nothing"), and 15 is taken only by a git whose
+`.OB` flags have bit 1 and that `git_wander_speed` (0x3392b) says will
+come to rest in front of a block cell. `git_brake_to_strike` (0x31f52,
+slot 15) brakes it 20000 a tick (0.3 px/tick²); stopped with a cell ahead
+(x ± 6, y − 12 for TIMMY 0x35, x ± 12, y − 22 for the rest) it goes to
+`git_strike_block` (0x31d4b, slot 14): every fourth tick a count, at 10
+`git_strikes_cell` (0x207d4) hits the cell ahead — `damage_up`, a puff,
+an effect, a sound — with **the rules record's +0x40 for Tommy (sprite
+0x5b) and +0x42 for any other** (+0x42 is 0 in every level); past 16 it
+walks on the way it faces. Marker 28 is in exactly the eleven levels with
+a non-zero +0x40: 0I 1I 3I 8I 9I (150, 2, 2, 1), 1A 2A 3A (15000), 9S
+(1000), TI (10000), US (3000). Markers 29 and 30 are walk left / right
+for flag-bit-1 gits only. The two offset pairs disagree on which sprite
+is the small one (TIMMY in the brake, Tommy in the strike) — as in the
+original. Not in the clone.
+
+**Held by the sucker** (slot 18, `git_held_by_sucker` 0x323b0): a timmy
+the sucker cup freezes (`+0x40 |= 0x400020`, `objects/sucker.md`) follows
+its holder (`process_obj_on_something`) while `+0x40` bit 0x20 lasts,
+then falls.
+
 **Collecting.** A free timmy (template category 0x605: carried, hit,
 *hooverable* 0x200) or Tommy is taken by **the hoover**: its box catches
 every sprite of category 0x200 (VA 0x2fc5b), which then trails 40 px

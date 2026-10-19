@@ -16,6 +16,7 @@ topic; start from `docs/re/INDEX.md`.
 | `rle.py` | the shared scanline codec |
 | `pal.py` `scn.py` `g2.py` `spr.py` `obt.py` | per-format decoders |
 | `projdat.py` | F.EXE's screen files, `PROJ/*.DAT` (`docs/re/front/proj-dat.md`) |
+| `hud.py` | the in-level panel's lists, icons and scripts, from G.EXE (`docs/re/front/hud.md`) |
 | `level.py` | assembles a whole level from `.WAM` + `.I` + `.OBT` + `.G2` |
 | `export_sprites.py` | dumps a `.SPR` to PNG frames with alpha, origin in the filename |
 | `pak.py` | RNC ProPack unpacker for `FSPR/*.PAK`, with CRC check and PNG render |

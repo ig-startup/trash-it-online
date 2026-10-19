@@ -38,7 +38,7 @@ Opcode routines: table 0x93d98.
 | 9 / 11 | | hold / free the camera's x and y where they are |
 | 12 / 13 | | hold x, y and width / the width only |
 | 10 dive | | frame 0x4f, the steered dive below |
-| 14 | | 0x28bfa4 = 1 (cleared at impact; no reader found) |
+| 14 | | 0x28bfa4 = 1 (cleared at impact; nothing reads it) |
 | 15 / 16 | | the trail on / off (`apocalypse_trail`: an `APOCS.SPR` every 4 ticks) |
 
 The **height** is +0x2c (16.16), raised by −vh each tick, and while the
@@ -104,6 +104,8 @@ Then, by what `blow_walk_cells` reports:
 Both end in `apocalypse_return` (0x157f7): after 120 ticks the hammer
 eases back to 32 px over its owner and takes its saved routine again.
 
-## Not known
+## Written, never read
 
-Who reads option 0x98226 bit 2 (set by `dive`) and 0x28bfa4.
+Nothing, it turns out, reads option 0x40000 (0x98226 bit 2, set by `dive`)
+or 0x28bfa4: every instruction touching either was swept, and they are
+only written ([level-options](../levels/level-options.md)).
