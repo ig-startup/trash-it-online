@@ -101,6 +101,11 @@ PROPS = {
     "dis": ("DIS.SPR", [6, 0, 1]),
     # The secret panel (17) and its twinkle (0x15-0x24).
     "panel": ("PANEL.SPR", [17] + list(range(21, 37))),
+    # What a timmy taken says (spawn_got_popup 0x11a92): three frames each
+    # for +1, +2 and +20; and the puff it — or a prize taken — goes in
+    # (puff_tick 0x11d4b, seven frames).
+    "got": ("GOT.SPR", list(range(9))),
+    "bloi": ("BLOI.SPR", list(range(7))),
 }
 
 

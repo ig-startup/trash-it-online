@@ -120,6 +120,7 @@ export default class Gits {
    * @param {() => void} world.shake
    * @param {() => any[]} world.jacks  the Jacks the gits can touch
    * @param {(x: number, y: number) => void} world.bombBlast
+   * @param {(x: number, y: number, worth: number) => void} [world.got] GOT
    * @param {(left: number, right: number, top: number, feet: number) =>
    *   ({id: number, bottom: number, vy: number}|null)} [world.crusher] a
    *   falling block over that box (collapse.js `over`)
@@ -280,6 +281,8 @@ export default class Gits {
         if (!g.sprite.active) { this._drop(g); continue; }
         if (g.state === 'hoovered') {
           if (this._suck(g, nozzleOf(g))) {
+            // "+1", "+2", "+20" where it went in (spawn_got_popup 0x11a92)
+            if (this._w.got) this._w.got(g.sprite.x, g.sprite.y, g.worth);
             taken += g.worth;
             this.collectedBy.set(g.into, (this.collectedBy.get(g.into) || 0) + g.worth);
             this._drop(g);

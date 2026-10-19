@@ -23,6 +23,7 @@ import Ufos from './ufos';
 import Seesaws from './seesaws';
 import Gits from './gits';
 import Bonuses from './bonuses';
+import Popups from './popups';
 import Bell from './bell';
 import BonusRound, { preloadBonusRound } from './bonusRound';
 import {
@@ -463,6 +464,11 @@ export default class GameScene extends Phaser.Scene {
     // The most common things in the game. Placed timmies sit locked to
     // their block until it dies, then walk; the hoover takes them, and
     // they count. See gits.js.
+    // GOT and the puff: what a thing taken leaves in the air (popups.js)
+    this._popups = hasProps(this) && PROP_ANIMS.got ? new Popups(this) : null;
+    if (this._popups) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._popups.destroy());
+    const got = (x, y, worth) => this._popups && this._popups.got(x, y, worth);
+    const puff = (x, y, w, h) => this._popups && this._popups.puff(x, y, w, h);
     this._gits = hasProps(this) && PROP_ANIMS.timmy
       ? new Gits(this, level, {
         blockAt,
@@ -484,6 +490,7 @@ export default class GameScene extends Phaser.Scene {
         loose: this._loose,
         shake: () => this.cameras.main.shake(120, 0.006),
         jacks: () => this._liveJacks().map((j) => j.player),
+        got,
         // a falling block over a timmy (probe_crusher 0x60a00)
         crusher: (left, right, top, feet) => (this._collapse
           ? this._collapse.over(left, right, top, feet) : null),
@@ -507,6 +514,7 @@ export default class GameScene extends Phaser.Scene {
     this._secrets = 0;         // panels taken (level_state +0x18)
     this._bonuses = hasProps(this) && PROP_ANIMS.dis
       ? new Bonuses(this, level, {
+        puff,
         floor: (x, from, to) => floorUnder(blockAt, x, from, to),
         blockIdAt: (x, y) => {
           const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
@@ -829,6 +837,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (this._ufos) this._ufos.update(delta);
     if (this._bonuses) this._bonuses.update(delta);
+    if (this._popups) this._popups.update(delta);
     if (this._gits) {
       const got = this._gits.update(delta, hoovers);
       if (got) this._timmyText.setText(`ТИММИ ${this._gits.collected}`);

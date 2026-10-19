@@ -33,5 +33,20 @@ and costs a life instead, below level 12 (0x20e1d).
 Each also adds to a BCD copy (`+0x64`, `+0x6c`) and the total at 0x287bfc
 for the HUD.
 
+**The popup** (spawn_got_popup 0x11a92, sprite 0x5a `GOT.SPR`, sound
+`play_sound_2`): the number is popup 0, 3 or 6 — the first of three GOT
+frames saying +1, +2, +20 — put at the timmy, 0-3 px right. It lives 30
+to 45 ticks (frame counter & 15 + 30) and steps through its three frames
+every 4 (got_animate 0x11bf9). Its motion is one of four (table
+0x9372c, by a random & 3): 0 and 3 rise 1-4 px a tick (0x11b99); 1 eases
+toward a point 64-191 px above, 1/32 of the way a tick (0x11ba9); 2
+falls at 0-4 px a tick, pulled up 0x3a98 a tick while below that point,
+and bounces off it keeping a quarter of its speed (0x11bc4). Its time out
+(die_after_timer_puff 0x1cebe), it goes in **a puff**: spawn_at_frame_centre
+(0x11c6e) puts `BLOI.SPR` (sprite 0x59) at the thing's point, stretched by
+as much as the thing's frame exceeds 32 px either way, seven frames three
+ticks each (puff_tick 0x11d4b). The same puff marks a panel, a clock and
+the super hoover picked up (0x1bacb, 0x12096, 0x1b48c). Clone: `popups.js`.
+
 Clone: `GameScene._backToMap` hands the three to `Story` (`played`,
 `won`); `gits.js` counts per player, with these worths.
