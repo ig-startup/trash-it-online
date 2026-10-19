@@ -115,8 +115,9 @@ VA 0x23b88.) Two things this overturns:
 
 - **Record `+0x40` is the hammer's maximum force, not (only) a price.** It
   is the top of the ramp. The joke hammers at 4294967295 are not "unbuyable",
-  they flatten anything — which fits them being the silly ones. Whether the
-  shop also reads it as a price is not settled; the *blow* certainly does.
+  they flatten anything — which fits them being the silly ones. The shop
+  does not read it: F.EXE prices a hammer from its own item record (`+4`,
+  [hammer-shop](../front/hammer-shop.md)).
 - **`+0x3c` is the minimum**, the floor of the ramp (8 for a sledge v1,
   100 for most late hammers).
 

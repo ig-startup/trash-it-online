@@ -215,7 +215,7 @@
 0x33f58  f  bell_locked_tick               ; waits for its block to die
 0x34114  f  bell_touch_tick                ; touched → +0x162 on the player, level over
 0x5f3c0  f  sign_swing                     ; DIS.SPR: amplitude force >> 5, 3..32
-0x19b9d  f  bcd_add_score                  ; packed-BCD adder, in fives
+0x19b9d  f  bcd_add_score                  ; eax + edx, 8 packed-BCD digits; the rules record makes its time BCD with it, adding fives then ones (docs/re/front/level-record.md "Scoring")
 # dynamite
 0x1d405  f  dyna_hammer_state              ; lit by the overhead strike
 0x1d4ec  f  dyna_lit_hop                   ; 35 ticks hopping

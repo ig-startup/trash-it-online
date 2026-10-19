@@ -43,8 +43,11 @@ is 42, else **3 — yes, also when no arrow was pressed**.
 - yes, mode 3: the level is played (map_start_node 0x1ff5a).
 - yes, mode 0 (0x1f134): the points it paid are taken back (`+0x1be` −=
   `+0x20a[node]`, which goes to 0), and so are the lives it gave (`+0x28`
-  −= `+0x26a[node]`, to 0); a byte per stage at `+0x1ce` is lowered (only
-  ever cleared and lowered — no reader found); then it is played.
+  −= `+0x26a[node]`, to 0); a byte per stage at `+0x1ce` (indexed by the node's
+  stage, word 14) is lowered — dead: the four instructions that touch the
+  six bytes (found by their displacement) clear them at a new game, a
+  password and a world's start (0x15dcf, 0x19190, 0x20160) and lower one
+  here (0x1f176); none raises or reads them, nor does G.EXE (its `+0x1ca`); then it is played.
 - yes, mode 2 (0x1f244): the gate is trashed — Jack may walk through — and
   the toll taken from the points.
 - mode 1, or no: the sign goes.

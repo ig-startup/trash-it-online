@@ -29,7 +29,7 @@ himself, a node's depth -1 sets it, and a bin drops it when crushed flat
 | 0x89ffa | YELMEDFT | 0x1e9da | the panel's font |
 | 0x8a01a | LSJACK | 0x1f941 | Jack (`map_jack_tick`) |
 | 0x8a03a | LEVSLBIN | 0x1f5f7 | a level's **bin** — 89 nodes |
-| 0x8a05a | LVSL7SPR | 0x1f689 | world T's node 15 (a level node with no level), frames 0-7 every 3 ticks (0x89dc6); its depth is 0x1cd while Jack's y is 152 or more, else 1 |
+| 0x8a05a | LVSL7SPR | 0x1f689 | world T's node 15, the temple's turning machine — a fan spinning on a pipe-organ block, 60 × 105 drawn at its frame's own offset (141, 48) from the node's (0, 0); frames 0-7 every 3 ticks (0x89dc6); its depth is 0x1cd while Jack's y is 152 or more, else 1, so he passes in front of it below and behind it above. The node only carries it: level -1, open from the start, on no path |
 | 0x8a07a | LS_HAT | 0x1f73f | a side level's **hat** — 10 nodes |
 | 0x8a09a | the world's | 0x1c9ba (nothing) | a still **landmark** — 26 nodes |
 | 0x8a0ba, 0x8a0da | the world's | 0x1f7ad, 0x1f7cd | drawn **until** its node is trashed — the C bonus and D exit points (and 3T) |

@@ -50,3 +50,16 @@ the super hoover picked up (0x1bacb, 0x12096, 0x1b48c). Clone: `popups.js`.
 
 Clone: `GameScene._backToMap` hands the three to `Story` (`played`,
 `won`); `gits.js` counts per player, with these worths.
+
+**Scoring, all of it.** Every BCD addition in G.EXE goes through
+`bcd_add_score` (0x19b9d), a plain eight-digit packed-BCD adder (the
+"in fives" an old name gave it is the rules record turning its time into
+BCD, five then one at a time). It has four callers, and they are the
+whole of the score: the rubble hoovered (`add_rubble_score`, area / 16,
+doubled under option 0x80), the timmies (`player_add_timmies`, 1 / 2 / 20),
+the gits (`player_add_gits`, the bin's and the knocked ones') — those three
+above — and the rules record's clock. The clock is added to with
+`bcd_add_clock` (a clock picked up, +0:25) and counted with
+`bcd_sub_clock`; `level_finish` adds no time bonus. Beyond the level:
+battle points by place (8/4/2/1, `game-types.md`), lives from panels and
+the timmy points the shop spends (F.EXE, `map-panel.md`, `hammer-shop.md`).
