@@ -484,6 +484,9 @@ export default class GameScene extends Phaser.Scene {
         loose: this._loose,
         shake: () => this.cameras.main.shake(120, 0.006),
         jacks: () => this._liveJacks().map((j) => j.player),
+        // a falling block over a timmy (probe_crusher 0x60a00)
+        crusher: (left, right, top, feet) => (this._collapse
+          ? this._collapse.over(left, right, top, feet) : null),
         // The bomb's blast (VA 0x329dc): blocks from 15 px up, its force
         // the level's (rules +0x44 << +0x46), 10 across and 16 up and
         // down, four of them; the shock at its feet.

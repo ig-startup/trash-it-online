@@ -72,6 +72,17 @@ up to 4 px/tick, and counts the knock (`+0x68`). The game allows **one**
 - **Dizziness** (`+0x74`): +10 an about-turn, -1 a tick. Over 30 a turn
   lifts it 5 px; at 500 a timmy dies of it, a spike is done for and a
   bomb lights.
-- **A falling block** that catches it on the ground (0x31bd8) squashes it
-  with the block; past 20 px — or the block gone — it dies, thrown up at
-  -3.5 px/tick and more.
+- **A falling block** (git_tick 0x30069, for sprites TIMMY 0x35, KTIMMY
+  0x3f and TOMMY 0x5b not already under one, `+0x42` bit 2): every tick
+  `probe_crusher` (0x60a00) looks for a falling block over it. In the air
+  (`+0x40` bit 0x10 clear) a rise turns into a fall, a fall gains half the
+  block's `vy` — Jack's rule (`jack/falling-block.md`). On the ground it
+  is caught: **timmy_crushed** (0x31bd8) stops it, takes the carry, strike
+  and hoover bits away (`+0xc &= 0xfdfa`), notes the block's height, and
+  each tick sets its squash from how far the block has come down since:
+  `+0x52` (height) = −that, `+0x50` (width) = half of it. Past **20 px**,
+  the block gone or another one, or the floor gone from under it, it dies
+  as a knocked one does (timmy_angel), thrown up at −(0x38000 + rand >>
+  13) — −3.5 px/tick. git_tick eases a squash below 0 back a pixel a tick.
+  Clone: `gits.js` `_crushCheck`, `_crushedStep` (it eases the width
+  back too).
