@@ -78,8 +78,13 @@ loses 2000 a tick across, and is killed once it is off the screen. The
 next UP + BUT1 draws a new one from the hat. Option bit 8 forbids both.
 
 Carrying: see "Carrying and throwing" — DOWN puts down, UP aims, BUT1 or
-BUT2 throws. In the air: DOWN held + BUT2 pressed goes to 0x2b3ac (not
-traced).
+BUT2 throws. In the air: DOWN held + BUT2 pressed is the **ground pound**
+(`jack_ground_pound` 0x2b3ac, slot 74): he drops at 0x12000 a tick, four
+times the usual pull, still steering; landing he runs on (|vx| > 10000) or
+stands, tips a seesaw under him, shakes the screen for 10 ticks, and
+strikes from above up to five timmies, tommies, suckers or bells in a box
+under him (`jack_stomp_hits` 0x2b315). A drop past 358 px ends in the hard
+landing (0x29828).
 
 The level's option word (0x98224, [level-options](../levels/level-options.md)) switches actions off: bit 1 the
 hammer, 2 putting it away (BUT1 or DOWN with it out), 4 the hoover, 8 putting the hoover away.

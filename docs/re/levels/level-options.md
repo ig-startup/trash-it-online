@@ -28,7 +28,7 @@ sweep, not the decompiler, so none hides in a folded routine).
 | 0x80000 | super_hoover_on; off in super_hoover_tick | the super hoover: the hoover blinks, its box is 2048 × 1024 (hoover_tick) |
 | 0x100000 | rules +0x2e bit 1 (the T and U shows) | hud_setup leaves the story panel out — no clock, no counters |
 | 0x200000 | rules +0x32 bit 1 (the same ten) | sets 0x9385c: with a GrIP pad, spawn_pad_display puts ten JOY.SPR buttons on screen — the pad's presses shown as the recording plays |
-| 0x400000 | bonus_round_setup | a bonus round: its own clock list, blow_walk_cells, music_start plays 0x6d48f instead of the level's XMI, level_finish skips the end sequence |
+| 0x400000 | bonus_round_setup | a bonus round: its own clock list, blow_walk_cells, music_start plays CD track 6 (cd_play_track) instead of the level's XMI, level_finish skips the end sequence |
 | 0x1000000 | hud_setup; bell_touch_tick when the last ring is rung; bonus_object_tick | the players are held: the clock stops; the countdown's `go` (hud_script_step op 17) lets them go |
 | 0x2000000 | pause_game, while paused | the clock stops, entities_settle and hud_objects_tick wait |
 | 0x8000000 | bell_touch_tick, a ring with more to go | nothing reads it |

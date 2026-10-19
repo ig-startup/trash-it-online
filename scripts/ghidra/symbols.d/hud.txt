@@ -13,7 +13,7 @@
 0x1a199  f  hud_run_script                 ; give a record a script (+0x44) and start it
 0x1a1fb  f  hud_script_step                ; the script ops 0-19: set x, y, targets, speeds, wait, …
 0x1a4a7  f  hud_ease_axis                  ; accelerate toward a target, brake 4x as hard
-0x1a688  f  bell_finish_place              ; a player reaches the bell: place stored in level state +0x30, a tint per place (0x9818a), a panel icon; with one player in the game (0x3f209e) the clock is capped at 1:00 ?
+0x1a688  f  bell_finish_place              ; battle and arcade (options 0x30000000), a player rings: his place into level state +0x30, the palette tint for it (0x9818a, 6 bytes a place), a panel icon (PANEL 0x3c). In battle, with one player left in the level (0x3f209e, counted down by bell_touch_tick), the clock is cut to 1:00 if more is left, swelling (0x96fb8)
 0x1a950  f  sum_by_table                   ; greedy: for each (step, add) pair in 0x981ac, add while ax ≥ step
 0x1aaa8  f  pause_hud                      ; the pause panel script; 0x287c50 = 2 with option 0x10000000
 0x1ab54  f  hud_wobble_step                ; sucker_cup_offsets on a HUD record
@@ -27,7 +27,7 @@
 0x19dce  f  hud_clock_tick                 ; the count-down clock: frozen while option 0x01000000 or 0x02000000; -1 s per 60 ticks; 0 → level state +0x26 = 3 (lost); < 0:20 flashes, ≤ 0:10 beeps (0x63); a clock taken (0x96fb8) swells it
 0x19edb  f  hud_stopwatch_tick             ; the arcade's: counts up a step per 7 ticks to 0x60000, frozen like the clock
 0x19f38  f  hud_rubble_icon_tick           ; PANEL 1: jitters while +0x20 (hud_shake); wobbles under double points (0x97798)
-0x1a9b0  f  hud_rubble_number_tick         ; the rubble score (0x287bec): flashes 64 ticks when it passes 10000?
+0x1a9b0  f  rubble_extra_life_tick         ; the story panel's rubble number (0x287bec): past 10000 it flashes 64 ticks, then 10000 comes off it and off the record's score (+0x10), and the record's lives (+0x24) go up one — 32 panel sparks on Jack 1 (0x28bf1c), sounds 0x8d and 0x8c: a life for every 10000 of rubble
 0x1a7e8  f  hud_percent_tick               ; option 0x40000000: the % at 0x96fb4 ticked down toward what is left (0x3f208c - 0x410464, sum_by_table); slides in to x 55
 0x1aa5d  f  hud_percent_icon_tick          ; PANEL 46, the bomb and %: slides in to x 30; flashes 120 ticks when 0x96fba is 1
 0x1a84f  f  hud_target_tick                ; the arcade's target number: held 100 ticks, then the countdown (list 0x97374) and it shrinks into the corner
@@ -59,3 +59,6 @@
 0xa2f16  d  level_end_countdown            ; ticks until logic_frame ends the level: 25 after "yeah", 300 after a bonus object burst
 0xb5ba8  d  pause_over                     ; pause_game loops until it is set
 0x96fe6  d  pause_bob_table                ; s16, 0 1 1 2 2 3 4 5 6 8 9 10 12 10 … 0, then 0x4d3 (go round) — PAUSE's y
+0x1954f  f  hud_task                       ; the level task start_game adds first: hud_objects_tick, then hud_numbers_tick
+0x19554  f  hud_numbers_tick               ; the ten number records at 0x287044 (panel_icon_add): each live one drawn, unless paused (option 0x2000000)
+0x1a56e  f  double_points_tick             ; the double points task: 0x287c52 (1920) counted down; past 0 option 0x80 off and its own slot freed (0x287d80)

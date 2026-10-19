@@ -34,7 +34,7 @@ Each also adds to a BCD copy (`+0x64`, `+0x6c`) and the total at 0x287bfc
 for the HUD.
 
 **The popup** (spawn_got_popup 0x11a92, sprite 0x5a `GOT.SPR`, sound
-`play_sound_2`): the number is popup 0, 3 or 6 — the first of three GOT
+`play_sound_then_step`): the number is popup 0, 3 or 6 — the first of three GOT
 frames saying +1, +2, +20 — put at the timmy, 0-3 px right. It lives 30
 to 45 ticks (frame counter & 15 + 30) and steps through its three frames
 every 4 (got_animate 0x11bf9). Its motion is one of four (table
@@ -63,3 +63,13 @@ above — and the rules record's clock. The clock is added to with
 `bcd_sub_clock`; `level_finish` adds no time bonus. Beyond the level:
 battle points by place (8/4/2/1, `game-types.md`), lives from panels and
 the timmy points the shop spends (F.EXE, `map-panel.md`, `hammer-shop.md`).
+
+**A life for 10000 of rubble.** The story panel's rubble number
+(0x287bec, BCD — the same additions as 0x287bf0) has a tick of its own,
+`rubble_extra_life_tick` (0x1a9b0, list 0x97284): once it is past 10000
+it flashes for 64 ticks, then 10000 comes off it (`bcd_sub`) and off the
+record's score (`+0x10`, a plain 10000), the record's lives (`+0x24`) go
+up by one, 32 panel sparks fly off Jack 1 and sounds 0x8d and 0x8c play.
+It can come round again in the same level. The rubble the level reports
+at its end (`+0x0c`, from 0x287bf0) is not reduced, so in all a life costs
+10000 of score. Only the story's panel carries this tick.

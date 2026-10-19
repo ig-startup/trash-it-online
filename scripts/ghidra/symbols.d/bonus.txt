@@ -17,7 +17,7 @@
 0x1b3eb  f  spawn_super_hoover             ; BVAC 20 px up at vy -4.57, falls to the bottom
 0x1b48c  f  jack_touch_super_hoover        ; outcome 13: the super hoover (0x61866)
 0x61866  f  super_hoover_on                ; option bit 0x80000 and 3600 ticks (0x3f4024): the hoover blinks and its suck box is 2048x1024
-0x1b4aa  f  super_hoover_tick              ; counts 0x3f4024 down; at 0 the option is off
+0x1b4aa  f  super_hoover_tick              ; the super hoover's level task (start_game): counts 0x3f4024 down; at 0 option 0x80000 off
 0x1b220  f  bubble_tick                    ; freed, it bounces about at random (vy to -8, vx to ±4) with a sound
 0x1b29d  f  jack_touch_bubble              ; outcome 8: double points (0x1a516), the bubble gone
 0x1a516  f  double_points_on               ; option bit 0x80 for 1920 ticks (0x287c52), the panel shows it the first time

@@ -251,7 +251,7 @@
 0x6d466  f  exit_sub_6d466  ; only called from exit code
 0x6d559  f  pause_sub_6d559  ; only called from pause code
 0x6d583  f  pause_sub_6d583  ; only called from pause code
-0x6d5ad  f  resolve_sub_6d5ad  ; only called from resolve code
+0x6d5ad  f  cd_audio_stop                  ; if a Red Book CD track was opened (0x595cd4): stops it while it plays, then 0x79e66 — so the drive can be read
 0x76e70  f  ail_sub_76e70  ; only called from ail code
 0x76fbc  f  ail_sub_76fbc  ; only called from ail code
 0x7717d  f  ail_sub_7717d  ; only called from ail code

@@ -14,6 +14,14 @@ All Miles Sound System 3.x; `sound.py` reads all four.
 - `SFX/0?.XMI` — one per section letter, `FORM XDIR / CAT XMID`, three
   sequences each (they differ). XMIDI runs at a fixed 120 Hz; `sound.py
   export` writes them as `.mid` at that clock.
+- **CD audio.** Four moments play a Red Book track off the game's CD
+  instead (`cd_play_track` 0x6d48f, through Miles' `AIL_redbook_*`, only if
+  a CD drive was opened): track **5** the double points (`double_points_on`),
+  **6** a bonus round (`music_start` under option 0x400000), **7** a level's
+  end (`level_finish`), **10** the 1D show (`dragon_sequence`). The copy
+  in `Trash-it-original/` has no audio tracks, so the clone has nothing to
+  play there. A game file not found on the disk is looked for on the CD,
+  the CD audio stopped first if need be (`resolve_path_cd`, `cd_audio_stop`).
 - The **sound scripts** live in G.EXE, not a file: 154 pointers at VA
   0x95f9c, a sound id indexes them; then the per-sample loop table at
   0x96204 (67 × `(start, end)`), right behind it. A script is a priority

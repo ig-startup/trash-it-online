@@ -39,9 +39,14 @@ from its period (the start values are jittered).
    picks the timmy up, the beam lets go.
 4. **Zap Jack** — 120 px over a random Jack that is not busy, beam every 4
    ticks; at tick 15, if he is within 10 px across, his sprite `+0x43`
-   gets bit 0x10 and his player `+0x15e` = 8 (what those do: not read).
+   gets bit 0x10 and his player `+0x15e` = 8: next frame `jack_zapped`
+   (0x1264b) throws him up and he spills those eight timmies
+   (`jack/hurt.md`). Not while he is busy (flags `& 0x54220403`): then
+   the UFO goes back to roaming.
 
 **Shot down.** `ufo_hit` halves the stolen count (rounding up) and drops
 one timmy back every 32 ticks, sparking. With none left it shakes for 120
 ticks, then explodes: screen shake, two blasts, the blocks around it, a
-flash, two wreck pieces — and the flying count goes down.
+flash, and the wreck in nine pieces (`ufo_wreck` 0x14b8c: frames 29 and
+30 twice each, 25-28 and 25 again, thrown up at 3 + random, sideways at
+random) — and the flying count goes down.

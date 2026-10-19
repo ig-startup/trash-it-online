@@ -6,7 +6,6 @@
 0x1055c  f  shatter_quarter                ; recursive: a piece, then its four quarters, to depth 7
 0x105fb  f  shatter_add_piece              ; one piece: its tile's colour, a spot from table 0xb5eac (+48, +24), vx and vy random within ±2 px
 0x10712  f  load_two_files                 ; load_file twice
-0x10d76  f  bonus_round_spawn_counters ?   ; four frames at the level's centre and a column of frame-6 markers; "done"
 0x120ee  f  spawn_pad_display              ; with a GrIP pad (device ≥ 5) and option 0x2000: ten JOY.SPR buttons
 0x12179  f  spawn_pad_button               ; a JOY button at x 160, frame 2n
 0x121ee  f  joy_button_tick                ; lit while its bit is in the pad's input (0x28b9a0)

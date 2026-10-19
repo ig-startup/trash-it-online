@@ -22,8 +22,8 @@
 0x322c5  f  git_hoovered                   ; the same from any other slot
 0x32b15  f  git_struck                     ; a spike or bomb hit by the hammer (or a spike dizzy): stops, swells, is gone with a puff and a shake
 0x32cfb  f  spike_bristle                  ; slot 19: stops, spines out a frame per 4 ticks, shivers 30-50, at 50 eight needles (0x12711), after 100 → spike_unbristle
-0x33154  f  git_beamed                     ; ? held under a UFO's beam
-0x332c9  f  git_beam_lift                  ; ? lifted by it
+0x33154  f  git_picked_by_ufo              ; a timmy the UFO has picked (ufo_go_abduct): animation 24, its events, falls and slides as usual while the UFO flies over it
+0x332c9  f  git_in_beam                    ; a timmy in the UFO's beam, once the UFO is over it: animation 28, still — ufo_beam_timmy lifts it; vy -5 while it is squashed (+0x52 < 0)
 0x2fbfd  f  git_marker_at                  ; the marker under a point: .COL word 2 of the block there (0x3f20c8)
 0x306de  f  git_think                      ; a new marker → its action list (0xa3dbb) picks one of 8; the bottom hop
 0x3000d  f  git_turn_at_wall

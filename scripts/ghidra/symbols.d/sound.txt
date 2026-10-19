@@ -15,7 +15,7 @@
 0x16f84  f  ail_startup                    ; AIL_startup, drivers from "dosdrv"
 0x16fa1  f  ail_shutdown                   ; drivers out, AIL_shutdown
 0x17059  f  music_pause_resume             ; flags 0x96474: 2 stop, 4 resume the XMI sequence
-0x170b6  f  music_start                    ; option 0x400000 (a bonus round): 0x6d48f(?) instead; else the level's XMI sequence, looping
+0x170b6  f  music_start                    ; option 0x400000 (a bonus round): CD track 6 (cd_play_track) instead; else the level's XMI sequence, looping
 #
 # The script interpreter's 21 op handlers (table 0x9641c, sound.py OPS); found from the table, not by Ghidra.
 0x1633f  f  sound_op_play                  ; op 0: 5 words; sample, rate (-1 = file rate), -, -
@@ -38,3 +38,4 @@
 0x16779  f  sound_op_rate_jitter           ; op 18: 3 words; mask, every n ticks
 0x167a3  f  sound_op_rate_jitter_off       ; op 19: 1 word
 0x16416  f  sound_op_wait_rand             ; op 20: 3 words; ticks, mask  (yield; ticks + (random & mask))
+0x6d48f  f  cd_play_track                  ; plays Red Book CD track ax, if a CD was opened (0x595cd4): the one playing stopped, the track looked up (AIL_redbook_track_info) and played to its end — 5 double points, 6 a bonus round, 7 a level's end, 10 the 1D show

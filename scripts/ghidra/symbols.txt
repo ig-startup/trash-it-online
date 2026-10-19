@@ -56,9 +56,9 @@
 0x21d30  f  set_state                      ; set_state(entity eax, routine edx)
 0x2e371  f  spr_frame_ptr                  ; indexes a sheet off file + 8
 0x2e3bb  f  spr_frame_ptr_2                ; same, second form
-0x2ef85  f  frames_overlap                 ; two entities' frames overlap?
-0x2dcb3  f  point_in_frame                 ; a point inside an entity's frame?
-0x2ddd6  f  boxes_overlap                  ; an entity's box overlaps another's?
+0x2ef85  f  frames_overlap                 ; 1 if two entities' current frames overlap (entity_frame_rect twice, rects_overlap)
+0x2dcb3  f  point_in_frame                 ; 1 if the point at the entity's x, y + (±dx, dy) — dx mirrored when it faces left — falls inside the other entity's current frame
+0x2ddd6  f  push_point_at_edge             ; 1 if Jack's push point (x ± 18, y - 17) is within the 4 px strip at the near side of the other's frame, between 30 and 3 px above its y
 0x2dfc7  f  point_in_hotspot               ; point against a hotspot box, x mirrored facing left
 0x2f0ab  f  sprite_search                  ; walks the sprite list by category mask (template +0x10)
 0x2f156  f  sprite_search_box              ; sprites in a box, class mask 4; up to 32 get hit
@@ -79,19 +79,19 @@
 0x69fdf  f  tile_at_falling                ; reads the provisional map, where falling groups are stamped
 0x69eb3  f  build_row_table                ; row[i] = i * stride
 0x69de9  f  stamp_object_tiles             ; writes an object's number into its cells
-0x60393  f  probe_wall_right               ; moving right: a solid cell ahead?
-0x60496  f  probe_wall_left                ; moving left: a solid cell ahead?
+0x60393  f  probe_wall_right               ; moving right: 1 (the cell's kind) if a solid cell (col kind 1) is met between x and x + vx across the box's rows, or the street's right end — the stop x through ebx
+0x60496  f  probe_wall_left                ; moving left: as probe_wall_right, to the left
 0x6040a  f  probe_solid_side               ; kind 1 stops sideways
 0x60513  f  probe_solid_side_2             ; kind 1 stops sideways, other form
 0x60666  f  probe_overhead                 ; kind 3, overhead only (in no level)
 0x606eb  f  probe_floor_ladder             ; floor under a climber, & 6
 0x607c1  f  probe_platform_top             ; kind 2: feet over its top
 0x60833  f  probe_floor                    ; what is under an entity: bit per kind found
-0x608bc  f  probe_all_kind                 ; every cell across the width is kind cl?
+0x608bc  f  probe_all_kind                 ; 1 if every cell across the entity's width (x ± w) at its feet has collision kind cl
 0x60920  f  probe_ladder                   ; row 31 px over the feet, x ± 4, all kind 4/5
 0x609bc  f  probe_level_bottom             ; y ≥ level height lands on the bottom edge
 0x60a00  f  probe_crusher                  ; a solid block over Jack in the falling map
-0x60c25  f  probe_headroom                 ; room to stand up out of the hat?
+0x60c25  f  not_boxed_in                   ; 1 if there is room a pixel up, right or left of where he is (free_above_at, free_right_at, free_left_at): the hat's BUT2 hop (jack_in_hat), a held object's snap (held_object_tick)
 
 # ── blocks: damage, destruction, collapse ─────────────────────────────────
 0x689e6  f  damage_down                    ; force into a block and down through what it rests on
@@ -193,7 +193,7 @@
 0x2820b  f  jack_push                      ; slot 38
 0x28691  f  jack_push_stance               ; standing, holding on to a rolling cannon
 0x29072  f  jack_air_roll                  ; slot 55
-0x2b3ac  f  jack_air_down_but2             ; in the air, DOWN + BUT2; not traced
+0x2b3ac  f  jack_ground_pound              ; slot 74: in the air, DOWN held + BUT2 pressed (input_down_and_jump, from entity_step and jack_air_roll) — he drops at 0x12000 a tick, four times the usual pull, steering as in the air; landing he runs on (|vx| > 10000) or stands, tips a seesaw under him, shakes the screen 10 ticks, flings two pixels (effect_pair) and strikes from above (jack_stomp_hits); past 358 px of fall, the hard landing
 0x29c92  f  jack_pinned                    ; under a block, squashed
 0x29e16  f  jack_pinned_in_hat             ; the same in the hat
 0x29f7a  f  jack_flattened                 ; slot 65, the pancake
@@ -255,7 +255,7 @@
 
 # ── collapse pass helpers named in the notes (role not pinned down) ───────
 0x135fc  f  ufo_respawn_tick               ; first call of the frame: while fewer than the most fly, a new UFO every `respawn` ticks
-0x162c7  f  structural_pass_b              ; ?
+0x162c7  f  sound_tick                     ; every logic frame: music pause / resume (music_pause_resume), the looped sounds, then each live voice's effects (voice_effects_update)
 0x2bfda  f  camera_update                  ; by mode 0x28bf60: 1 frame the targets, 2 follow a point, 3 debug keys; then camera_ease
 0x1c821  f  draw_backdrop                  ; the horizon (0x1c759), the near plane (0x18f74), the far plane (0x1c895)
 
@@ -273,8 +273,8 @@
 0x28bf34 d  input_pressed                  ; this tick's newly pressed bits
 0x28bf36 d  input_held                     ; held bits
 0x317ca8 d  level_state_ptr                ; TRASHIT.DAT record: section, number, counters
-0x3187bc d  random_bits                    ; ? read as random bits by the knocked-out state
-0x3187e4 d  player_count                   ; ? starts and flags are only placed for index < this
+0x3187bc d  random_bits                    ; the game's random dword: random_step (each logic frame, and wherever a draw is wanted) shifts it — x ^= x << 1, x <<= 1, +1 if the top bit was set; read as bits everywhere (speeds, frames, the knocked-out state)
+0x3187e4 d  player_count                   ; the players in the game: word 0 of the TRASHIT.DAT record (game_init), or the .J recording's count + 1 (read_pad_or_playback); starts, flags, hammers, input and the camera run to it
 0x3187ee d  frame_counter
 0x3f165a d  street_left                    ; -256
 0x3f165c d  street_right                   ; width + 256
@@ -376,7 +376,7 @@
 0x2fe70  f  king_timmy_create              ; "King timmy has no block to lock to"
 0x3053f  f  spawn_timmy                    ; "Couldn't 'spawn a timmy()'!"
 0x347f4  f  telly_register                 ; "teleport id exceeds limit"
-0x5f1f7  f  lock_to_block                  ; "No block to lock to??" — the dispenser (class 8) made and set up
+0x5f1f7  f  dispenser_spawn                ; the dispenser (.OB class 8) made at (ax, dx): frame 6, +0x4a = 200; a lock word of 2 ties it to the block under it (tile_at; else the debug line "No block to lock to"), flags bits 2/4/8 from the others; then its lid as a child
 0x697d7  f  group_slot_alloc               ; "don cannot find collective slot"
 0x6a29b  f  load_sprite_file               ; "%s\%s", "Need '%ld' more bytes of sprite_mem"
 0x6b65f  f  read_joypad                    ; "Joypad has been touched"
@@ -403,7 +403,7 @@
 0x76da0  f  ail_log_result_hex             ; "Result = 0x%X"
 0x76df0  f  ail_log_result_dec             ; "Result = %d"
 0x76e40  f  ail_log_string                 ; strlen + dos_write to the log file
-0x777c9  f  ail_log_suppressed             ; ? returns 0xa50fa; logging happens only when it is 0
+0x777c9  f  ail_log_suppressed             ; Miles' API trace: returns the word 0xa50fa; each AIL_ entry, with tracing on (0x595ce8), writes its call to the log only when this is 0
 0x77a5b  f  dos_write                      ; int 21h write, in chunks under 64 KB
 0x7a350  f  ail_mem_free_lock              ; unlock the block's range, then free it
 0x7a100  f  dpmi_unlock_range              ; (address, length) → dpmi_unlock_region
@@ -413,11 +413,11 @@
 0x2c911  f  random_step                    ; shift-register step of random_bits
 0x2fa90  f  random_magnitude               ; |random_next >> cl|
 0x2fa6d  f  random_signed                  ; random_next >> cl, sign from bit 0
-0x2c323  f  request_shake                  ; ? keeps the largest value asked for this frame (0x28bfa0)
+0x2c323  f  request_shake                  ; a screen shake of ax ticks; the largest asked stands (shake_request 0x28bfa0) — camera_set_target counts it down, the view offset by tables 0xa1c58 (x) / 0xa1cd8 (y) at the count left
 0x20db1  f  apply_friction                 ; vx toward 0 by 2000, or 8000 with +0x40 bit 0x10; zero under 10000
-0x1e053  f  start_effect                   ; ? effect table 0x991d3 (5 dwords each), count 0x28b922
+0x1e053  f  start_effect                   ; bx effects of kind dx at (eax, edx): each from effect_alloc, its script and word from table 0x991d3 (20 bytes a kind: script, word, setup routine) and the setup called; counted in 0x28b922
 0x1d9d6  f  camera_track                   ; entity eax into camera_targets for dx ticks (-1 for good), flags ebx; only if cx is 2, or 1 and +0x41 bit 0x80
-0x196db  f  panel_script_run               ; ? runs a command list: 1 → 0x19931, 2 → panel_icon_alloc …
+0x196db  f  panel_script_run               ; walks a HUD list of 20-byte entries {item, x, y, value, tick, out} to a null item: kind 1, 4, 5 a number (panel_icon_add, BNUM or SNUM digits showing the BCD at value), 2 a sprite (panel_icon_alloc: frame, sheet, flags) — docs/re/front/hud.md
 0x2fb39  f  skid_dust                      ; fast and bit 0x10: a puff every 4 ticks, with a sound
 0x28bfa0 d  shake_request
 0x287d84 d  camera_targets                 ; 32 × 16 bytes: entity (or 8 for a point), ticks left, flags (4 point, 8 priority, 0x10 off), x, y
@@ -429,23 +429,23 @@
 0x1007c  f  pause_game                     ; Esc in a level: option 0x2000000 on, every other pixel black, volumes 0x78 for 0x80; pause_tick until 0xb5ba8 (docs/re/front/pause.md)
 0x6b90f  f  poll_input                     ; read_joypad for each player not under demo playback
 0x14fe4  f  palette_tint_update            ; R, G, B brightness (0xcd834/6/2e) eased toward targets; on a change rebuilds the palette (palette_tint)
-0x1cf6d  f  run_task_list                  ; ? 32 slots: flag bit 0, routine at +4
-0x2d1b5  f  objects_tick                   ; ? blocks in the camera view run their routine; moving ones are listed at 0x40bf78
-0x60e82  f  moving_objects_tick            ; ? runs the routine at +0x28 of each listed object; empties the rubble list
-0x20409  f  level_sequence_step            ; ? table 0x9ff42 by step 0x28b95c, the step advancing when 0x28b960 runs out
-0x28bf44 d  camera_view                    ; ? x0, y0, x1, y1 of what is on screen
+0x1cf6d  f  level_tasks_tick               ; the level's task list 0x287c80 (32 slots of 8 bytes: flag bit 0, routine): each live one is run, 0x287d80 pointing at its slot — the HUD (0x1954f) and the super hoover (start_game), the rules' sequence or demolition, the double points
+0x2d1b5  f  objects_tick                   ; every live level object (records of 0x70 bytes from 0x3f61e8, flags & 0x401): a moving one (bit 0x400) is listed at 0x40bf78 (count 0x410462) for moving_objects_tick; a still one inside camera_view runs its routine (+0x68)
+0x60e82  f  moving_objects_tick            ; empties the rubble list (0x3f4014, rubble_count), then runs each moving object objects_tick listed — its routine at +0x28
+0x20409  f  sequence_tick                  ; every logic frame: dragon_steps[sequence_step] (0x9ff42; step 0 a bare ret, so nothing until the 1D show or a demolition sets a step), the step advancing when sequence_timer runs out
+0x28bf44 d  camera_view                    ; x0, y0, x1, y1 (s16) of the world on screen: camera_set_target's centre ± half its width, ± 100 screen px over its scale — what objects_tick, the effects and the draws cull to
 0x40bf78 d  moving_objects
 0x60595  f  probe_move_y                   ; the rows between y and y + vy across the box: kind bits met
-0x60a90  f  probe_floor_at                 ; would the entity stand at (ebx, y + 1)? via probe_move_y
-0x2ea50  f  resolve_path_cd                ; ? tries a file, then again on cfg.cd_drive (0x28bfb5)
+0x60a90  f  free_above_at                  ; 1 if the entity's box at (ebx, ecx + 1) moves a pixel up without meeting anything (probe_move_y & 0xa = 0); else 0, and y set where it stops
+0x2ea50  f  resolve_path_cd                ; opens a game file: as named, then with the drive letter swapped for cfg.cd_drive (0x28bfb5) unless that is d, and failing that stops CD audio (cd_audio_stop) and tries once more
 0x1fe47  f  spawn_at                       ; template at (cx, dx); bx = 0 faces it left
 0x1cff9  f  lowest_bit                     ; index of the lowest set bit of ax, 0..15
 0x1da48  f  camera_point                   ; a fixed point (ax, dx) in camera_targets for bx ticks
 0x2dbc4  f  entity_frame_rect              ; x, y, w, h of the current frame, mirrored facing left
 0x2eff8  f  rects_overlap
-0x2def3  f  probe_box_from_frame           ; ? width from the argument, height from the current frame → 0xa026c
+0x2def3  f  probe_box_from_frame           ; the probe box (0xa026c): its width from the argument, its height the current frame's — the hat and the dropped hammer probe with the size they are drawn
 0x1618f  f  sound_voice_alloc              ; a free voice of the 0x68-byte table at 0xce1a4, else the next round-robin
-0x16298  f  sound_voice_start              ; ? sets a voice running a sound script
+0x16298  f  sound_voice_start              ; sets the voice (eax) running the sound script at edx: flag 1, the runner sound_script_run, the script's first word at +0x10 and its body at +0x14, the counters cleared
 0x1631c  f  sound_script_run               ; a voice's script: calls [op*4 + 0x9641c] until a handler yields
 0x618d6  f  wait_any_key                   ; scancodes 1..0x66
 0x2be4e  f  camera_set_target              ; x clamped to 320..0x27ff, y to level_bottom - 50, plus the shake
@@ -462,18 +462,18 @@
 0x9641c  d  sound_script_ops               ; the 21 opcode handlers of the sound-script interpreter
 0x28bfb5 d  cfg_cd_drive
 0x165f9  f  sound_voice_stop               ; AIL_stop_sample, runs the voice's end callback
-0x16101  f  play_sound_ex                  ; ? play_sound with a data pointer, ebx and a level (+0x2c, twice at +0x2e)
-0x15fe5  f  play_sound_2                   ; ? a voice, then a random_step of its own
+0x16101  f  play_sound_at                  ; sound ax heard from the camera: ecx points at the source's x, edx at the camera's centre x (0x28bf92), ebx at its width (0x28bf9a), the pushed word the loudest level. Each tick (voice flag 0x40) it pans by the source's offset from the centre, fades as the view widens past 125, and bends its pitch as the camera moves — the bubble, the forklift, the cannons
+0x15fe5  f  play_sound_then_step           ; play_sound, then random_step_2 — the sound module's random register stepped, so the next voice with a random pitch (flag 0x80) sounds different; for sounds played many at once (popups, panel twinkles, the stomp)
 0x16c5c  f  random_step_2                  ; the sound module's copy of random_step
 0x16477  f  sound_voice_set_rate           ; AIL_set_sample_playback_rate
-0x6ad80  f  draw_entity                    ; ? blitter set-up from +0xcc/+0xce (screen) and +0xd0 (frame), blit_rle
+0x6ad80  f  draw_entity_scaled             ; an entity flagged +0x43 bit 8: its frame (+0xd0) at its screen point (+0xcc, +0xce), scaled 320 / (camera width - its depth +0x2e) — perspective
 0x6ae1e  f  draw_entity_blend              ; a scaled sprite in mode -2 (template +0x18 bits 0xa000): added light
-0x6aebc  f  draw_entity_resized            ; ? the same with the +0x50 / +0x52 size offsets
-0x6b400  f  draw_sprite_layers             ; ? sprite lists from 0x3f down, through the draw_entity family
-0x6b533  f  draw_sprite_layers_2           ; ? its twin
+0x6aebc  f  draw_entity_resized            ; an entity flagged +0x43 bit 0x80: its frame at its screen point, stretched by +0x50 / +0x52 px
+0x6b400  f  draw_sprite_layers             ; the draw lists 63 down to 19 (0x328 bytes each from 0x3e17a4: up to 201 entities, the count at +0x324), each drawn last-queued first and emptied — before objects_tick, so behind the level's blocks. Per visible entity (+0x40 bit 8): +0x42 bit 0x80 by depth, +0x43 bit 8 scaled (mode -2 added light), +0x43 bit 0x80 resized, else by its mode +0x20: 0 plain or mirrored, -1 mirrored both ways, -2 blended, others remapped
+0x6b533  f  draw_sprite_layers_2           ; the draw lists 18 down to 0, as draw_sprite_layers — after the blocks and the effects, so in front of them
 0x6caf0  f  entity_alloc                   ; from the free list at 0x594d04
-0x2eda0  f  sprite_list_add                ; ? onto the list at 0x3f16f4, flags 0x40000008
-0x2edd3  f  spawn_bare                     ; ? template in 0x3f2064, entity_alloc, sprite_list_add
+0x2eda0  f  spawn_setup                    ; fills last_spawned from the template at 0x3f2064 (sheet, frame, routine) and queues it for entities_settle: a new one (entity_alloc) on 0x3f1a1c, flags 9 — it gets its collider at the next settle; with the 201 all taken, the first unused one (find_free_entity) is taken over instead, on 0x3f16f4, flags 0x40000008
+0x2edd3  f  spawn_bare                     ; a sprite from the template in eax (kept at 0x3f2064): entity_alloc, then spawn_setup — no parent, no position
 
 # ── the backdrop, the blend table, demos (README `.SCN`, `.STP`, `.J`) ──
 0x1c759  f  backdrop_horizon               ; row 100 + 20.0 / (SDE[0] - camera z) × camera y, held to 0..199

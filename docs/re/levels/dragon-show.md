@@ -13,7 +13,7 @@ climbs. About 27 seconds, under CD track 10.
 eax) set an 80-tick timer, note Jack's x (0x28b96a) and his player's
 +0xa8 (0x28b95e), and play CD track 10. Neither global has a reader.
 
-`logic_frame` calls `level_sequence_step` (0x20409) every tick: it runs
+`logic_frame` calls `sequence_tick` (0x20409) every tick: it runs
 routine `dragon_steps[step]` (table VA 0x9ff42, 16 entries; step at
 0x28b95c), then counts the timer 0x28b960 down and moves to the next step
 when it reaches 0. A step that sets no timer advances itself. Entry 0 is

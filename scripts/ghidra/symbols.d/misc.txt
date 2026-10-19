@@ -1,7 +1,7 @@
 # Small helpers named by what their body plainly does.
 0x12b18  f  at_least_magnitude             ; *v keeps its sign but is pushed out to at least n (≤ 0 counts as negative)
 0x19c09  f  bcd_sub                        ; packed BCD, 8 digits, a - b with borrow; the score's counterpart to the adder
-0x1cf3d  f  slot32_add                     ; first free of 32 eight-byte slots (bit 0 = used), stores eax at +4; -1 if full
+0x1cf3d  f  level_task_add                 ; the first free slot of the level's task list (eax the routine, edx the list): bit 0 set, the routine at +4; -1 if all 32 are taken
 0x175c8  f  generic_thing_axis             ; from, to, step sign (+1/-1/0), speed — one leg of a generic thing's path
 0x176db  f  generic_thing_leg              ; loads leg +0x5a of the path into the moving fields
 0x177aa  f  demo_reset                     ; the four players' .J buffers at 0x253014 (stride 0xfac)
@@ -33,13 +33,13 @@
 0x1c735  f  backdrop_call_1c69f            ; a wrapper
 0x1c740  f  backdrop_mode_dispatch         ; table 0x98b7c by the detail setting 0x98500
 0x1c9cf  f  backdrop_call_6d2f4            ; a wrapper
-0x1ca78  f  debug_value_menu ?             ; UP/DOWN move a cursor, LEFT/RIGHT change the value it points at
+0x1ca78  f  debug_value_menu               ; UP / DOWN move a cursor, LEFT / RIGHT change the value it points at — reached only from two debug screens nothing opens (0x16ff1, the sound list 0x96478; 0x1ca1d, the list 0x98504): their flags 0x3187ea / 0x3187d2 are zeroed by game_init and never set
 0x1ccac  f  save_screen_rect               ; a clipped rectangle from the frame buffer (stride 576) to 0x277634 (stride 320)
 0x1ce73  f  table_next                     ; the next word of a table ended by 1234; 1 at the end
 0x1ce9e  f  die_after_timer                ; gone when +0x4a runs out
 0x1cebe  f  die_after_timer_puff           ; the same, leaving a puff at its centre
 0x1ceeb  f  clock_expire                   ; blinks its last 20 ticks, then a puff
-0x1cf21  f  camera_targets_clear           ; the 32-slot list at 0x287c80 (meant to be)
+0x1cf21  f  level_tasks_clear              ; meant to clear the 32 slots of the task list 0x287c80, but edx is never stepped: slot 0 is zeroed 32 times — harmless, as G.EXE is started afresh for every level and the list is zero already
 0x1d0ed  f  home_to_owner                  ; springs toward its owner (+0x54) + 0x58; gone after 51 ticks or on arrival
 0x1d1b4  f  decay_timers_50_52             ; +0x50, +0x52 down to 0
 0x1d224  f  str_copy_cat                   ; copy, then append
@@ -85,7 +85,7 @@
 0x1f6d4  f  players_flag                   ; flag entity of this player
 0x1f602  f  touching_own_flag              ; overlap test with the player's flag
 0x1f625  f  touching_own_flag_2
-0x1f6eb  f  player_marker_tick ?           ; rides Jack; frames 8/9 while he is in animation 64; set up by initialise_a_player
+0x1f6eb  f  player_marker_tick             ; a ball over Jack's head — FLAG.SPR 8 dim / 9 lit, 51 px up, recoloured per player (templates 0xa3524 / 0xa3540, remap words 0x8002 / 0x8003; set up by initialise_a_player): it rides him; while he touches his own flag it is lit every other 16 ticks; while his player's +0x54 record has word 8 = 0x40, every other 8 ticks and drawn 20 px bigger
 0x1f804  f  dust_tick                      ; frames to 19, +0x56 ticks each
 0x1fc59  f  play_sound_staggered           ; a sound whose start is offset by the frame counter
 0x1fe9f  f  blam_puff                      ; frames to 6, 3 ticks each
@@ -155,7 +155,7 @@
 0x6143f  f  dust_loop_tick                 ; frames 8-15, looping
 0x615ca  f  hoover_tick                    ; VAC on Jack: the suck list for his slot, the hoover sound
 0x617dc  f  hoover_dropped                 ; a dropped hoover falls, skids and stops
-0x1cd94  f  scn_picture_double             ; ? unreferenced: the 320x200 picture at 0x277634 (the .SCN's third part) doubled to 320x400
+0x1cd94  f  scn_picture_double             ; dead code — no call, no pointer: the 320x200 picture at 0x277634 (the .SCN's third part) doubled to 320x400
 #
 # Effect particles (start_effect 0x1e053, table 0x991d3: 20 bytes — ?, colour, start, move, gravity).
 # Found by their pointers only.

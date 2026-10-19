@@ -65,9 +65,9 @@
 0x5f5f1  f  fall_and_bounce                ; gravity 0x4800, half the speed back off the level's bottom
 0x5f674  f  pickup_physics_2
 0x60801  f  probe_cells_down               ; a probe's inner loop: column cells by the .COL table, bit per kind
-0x60af4  f  floor_below_point              ; would the entity land at (ebx, ecx)? 0 if so
-0x60b81  f  wall_left_of_point             ; a wall probe from a point, one px
-0x60bfc  f  wall_right_of_point
+0x60af4  f  floor_below_point              ; 0 if the entity, put at (ebx, ecx - 1) and moved a pixel down, lands on the floor or the level's bottom (probe & 0x66), y then set to it; else 1
+0x60b81  f  free_left_at                   ; 1 if the box at (ebx + 1, ecx) moves a pixel left freely; else 0, x set where it stops
+0x60bfc  f  free_right_at                  ; 1 if the box at (ebx - 1, ecx) moves a pixel right freely; else 0
 0x618f7  f  wait_keys_released             ; until none of the 102 keys is down
 0x61a62  f  clear_buffer_64000
 0x61ae2  f  copy_buffer_to_vga             ; 64000 bytes to 0xa0000
@@ -87,7 +87,7 @@
 0x6a204  f  keyboard_install               ; the old int 9 vector kept, ours in
 0x6a240  f  keyboard_remove
 0x6a26a  f  sprite_sheets_forget_2
-0x6a6a2  f  draw_entity_flip_y             ; draw_entity variants by mirroring and blend: set up the blitter's corners
+0x6a6a2  f  draw_entity_flip_y             ; draw_entity_scaled variants by mirroring and blend: set up the blitter's corners
 0x6a7ab  f  draw_entity_plain
 0x6a8cf  f  draw_entity_flip_x
 0x6a9ef  f  draw_entity_flip_xy
@@ -117,3 +117,5 @@
 0x6ce57  f  entity_lists_init
 0x17399  f  button_physics                 ; sprite_physics + apply_friction
 0x2e88d  f  wait_vretrace                  ; port 0x3da: out of the retrace, then into the next
+0x3f1a1c d  spawned_queue                  ; entities spawned this frame (count 0x3f206e): entities_settle clears their bit 1 and gives each a collider when its template asks (template +8 bit 0)
+0x3f16f4 d  reused_queue                   ; entities taken over this frame, the pool full (count 0x3f206a): entities_settle clears +0x43 bit 0x40 and gives or takes back a collider by the template
