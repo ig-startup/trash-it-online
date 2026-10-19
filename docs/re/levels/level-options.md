@@ -44,5 +44,5 @@ Clone: bits 0x01-0x20 are exported per level as `handOptions`
 0x1c) and applied in `client/src/entities/Player.js` (`HAND`,
 `drawAtStart`): BUT1 and UP+BUT1 as the tests above, and the draw at the
 level's start; with the hoover out, 0x01 blocks only UP+BUT1 (the swap
-to the hammer), as in jack_hoover_held. The DOWN actions these bits also
-gate are not in the clone.
+to the hammer), as in jack_hoover_held; 0x02 and 0x08 hold the DOWN
+actions back too.
