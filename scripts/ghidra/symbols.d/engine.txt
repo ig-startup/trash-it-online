@@ -1,0 +1,119 @@
+# Engine plumbing: camera, frame, draw queue, files. Read in the sweep of 2026-10-14.
+0x2c178  f  camera_set_wanted              ; wanted x, y, zoom (0x28bf54/58/5c)
+0x2c198  f  camera_ease                    ; x, y by 1/8, zoom by 1/4 a tick; y kept above the level's bottom − 90
+0x2c22f  f  camera_frame_targets           ; the box round the camera list, margins 60 px (102 above); with option 0x8000 not below bottom − 50
+0x2c3f9  f  copy_level_state_words         ; four words of the level state to 0x28bfac
+0x2c502  f  mouse_left_button              ; int 33h
+0x2c517  f  mouse_right_button             ; int 33h
+0x2c68e  f  row_table_init                 ; frame-buffer row pointers, stride 576, with margins above and below
+0x2c700  f  video_mode_save                ; int 10h mode kept; a grey ramp palette at 0x2d77a4
+0x2c802  f  file_stem                      ; copy up to the '.'
+0x2c821  f  return_1
+0x2c8f3  f  put_pixel_back_buffer          ; a pixel into 0x2e9b24 (stride 576)
+0x2c935  f  read_token                     ; the next whitespace-separated word from an open file
+0x2cb50  f  timer_tick_call                ; FUN_6c991
+0x2cb5a  f  frame_end                      ; vretrace, the palette if dirty, the page flip (0x61c03), the backdrop
+0x2cc90  f  pause_frame_end                ; the same without the backdrop
+0x2d487  f  tile_maps_setup                ; the live and provisional tile maps; each object's tiles written
+0x2d5a4  f  load_hammer_sprites            ; for each player
+0x2d5cd  f  load_hammer_sprite_if_needed   ; the hammer record's sheet (+0x5c) unless loaded
+0x2d5e9  f  draw_queue_entity              ; an entity's frame rectangle, clipped, into its layer's bucket
+0x2d8c9  f  draw_bucket_add                ; 64 layers × 201 entries at 0x3e17a4
+0x2d8eb  f  draw_buckets_clear
+0x2de9e  f  frame_half_size                ; this frame's width / 2 and height → 0xa026c/e
+0x2dec9  f  frame_quarter_size             ; width / 4, width / 2
+0x2e16b  f  draw_if_on_screen              ; calls the entity's draw (+0x68) when its box meets the view
+0x2e1bf  f  draw_if_on_screen_2
+0x2e213  f  draw_if_on_screen_3
+0x2e3ec  f  frame_width                    ; of frame edx in a sheet
+0x2e3fe  f  draw_digit                     ; a HUD digit (≤ 10) with blit_rle, advancing x
+0x2e5fb  f  plot_world_pixel               ; a pixel at a world point, when in view
+0x2e7e0  f  release_memory_block           ; a library free and close, 1 on success
+0x2e820  f  path_join_ext                  ; builds a file name with the extension 0x90d7c
+0x2e892  f  load_file_2
+0x2e8b0  f  release_memory
+0x2e8ca  f  load_sound_bank_call
+0x2e8dc  f  sprite_sheets_forget           ; the 256 loaded-sheet flags at 0x58779c cleared
+0x2e9a3  f  pause_save_screen              ; the 320×200 view to 0xa61a8
+0x2e9f9  f  pause_restore_screen           ; and back
+0x2ea18  f  level_file_exists              ; directory + name, then resolve_path_cd
+0x2eaab  f  load_file_3
+0x2eadb  f  entities_settle                ; logic_frame: kills queued, then the touch pass for new links
+0x2ede5  f  spawn_carried_copy             ; what Jack takes hold of gets a stand-in he carries (frame 101 for Jack, 0 for timmies)
+0x2eefd  f  entity_lists_reset
+0x2ef15  f  touch_pass                     ; an entity against the sprite list by category mask: the other's event type picks the outcome from this one's list
+0x2f26e  f  search_with_box                ; the sprite list against the box at [edx], ebx the test
+0x2f2f0  f  point_in_box_facing            ; a box mirrored by facing, against the other's point
+0x2f4d6  f  near_point                     ; |dx| and |dy + edx| under ecx
+0x2f51e  f  find_free_entity               ; the first unused one (template flag 2) on the free list
+0x2f622  f  do_nothing_state
+0x2f6e6  f  panel_slide                    ; x = home + vx, vx shrinking by 1/16
+0x2f706  f  copy_velocity
+0x2f715  f  ob_class_18_bin_1
+0x2f719  f  ob_class_19_bin_2
+0x2f720  f  ob_class_20_bin_3
+0x2f727  f  ob_class_21_bin_4
+0x2f785  f  timbin_tick                    ; looks for a falling timmy (mask 0x400) in its mouth
+0x2f7ea  f  timbin_swallow                 ; the timmy is binned: count, stage frame (timmy_bin_stages); full → option 0x800
+0x2f9f2  f  random_upto                    ; 0..dx
+0x2fa0d  f  random_between                 ; ax..dx
+0x2fa5e  f  random_1023
+0x2fad0  f  random_nudge                   ; *eax += dx unless near its limit
+0x2fafa  f  skid_dust_tick                 ; frames to 15, a frame every other tick
+0x2fd06  f  ob_class_14_timmy
+0x2fd42  f  ob_class_17_king_timmy
+0x5f5f1  f  fall_and_bounce                ; gravity 0x4800, half the speed back off the level's bottom
+0x5f674  f  pickup_physics_2
+0x60801  f  probe_cells_down               ; a probe's inner loop: column cells by the .COL table, bit per kind
+0x60af4  f  floor_below_point              ; would the entity land at (ebx, ecx)? 0 if so
+0x60b81  f  wall_left_of_point             ; a wall probe from a point, one px
+0x60bfc  f  wall_right_of_point
+0x618f7  f  wait_keys_released             ; until none of the 102 keys is down
+0x61a62  f  clear_buffer_64000
+0x61ae2  f  copy_buffer_to_vga             ; 64000 bytes to 0xa0000
+0x61b78  f  clear_back_buffer              ; the 320×200 view of the frame buffer
+0x61bbd  f  wait_vretrace_start
+0x61c03  f  present_frame                  ; the 320×200 view (stride 576) to video memory 0xa0000
+0x61caf  f  vga_copy_four_planes           ; plane masks 1, 2, 4, 8 in turn
+0x69019  f  split_by_mass                  ; two speeds after a landing, shared by mass (momentum split), never below 0
+0x6955b  f  group_restamp                  ; a landed group's objects written back into the tile map at their new spots
+0x6963d  f  group_unlink                   ; clears a group's chain
+0x69caf  f  structure_reset                ; the 50-entry work lists, the objects, the structural pass timers
+0x69d33  f  objects_clear                  ; 800 object records
+0x69d58  f  object_tiles_stamp_check       ; an object's tiles into the live map; reports overlaps
+0x69f54  f  damage_bottom_row              ; damage_up on every object on the level's bottom row (rubble mode)
+0x6a134  f  keyboard_table_clear           ; the 128-key down table
+0x6a166  f  keyboard_isr                   ; port 0x60: E0 prefix, extended keys remapped (0xa4a95), down/up into the table
+0x6a204  f  keyboard_install               ; the old int 9 vector kept, ours in
+0x6a240  f  keyboard_remove
+0x6a26a  f  sprite_sheets_forget_2
+0x6a6a2  f  draw_entity_flip_y             ; draw_entity variants by mirroring and blend: set up the blitter's corners
+0x6a7ab  f  draw_entity_plain
+0x6a8cf  f  draw_entity_flip_x
+0x6a9ef  f  draw_entity_flip_xy
+0x6aafb  f  draw_entity_blend_2
+0x6ac07  f  draw_entity_depth              ; a scene sprite scaled by 0x50000000 / (z − camera z), shift +0x4a
+0x6acd1  f  draw_entity_depth_saved        ; the same, saving the screen under it first (save_screen_rect)
+0x6b21c  f  load_level_sprites             ; each sheet the level lists, with its palette range
+0x6b722  f  joystick_calibration_load      ; port, flags and axis limits from the level state +0xa4..+0xd0
+0x6bae4  f  copy_key_map                   ; 12 key codes into the player (+0x2c)
+0x6bb17  f  read_device                    ; by device: keyboard, joystick A/B, GrIP …
+0x6bc62  f  keyboard_read_keys             ; the player's keys → input bits
+0x6bcc6  f  keyboard_input_update          ; held, previous, pressed = held & ~previous
+0x6be71  f  joystick_centre                ; reads the stick, sets the dead zone thresholds
+0x6bf25  f  joystick_read_axes             ; port 0x201 timing loop
+0x6c01a  f  joystick_read_buttons
+0x6c317  f  joystick_read_axes_2
+0x6c40e  f  joystick_read_buttons_2
+0x6c790  f  debug_text_draw                ; a queued debug string, glyph by glyph
+0x6c92d  f  glyph_draw                     ; a glyph's bytes into 0x2e9b24 (stride 576)
+0x6c991  f  debug_text_flush               ; the queued strings (0x58a368)
+0x6c9ce  f  debug_text_clear
+0x6c9da  f  entity_pool_init               ; 200 entities of 0xd8 bytes on a free list
+0x6ca6f  f  entity_take                    ; from the free list onto the live list (max 200)
+0x6cbe0  f  entity_take_after              ; the same, inserted after eax (children)
+0x6cca8  f  entity_give_back
+0x6cdf6  f  collider_give_back             ; the 200 collision records (0x594d0c, 20 bytes)
+0x6ce57  f  entity_lists_init
+0x17399  f  button_physics                 ; sprite_physics + apply_friction
+0x2e88d  f  wait_vretrace                  ; port 0x3da: out of the retrace, then into the next

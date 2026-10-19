@@ -8,7 +8,7 @@
 0x1e09f  f  map_walk_tick                  ; one pixel on: not back, the key's pair first tick, a point first
 0x1e5c9  f  map_move_to_neighbour          ; x, y by the neighbour index; came-from into 0xd981c
 0x1e923  f  map_settle_facing              ; a new direction only after it held two ticks
-0x1dbd9  f  map_place_jack                 ; on the record's node, came 4, stopped; point positions from LVSPAT
+0x1dbd9  f  map_place_jack                 ; on the record's node, came 4, stopped; point positions from LVSPAT; the node icons
 0x1e708  f  map_take_warp                  ; node word 3: jump to the paired node
 0x1e788  f  map_pick_jack_facing           ; looks 32 steps ahead to choose Jack's walking frame
 0x1ff5a  f  map_start_node                 ; record +0x24 = level, +0xdc = film, +0x1b8 = node
@@ -69,3 +69,28 @@
 0x1eaf4  f  map_dialog_tick                ; the sign (+0xc0 mode): 0 buy back, 1/2 toll gate, 3 play level?, 4 quit
 0x1e9da  f  dialog_yes_no                  ; the '~': left 43 yes, right 42 no; a button: 4 if no, else 3
 0x1eae8  f  dialog_word_tick               ; a word of the sign, screen-pinned
+#
+# Screen resources (docs/re/front/proj-dat.md).
+0x2424a  f  load_screen_resources          ; a 0x30-byte list: name, +0x20 kind (0 sheets from a PROJ .DAT, 2 a file)
+0x26d77  f  load_screen_sheets             ; read the .DAT, reset the pool, load every sheet it names
+0x26db1  f  dat_read_sheet_list            ; names and slots only; frames stepped over, the tail unread
+0x26bf4  f  load_sheets_into_slots         ; -1-ended slot list -> each .SPR, "Problem loading sprite"
+0x25b43  f  sprite_load_into_slot          ; into the 0x177000-byte pool at 0x39c3d8
+0x25b0c  f  sprite_pool_reset              ; 0x100 slots emptied
+0x23e40  f  load_file                      ; 1 loaded, 0 not found, 2 too big for the buffer?
+#
+# The map's objects (docs/re/front/map-objects.md).
+0x24e39  f  obj_create                     ; template in EAX: slot, depth, behaviour; new object in 0x39a0cc
+0x2561c  f  obj_remove                     ; bit 4 of +0x90, queued
+0x1d351  f  script_start                   ; a free controller (0x84 bytes) runs the script for the object
+0x1ca9a  f  script_tick                    ; values < 0x8000 are frames; 0xea8b..0xeaaf commands
+0x202eb  f  random                         ; shift-xor generator at 0xd6d34, mod n + 1
+0x21a3b  f  play_sound
+0x1a88a  f  frame_end                      ; tick counter 0xd6d4c, waits for the retrace
+0x50990  f  wait_retrace
+0x1db14  f  map_set_picture                ; the world sheet's frame (world table +0xc) as the screen
+0x1f941  f  map_jack_tick                  ; stand pose 0x1e9d1[d], walk 0x1e9c8[d] + (tick/2 & 15)
+0x1f5f7  f  map_bin_tick                   ; scripts 0x89dfa rattle, 0x89e36 flat, 0x89efe crushed now
+0x1f73f  f  map_hat_tick                   ; scripts 0x89e4a, 0x89e9e, 0x89ebe
+0x1f689  f  map_t_node15_tick              ; T's node 15: frames 0-7, depth by Jack's y
+0x234bf  f  obj_draw                       ; x + frame ox, y + frame oy; +0x90 bit 8 mirrored

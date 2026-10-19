@@ -195,7 +195,6 @@
 0x29f7a  f  jack_flattened                 ; slot 65, the pancake
 0x2a199  f  jack_knocked_out               ; slot 69, thrown up; after 150 ticks → fly to flag
 0x2a2fe  f  jack_fly_to_flag               ; slot 64, damped spring to the flag
-0x2a4d8  f  jack_state_2a4d8               ; plays slot 0x42, stands after 28 frames; not traced
 
 # ── hammers and blows ─────────────────────────────────────────────────────
 0x1f83d  f  hammer_blow                    ; strike → blow box
@@ -254,7 +253,7 @@
 # ── collapse pass helpers named in the notes (role not pinned down) ───────
 0x135fc  f  ufo_respawn_tick               ; first call of the frame: while fewer than the most fly, a new UFO every `respawn` ticks
 0x162c7  f  structural_pass_b              ; ?
-0x2bfda  f  structural_pass_c              ; ?
+0x2bfda  f  camera_update                  ; by mode 0x28bf60: 1 frame the targets, 2 follow a point, 3 debug keys; then camera_ease
 0x1c821  f  draw_backdrop                  ; the horizon (0x1c759), the near plane (0x18f74), the far plane (0x1c895)
 
 # ── data: globals ─────────────────────────────────────────────────────────
@@ -266,6 +265,7 @@
 0x28b938 d  start_positions                ; per player: i16 x, y + 20
 0x28b948 d  flag_entities                  ; per player: the FLAG.SPR entity
 0x28b97c d  players                        ; four 360-byte player structs
+0x28bf28 d  current_hammer                 ; the current player's hammer entity (player +0x54)
 0x28bf2c d  current_player                 ; pointer to the one being run
 0x28bf34 d  input_pressed                  ; this tick's newly pressed bits
 0x28bf36 d  input_held                     ; held bits
@@ -415,11 +415,11 @@
 0x2c323  f  request_shake                  ; ? keeps the largest value asked for this frame (0x28bfa0)
 0x20db1  f  apply_friction                 ; vx toward 0 by 2000, or 8000 with +0x40 bit 0x10; zero under 10000
 0x1e053  f  start_effect                   ; ? effect table 0x991d3 (5 dwords each), count 0x28b922
-0x1d9d6  f  queue_hit                      ; ? 32-slot list at 0x287d84: entity, value, ebx
+0x1d9d6  f  camera_track                   ; entity eax into camera_targets for dx ticks (-1 for good), flags ebx; only if cx is 2, or 1 and +0x41 bit 0x80
 0x196db  f  panel_script_run               ; ? runs a command list: 1 → 0x19931, 2 → panel_icon_alloc …
 0x2fb39  f  skid_dust                      ; fast and bit 0x10: a puff every 4 ticks, with a sound
 0x28bfa0 d  shake_request
-0x287d84 d  hit_queue
+0x287d84 d  camera_targets                 ; 32 × 16 bytes: entity (or 8 for a point), ticks left, flags (4 point, 8 priority, 0x10 off), x, y
 
 # ── the frame around a level ──────────────────────────────────────────────
 0x2ca01  f  game_init                      ; buffers, input devices, player_count from TRASHIT.DAT, font
@@ -427,7 +427,7 @@
 0x10167  f  level_finish                   ; stops the music; a won level (state 3, or 0x11 with +0x24 = 0) gets the end sequence
 0x1007c  f  pause_game                     ; ? loops until 0xb5ba8 is set, option bit 0x2000000 on, volumes 0x78 for 0x80
 0x6b90f  f  poll_input                     ; read_joypad for each player not under demo playback
-0x14fe4  f  audio_update                   ; ? when the volume settings change, re-applies them
+0x14fe4  f  palette_tint_update            ; R, G, B brightness (0xcd834/6/2e) eased toward targets; on a change rebuilds the palette (palette_tint)
 0x1cf6d  f  run_task_list                  ; ? 32 slots: flag bit 0, routine at +4
 0x2d1b5  f  objects_tick                   ; ? blocks in the camera view run their routine; moving ones are listed at 0x40bf78
 0x60e82  f  moving_objects_tick            ; ? runs the routine at +0x28 of each listed object; empties the rubble list
@@ -439,7 +439,7 @@
 0x2ea50  f  resolve_path_cd                ; ? tries a file, then again on cfg.cd_drive (0x28bfb5)
 0x1fe47  f  spawn_at                       ; template at (cx, dx); bx = 0 faces it left
 0x1cff9  f  lowest_bit                     ; index of the lowest set bit of ax, 0..15
-0x1da48  f  hit_queue_add                  ; ? a type-8 entry in the 32-slot list at 0x287d84
+0x1da48  f  camera_point                   ; a fixed point (ax, dx) in camera_targets for bx ticks
 0x2dbc4  f  entity_frame_rect              ; x, y, w, h of the current frame, mirrored facing left
 0x2eff8  f  rects_overlap
 0x2def3  f  probe_box_from_frame           ; ? width from the argument, height from the current frame → 0xa026c

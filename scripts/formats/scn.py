@@ -30,9 +30,12 @@ Across the archive there are two sizes, and both divide by 256 exactly:
 | size | rows | what it holds |
 |---|---|---|
 | 131072 | 512 | two 256x256 textures |
-| 195072 | 762 | two 256x256 textures and one 256x250 |
+| 195072 | 762 | two 256x256 textures and a 320x200 picture the game never draws |
 
-What the textures are varies by level. In 0C the first is a brick wall
+Texture 0 is the ground the renderer lays below the horizon, texture 1
+the upright backdrop above it (docs/re/formats/scn.md).
+
+What the textures are varies by level. In 0C the first is brick paving
 and the second is a scene — cloudy sky, a chimney, a pylon, a fence
 above a brick base. In 0D both are stone walls at different light
 levels. A 256x256 texture tiles seamlessly in both directions, which the

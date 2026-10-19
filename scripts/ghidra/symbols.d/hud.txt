@@ -1,0 +1,23 @@
+# The panel (HUD): icons, numbers, its little scripts, the clock's BCD. Read in the sweep of 2026-10-14.
+0x195e5  f  hud_setup                      ; clears, then panel scripts by game kind (0, 1, 2) and options 0x100000/0x400000
+0x197c8  f  hud_objects_clear              ; 16 records at 0x28729c (stride 0x94)
+0x19910  f  panel_icons_clear              ; 10 records at 0x287044 (stride 0x1e)
+0x19931  f  panel_icon_add                 ; a free icon slot: owner, frame, flags, x - 18
+0x199cc  f  hud_number_draw                ; up to 8 digits (+0x1c…), skipping leading zeros; centred with flag 8
+0x19ad0  f  hud_objects_tick               ; each live record: its routine, its draw, its script (flag 4)
+0x19b53  f  hud_number_centre              ; half the digits' width to the left
+0x19c6f  f  bcd_sub_clock                  ; 8 packed digits minus, digit 6 counting in sixes (minutes:seconds)
+0x19cea  f  bcd_add_clock                  ; 8 packed digits plus, digit 6 in sixes
+0x19d61  f  bcd_add_clock_5                ; as bcd_add_clock, digit 5 in sixes
+0x19f4c  f  hud_shake                      ; random jitter of up to 15 px for +0x20 ticks; double points wobble
+0x1a199  f  hud_run_script                 ; give a record a script (+0x44) and start it
+0x1a1fb  f  hud_script_step                ; the script ops 0-19: set x, y, targets, speeds, wait, …
+0x1a4a7  f  hud_ease_axis                  ; accelerate toward a target, brake 4x as hard
+0x1a688  f  bell_finish_place              ; a player reaches the bell: place stored in level state +0x30, a tint per place (0x9818a), a panel icon; with one player in the game (0x3f209e) the clock is capped at 1:00 ?
+0x1a950  f  sum_by_table                   ; greedy: for each (step, add) pair in 0x981ac, add while ax ≥ step
+0x1aaa8  f  pause_hud                      ; the pause panel script; 0x287c50 = 2 with option 0x10000000
+0x1ab54  f  hud_wobble_step                ; sucker_cup_offsets on a HUD record
+0x1ac0b  f  hud_flag_8000                  ; 0x287c50 |= 0x8000
+0x1ade8  f  players_bade_clear             ; player +0x13e = 0, all four
+0x1ae0a  f  players_bade_set               ; player +0x13e = 1, unless game 0x1d/0x1e
+0x1b12f  f  level_counters_reset           ; 0x287c58-66: UFOs, timmies, counts; 0x287c5e = 70

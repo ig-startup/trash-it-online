@@ -1,0 +1,21 @@
+# Small effects: pieces, puffs, pop-ups. Read in the sweep of 2026-10-14; one line per routine is the record.
+0x11a92  f  spawn_got_popup                ; GOT.SPR at an entity: rises 1-4 px/tick, 30-45 ticks, one of four motions (table 0x9372c), a sound
+0x11b99  f  got_rise                       ; y += +0x36, then got_animate
+0x11bf9  f  got_animate                    ; frame cycles every 4 ticks back to +0x60
+0x11c37  f  spawn_puff                     ; a puff at (ax, dx), frame 0, two ticks a frame
+0x11d4b  f  puff_tick                      ; BLOI.SPR: seven frames, two ticks each, then gone
+0x1232c  f  piece_fall                     ; gravity 0x2000, a frame every 4 ticks to 23, then gone
+0x12377  f  piece_fall_late                ; as piece_fall, frames only after 16 ticks
+0x127e1  f  spk_piece_fall                 ; SPK: gravity 0x2400, skids to a stop, frames to 42, a trail effect; gone below the level
+0x129bb  f  blam_flame_tick                ; BLAM: follows a path table (0x93984) from its owner, frames 9-13; gone at -1, freeing the owner
+0x12a9a  f  blam_trail                     ; eases +0x58/+0x5c toward table 0x93a14, start_effect with them
+0x12c2e  f  bomb_piece_tick                ; BOM pieces: gravity 0x4800, frames 18-20 flicking; gone below the level or when unlinked
+0x12d40  f  bomb_burst                     ; spawn_git_pieces for a bomb
+0x12d4d  f  spawn_git_pieces               ; 2+2+2 big pieces (frames 18-22) and 7 small (23), flung up 3+ px/tick
+0x12070  f  clock_physics                  ; sprite_physics + apply_friction
+0x1204a  f  clock_physics_2                ; sprite_physics + 0x20e04
+0x11fbc  f  clock_spin                     ; every other tick a step of the spin offsets
+0x11ff6  f  clock_spin_mirrored            ; as clock_spin, facing from table 0x9384c
+0x12039  f  clock_falling                  ; physics + 0x1ceeb
+0x11e63  f  clock_hop                      ; the hop-about state: jiggles, bounces up 1.8-5.8 px; a blow from above → clock_hit
+0x1483d  f  expl_tick                      ; EXPL.SPR: five frames, 4 ticks each, drifting with its v

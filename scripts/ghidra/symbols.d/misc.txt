@@ -2,3 +2,157 @@
 0x12b18  f  at_least_magnitude             ; *v keeps its sign but is pushed out to at least n (≤ 0 counts as negative)
 0x19c09  f  bcd_sub                        ; packed BCD, 8 digits, a - b with borrow; the score's counterpart to the adder
 0x1cf3d  f  slot32_add                     ; first free of 32 eight-byte slots (bit 0 = used), stores eax at +4; -1 if full
+0x175c8  f  generic_thing_axis             ; from, to, step sign (+1/-1/0), speed — one leg of a generic thing's path
+0x176db  f  generic_thing_leg              ; loads leg +0x5a of the path into the moving fields
+0x177aa  f  demo_reset                     ; the four players' .J buffers at 0x253014 (stride 0xfac)
+0x17914  f  open_file_2                    ; FUN_79066
+0x17976  f  demo_next_word                 ; a .J run: count, then the input word; runs out → demo over (0x3187f0)
+0x18059  f  spawn_scene_sprites_all        ; when the level has them (0x287c74): every one of 0x96c00
+0x1835a  f  scene_sprites_sort             ; bubble sort by depth (+0x0c of 44-byte records at 0x256f24)
+0x18395  f  scene_sprite_swap_if           ; swap two records when the second is nearer
+0x1840f  f  grip_read_status               ; GrIP: three driver calls → bits 4/8
+0x1853d  f  grip_list_pads                 ; GrIP: which of slots 1-4 hold a pad
+0x18767  f  grip_shutdown                  ; GrIP driver off, its DOS memory freed
+0x1878e  f  grip_load_driver               ; a "DB" image: size words, XOR checksum, DOS memory by DPMI (int 31h), copied in
+0x189d2  f  grip_free_dos_memory           ; DPMI free
+0x18fa5  f  scale_by_table                 ; table 0x96ab4[ax] × 0x28703a
+0x1931f  f  sucker_cup_back                ; cup offsets a step; arrived → sucker_reset
+0x19403  f  sucker_physics                 ; sprite_physics + sucker_friction
+0x19429  f  sucker_friction                ; on the ground stopped dead; else 2000 a tick
+0x18fba  f  ob_class_22_sucker             ; SUCKER.SPR base and cup
+0x1b1af  f  cog_tick                       ; class 24's cog: waits in its block, then spins frames 12-15
+0x1b3c5  f  pickup_physics                 ; sprite_physics + apply_friction
+0x1b44f  f  super_hoover_fall              ; BVAC drops to the level's bottom
+0x1b69a  f  panel_spawn_layer              ; PANEL frame 21 linked to the panel
+0x1b7ca  f  panel_spawn_part               ; PANEL frame 18 + n, a parallax divisor (+0x4e), negative → flag 0x10
+0x1b87a  f  panel_part_place               ; parallax from the camera; when the panel goes, a spark
+0x1b965  f  panel_spark_wait               ; waits +0x54, then flies off
+0x1b9c9  f  spark_fly                      ; vx += vy; gone when unlinked
+0x1b9f3  f  panel_spark_twinkle            ; frames 21-36 with a sound, then flies off
+0x1bb20  f  spawn_panel_spark              ; Jack touched the panel: a spark at a random spot
+0x1c735  f  backdrop_call_1c69f            ; a wrapper
+0x1c740  f  backdrop_mode_dispatch         ; table 0x98b7c by the detail setting 0x98500
+0x1c9cf  f  backdrop_call_6d2f4            ; a wrapper
+0x1ca78  f  debug_value_menu ?             ; UP/DOWN move a cursor, LEFT/RIGHT change the value it points at
+0x1ccac  f  save_screen_rect               ; a clipped rectangle from the frame buffer (stride 576) to 0x277634 (stride 320)
+0x1ce73  f  table_next                     ; the next word of a table ended by 1234; 1 at the end
+0x1ce9e  f  die_after_timer                ; gone when +0x4a runs out
+0x1cebe  f  die_after_timer_puff           ; the same, leaving a puff at its centre
+0x1ceeb  f  clock_expire                   ; blinks its last 20 ticks, then a puff
+0x1cf21  f  camera_targets_clear           ; the 32-slot list at 0x287c80 (meant to be)
+0x1d0ed  f  home_to_owner                  ; springs toward its owner (+0x54) + 0x58; gone after 51 ticks or on arrival
+0x1d1b4  f  decay_timers_50_52             ; +0x50, +0x52 down to 0
+0x1d224  f  str_copy_cat                   ; copy, then append
+0x1d239  f  str_copy
+0x1d24a  f  str_cat
+0x1d252  f  orbit_wobble                   ; eases toward the owner plus offsets from table 0x98b96 (ended by 1234)
+0x1d2d5  f  ob_class_15_dynamite           ; DYNA.SPR: kind by payload word 7 — see docs/re/objects/dynamite.md
+0x1d463  f  dyna_spark_tick                ; the fuse spark on its stick, frames 2/3 every 12 ticks
+0x1d6f8  f  dyna_explode                   ; blast_light_neighbours, a shake, a sound, the palette flashes (R, G, B to 200)
+0x1d761  f  cannon_flash_tick              ; BLAM on the barrel's mouth, frames 9-13, a puff every +0x4e ticks
+0x1d986  f  release_from_holder            ; out of Jack's hands or a sucker's
+0x1da39  f  camera_target_remove           ; slot ax of the list at 0x287d84
+0x1daa7  f  camera_targets_bounds          ; the box around every live entry of the 32-slot list (camera_targets): what the camera frames; priority (flag 8) targets, if any, alone
+0x1dc86  f  min_s16
+0x1dc8f  f  max_s16
+0x1dc98  f  min_s16_2
+0x1dca1  f  max_s16_2
+0x1dcaa  f  camera_look_input              ; with input 0x200: the D-pad shifts the player's camera offset, ±400 x, ±200 y, 32 a tick
+0x1ddc6  f  camera_player_follow           ; the player's camera point at Jack + offsets; with 0x100 one player may drop out of the framing
+0x1dec1  f  combos_reset                   ; the four players' key-combination tables at 0x287f94 (4 × 4 × 20 bytes)
+0x1df22  f  combo_register                 ; a player's list of (key sequence, handler) pairs
+0x1df6c  f  combos_check                   ; every registered combination against the player's input word
+0x1dfc6  f  combo_step                     ; the next key matched → advance; the sequence's -1 → its handler; a wrong key or 10 ticks idle → start over
+0x1e123  f  effect_free
+0x1e130  f  effects_clear                  ; the 300 pixel effects
+0x1e1ca  f  effects_draw                   ; each live effect is one pixel, plotted when on screen
+0x1e2cc  f  effect_alloc                   ; a free one of 300, round-robin
+0x1e54d  f  effect_pair                    ; two pixels flung ±2 px, up 1
+0x1e680  f  players_to_starts              ; every player to its start position
+0x1e6c3  f  ob_class_1_lead                ; LEAD.SPR, the weight
+0x1eb0d  f  ob_class_0_seesaw              ; BCSAW.SPR
+0x1f497  f  ob_class_2_flag_1              ; player 1's flag
+0x1f4fe  f  ob_class_3_flag_2
+0x1f505  f  ob_class_4_flag_3
+0x1f50c  f  ob_class_5_flag_4
+0x1f513  f  ob_class_9_start_1
+0x1f517  f  ob_class_10_start_2
+0x1f51e  f  ob_class_11_start_3
+0x1f525  f  ob_class_12_start_4
+0x1f5aa  f  flag_wave                      ; frames 0-7, bobbing by table 0x997c0
+0x1f698  f  flag_unfurl                    ; after 30 ticks, frames down to 0, then flag_wave
+0x1f6d1  f  owner_players_flag             ; flag entity of the owner's player
+0x1f6d4  f  players_flag                   ; flag entity of this player
+0x1f602  f  touching_own_flag              ; overlap test with the player's flag
+0x1f625  f  touching_own_flag_2
+0x1f6eb  f  player_marker_tick ?           ; rides Jack; frames 8/9 while he is in animation 64; set up by initialise_a_player
+0x1f804  f  dust_tick                      ; frames to 19, +0x56 ticks each
+0x1fc59  f  play_sound_staggered           ; a sound whose start is offset by the frame counter
+0x1fe9f  f  blam_puff                      ; frames to 6, 3 ticks each
+0x202f2  f  vm_expire                      ; VM.SPR: die_after_timer
+0x2030e  f  spawn_vm                       ; VM.SPR at the level's bottom centre, frame 1
+0x20370  f  vm_flicker                     ; jitters, frames 1-4, the palette flickering 100-131
+0x2053b  f  spawn_sized_effect             ; a template at (ax, dx - cx/2) with size bx × cx
+0x206a6  f  die_after_timer_2
+0x20710  f  play_sound_owned_staggered
+0x20737  f  overhead_contact_sparks        ; sparks where the hammer head's span meets solid cells
+0x207d4  f  git_strikes_cell               ; damage_up, a puff, an effect, a sound
+0x20976  f  hammer_dropped                 ; the hammer loose: physics; back to hammer_entity_tick when Jack has it again
+0x209ee  f  hammer_send_to_flag            ; the hammer leaves Jack for his flag (state_20a47)
+0x20a47  f  hammer_fly_to_flag             ; springs toward the player's flag, at most 8 px a tick
+0x20b58  f  ob_class_7_cannonball          ; CFIR.SPR, via dyna_other
+0x20c15  f  cannonball_tick                ; physics; falling, it searches for a barrel
+0x20c3e  f  cannonball_flying              ; smoke (frame 13) every other tick in the air, a sound on landing
+0x20cec  f  ball_rocking_in_bowl           ; follows the ball_rocking table, then drops into the barrel
+0x20d74  f  cannonball_physics
+0x20d9a  f  cannonball_physics_2
+0x20e04  f  friction_2000                  ; vx toward 0 by 2000, zero under 10000
+0x212d4  f  initialise_players             ; 0x3f209e counts them
+0x216a5  f  initialise_players_hammers
+0x308b2  f  git_watch_players              ; every 25 ticks: a player on the same row within 120 px — turn toward or away (random)
+0x313bc  f  git_turn_mark_steep            ; probe bit 0x40 → +0x42 |= 4, then 0x337b6
+0x313cc  f  git_step_call                  ; 0x337b6
+0x3384c  f  git_anim_table                 ; 0xa3f2c for a king timmy (0x3f), else 0xa3f24
+0x33861  f  drop_collected_timmies         ; as many timmies as the player holds (0x1a06f) flung up, roaming (git_32164)
+0x3392b  f  git_wander_speed               ; random push, friction five times over; tommies (0x5b) aim 12 px up
+0x33d1d  f  ob_class_13_bell
+0x33fdd  f  bell_wait_option_800          ; subtype 2: option 0x800 or its timer → pops up
+0x3404a  f  bell_wait_counter              ; subtype 4: some player's +0x28b9d8 reaches +0x56
+0x340af  f  bell_wait_percent              ; subtype 8: destroyed_percent ≥ +0x54, a sound, flashes 200 ticks
+0x343dc  f  bell_steer_vx                  ; push vx by the sign of *eax (16000, 0x1f400 against), stop near 0
+0x3443d  f  bell_ringer_tick               ; a child on the bell; frames 1/2 every 6 ticks while it rings
+0x34494  f  bell_glow_tick                 ; the flashing highlight while +0x5c counts down
+0x34590  f  sledge_trick_slam              ; hammer 20's trick: no floor ahead → it drops (mass 6); floor → shake, rebound up 21.4 px a tick
+0x34686  f  sledge_trick_rise              ; up through anything, slowing 12000 a tick, sparks; frames 61-77 at the top, then a falling weight of mass 12
+0x34747  f  sledge_trick_settle            ; on the ground → hammer_dropped, the player's +0x160 cleared
+0x34794  f  sledge_trick_physics
+0x347c1  f  ob_class_27_teleporter
+0x34c7d  f  telly_queue_add                ; one of 8 riders (+0x9c)
+0x34cad  f  telly_queue_has_room
+0x34da6  f  telly_queues_clear
+0x34e8d  f  telly_beam_sparks              ; an effect every 4 ticks
+0x5f34d  f  dispenser_ball_ready           ; DIS: armed → waits (state_5f380), else collides (category 4)
+0x5f380  f  dispenser_ball_wait            ; until its block goes: then shown at the block's spot
+0x5f62b  f  dispenser_lamp_tick            ; on the dispenser; frames 1-5, 6 ticks each, while lit
+0x5f69a  f  ob_class_6_cannon              ; CFIR/CWHL/CFIX — see docs/re/objects/cannon.md
+0x5f802  f  cannon_facing                  ; payload word 1: 1 left, 2 right
+0x5f82b  f  cannon_base_spawn              ; on a wheel (bit 2) or fixed (bit 1)
+0x5f895  f  cannon_part_follow
+0x5fb2b  f  roll_on_floor                  ; floor probe for a rolling thing: hops 2 px over a step, stops at walls
+0x5fd78  f  cannon_fuse_wait               ; the barrel ready (frame 0) → the fuse lit: two sounds, a spark
+0x5fdec  f  cannon_fuse_follow
+0x5fe15  f  cannon_part_until_fired        ; shown while the barrel's frame is 10
+0x5fe42  f  spawn_fuse_spark               ; BLAM frame 9 walking the fuse_points
+0x5feef  f  fuse_spark_tick                ; along fuse_points, frames 9-13, a trail
+0x5ffb0  f  blam_trail_2                   ; the owner's +0x68/+0x6c eased toward table 0xa459a; an effect
+0x600ac  f  blam_debris_tick               ; light gravity 0x480, flickers its last 40 ticks
+0x6017f  f  cannon_wheel_frame             ; roll_friction; frame follows the barrel's
+0x601ac  f  hammer_head_tick               ; HAMHEA on the hammer in slot 34; slot 35 → flies off (state_6023e)
+0x6023e  f  hammer_head_fly                ; rising faster each tick, spinning; gone when unlinked
+0x60d5d  f  heat_tick                      ; unreferenced — HEAT: plays script 0xa46e2[mode] — 0 and 1 while Jack is in slot 4, 2 once then gone
+0x612e9  f  dust_grow_tick                 ; frames to 7, widening 4 px a frame
+0x6137f  f  spawn_rubble_dust              ; dust over a falling piece of rubble, one of 8 speeds
+0x6143f  f  dust_loop_tick                 ; frames 8-15, looping
+0x615ca  f  hoover_tick                    ; VAC on Jack: the suck list for his slot, the hoover sound
+0x617dc  f  hoover_dropped                 ; a dropped hoover falls, skids and stops
+0x1cd94  f  scn_picture_double             ; ? unreferenced: the 320x200 picture at 0x277634 (the .SCN's third part) doubled to 320x400
