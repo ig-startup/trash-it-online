@@ -30,7 +30,9 @@ creates the map's objects through 0x24e39 and sets each one's x (+0x22),
 y (+0x26) and frame (+0x94) by hand. The file only says LSJACK has 0x88
 frames; how they split is the code's (`map-objects.md`).
 
-**What the frames and the tail are — Inferred.** The `ff` rectangles all
+**What the frames and the tail are.** Neither binary reads them, so for
+the game they are nothing; what follows is where they likely come from —
+a note on the files' origin, which these binaries cannot settle. The `ff` rectangles all
 fall in x 640..2042, y 0..511: a 2048 x 512 page addressed a byte a pixel,
 the left 640 columns left free — the shape of PlayStation video memory
 (1024 x 512 16-bit words) holding 8-bit textures beside the display. A

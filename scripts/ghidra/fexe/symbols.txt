@@ -103,3 +103,4 @@
 0x539bc  f  blit_scaled_blend              ; the blitter behind it, clipped to 320 x 200
 0x2382b  f  obj_queue_depth                ; puts the object (edx) on depth list ax: 500 lists of 0x89c bytes from 0x2653c0, the count at +0x898
 0x1f827  f  map_jack_taken                 ; Jack under the shop's house: from +0xbc = 1 narrowing (+0xa4) behind it, at 22 px narrower (+0xbc = 2) rising with it until removed 150 px up
+0x18d3c  f  level_select_screen            ; after an arcade or battle level quit: ARLVSL_E (arcade) or BATLSL_E (battle), its answer from 0xd63c2 — 0 to the title

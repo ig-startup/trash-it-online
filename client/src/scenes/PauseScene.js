@@ -10,14 +10,17 @@
  *   1 are you sure? yeah / naah — after quit level or quit game
  *   2 resume / quit game — battle (option 0x10000000), and the clone's coop
  *   3 are you sure? yeah / naah — after its quit game
- * Up and down move the arrow, any button picks. Esc does nothing here:
- * the pause loop does not read it.
+ * The menu reads the keyboard itself, not a player's keys: the cursor
+ * arrows move it and Enter picks (keyboard_read_keys 0x6bc62 — scancodes
+ * 0x5e 0x63, 0x1c as button 0x10 — read each tick by pause_tick through
+ * keyboard_input_update 0x6bcc6). Esc does nothing here: the pause loop
+ * does not read it.
  *
  * Everything is in the original's 320 x 200 screen, moved a tick at a
  * time, 60 a second.
  */
 import Phaser from 'phaser';
-import { loadKeySets, LocalKeys, SOLO_EXTRA } from '../input/keySets';
+import { LocalKeys } from '../input/keySets';
 import { PROP_ANIMS } from '../entities/props';
 
 const VIEW_W = 320;
@@ -41,13 +44,11 @@ export default class PauseScene extends Phaser.Scene {
   }
 
   /**
-   * @param {{menu: 0|2, players: number,
-   *   done: (state: number|null) => void}} data
+   * @param {{menu: 0|2, done: (state: number|null) => void}} data
    *   `done` gets null to resume, else QUIT_LEVEL or QUIT_GAME
    */
   init(data) {
     this._first = data.menu === 2 ? 2 : 0;
-    this._nPlayers = Math.max(1, data.players || 1);
     this._done = data.done;
   }
 
@@ -92,9 +93,7 @@ export default class PauseScene extends Phaser.Scene {
     this._picked = null;
 
     this._keys = new LocalKeys();
-    const sets = loadKeySets();
-    this._pads = sets.slice(0, this._nPlayers)
-      .map((set, i) => this._keys.pad(set, this._nPlayers === 1 && i === 0 ? SOLO_EXTRA : {}));
+    this._pads = [this._keys.pad({ up: 'ArrowUp', down: 'ArrowDown', but1: ['Enter', 'NumpadEnter'] })];
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._keys.destroy());
     this._acc = 0;
     this._draw();
@@ -108,11 +107,11 @@ export default class PauseScene extends Phaser.Scene {
     }
   }
 
-  /** Which of up, down and the buttons went down since the last tick, on any pad. */
+  /** Which of up, down and Enter went down since the last tick. */
   _pressed() {
     const out = { up: false, down: false, fire: false };
     this._pads.forEach((pad) => {
-      ['up', 'down', 'but1', 'but2'].forEach((a) => {
+      ['up', 'down', 'but1'].forEach((a) => {
         if (!pad[a]._justDown) return;
         pad[a]._justDown = false;
         out[a === 'up' || a === 'down' ? a : 'fire'] = true;

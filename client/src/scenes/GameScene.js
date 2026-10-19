@@ -1573,7 +1573,6 @@ export default class GameScene extends Phaser.Scene {
     // (pause_hud 0x1aaa8 tests option 0x10000000 only); the coop is the clone's
     this.scene.launch('PauseScene', {
       menu: this._story || this._arcade ? 0 : 2,
-      players: this._jacks.length,
       done: (state) => this._unpause(state),
     });
   }

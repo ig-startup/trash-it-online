@@ -191,9 +191,22 @@ it bursts into twelve pieces and is gone), a hanging sign, `DIS.SPR`
 landed UFO, which goes to VA 0x14935 (`ufo_hit`) with sound 0x84 — see The UFO.
 The hammer-lit kind of dynamite reads it too (see Dynamite).
 
-Not yet read: how the wielder's +0x74/+0x78 ever differ from the record
-once a hammer is upgraded, and what the strike state's other exits do
-(VA 0x23dbc goes straight back into the windup if the key is still down).
+The wielder's `+0x74`/`+0x78` (player struct, not his sprite) never
+differ from the record: `initialise_a_players_hammer` (0x216c0) copies
+them from record `+0x3c`/`+0x40` at each level's load and nothing else
+writes them — a hammer bought is another record, copied at the next level.
+
+**The strike state's exits** (`jack_strike` 0x23cef), each tick:
+- the animation run out: on with the hammer, walking (0x236b9) if
+  `|vx| > 10000`, else standing (0x23499);
+- on a new frame, BUT2 pressed (0x21084) while the hammer's frame is at
+  most 53 and lower than last tick's (`+0x5c`) — the swing coming back
+  up — straight into the windup again (0x23a27): a quick second blow;
+- meanwhile he slides, `vx` eased 5000 a tick and zeroed under 10000,
+  walls stopping him (0x60393 / 0x60496);
+- no floor under him: from standing a 2 px/tick hop (`vy` −2) as he
+  leaves it, else the fall (0x25813); at the level's bottom, the common
+  tail (0x27767).
 
 `scripts/formats/ccs.py` reproduces all three floods over the real level
 files, which is how the above was checked rather than argued: across

@@ -53,4 +53,7 @@ is 42, else **3 — yes, also when no arrow was pressed**.
 - mode 1, or no: the sign goes.
 - mode 4, yes: front-end state 7, fade out — the game is left.
 
-**Inferred:** the YELMEDFT colours — the clone draws them as in the shop.
+**The YELMEDFT colours** are the shop's on the map too: its letters use
+indices 225-255 only, and those entries are the same in all nine map
+palettes, in HAMSHP_E.PAL and in YELMEDFT.PAL — whichever palette the
+screen has, they look alike. The clone draws them as in the shop.
