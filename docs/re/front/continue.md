@@ -64,7 +64,10 @@ screen's init loads that table from `FSPR/MIST.STP` (`load_blend_table`
 0x1b632, and 0x21857 `SHARDS.STP`). Checked against the screen's palette,
 MIST.STP is the saturating sum — mean error 46 against 220 for half and
 half: the green strips brighten the tubes behind them.
-**Inferred:** that 0x12bf2's argument is a count of ticks.
+0x12bf2's argument is a count of ticks: it runs the screen's tick
+routine (the pointer at 0x85ede) that many times, catching up one to four
+a frame by the time gone (timer / 13, the debug line "Rate %d"); 0 is one
+frame's worth. Every F.EXE screen waits through it.
 
 Clone: `client/src/scenes/ContinueScene.js` (the mist in Phaser's ADD blend), sheets from
 `scripts/export_worldmap.py` (`continue` in `worlds.json`), `Story.js`.

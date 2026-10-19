@@ -14,9 +14,13 @@ plus the frame's origin (`obj_draw` 0x234bf); bit 8 of +0x92 pins it to the scre
 A smaller depth is drawn nearer: T's node 15 goes to 0x1cd, behind Jack's
 0x1cb, once he is lower on the screen than it, and the landmarks (3) are
 the picture's own fences and signs, cut out for Jack to pass behind.
-**Inferred:** bit 0x40 of +0x91 draws by y instead — Jack sets it on
-himself, a node's depth -1 sets it, and a bin drops it when crushed flat
-(0x1f5f7 gives it 0x1cb then); its reader is not found.
+Bit 0x40 of +0x91 draws by y instead — Jack sets it on himself, a node's
+depth -1 sets it, and a bin drops it when crushed flat (0x1f5f7 gives it
+0x1cb then). Its reader is the draw queue (`obj_draw` 0x234bf, at
+0x237d0): with the bit, the list an object goes into is its depth less
+how far it stands below the screen's top (`y - (camera y - 128)`, 0 when
+above it, at most 349) — the lower on the screen, the nearer. The lists
+are 0x89c bytes each from 0x2653c0 (0x2382b).
 
 **The map's templates** (0x89f7a + 0x20 k):
 
@@ -87,8 +91,12 @@ pixel a tick, every 2 pixels; every 16 ticks sound 0x15, his step.
 Stopped on a point, the standing pose.
 
 **The tick** is one frame of the screen: `frame_end` 0x1a88a counts
-0xd6d4c and waits for the vertical retrace (0x50990). **Inferred:** 60
-a second, 640 x 480's refresh.
+0xd6d4c and waits for the vertical retrace (0x50990): 60 a second. F.EXE
+sets its screen as G.EXE does — mode 13h with the misc-output register
+rewritten to 0xe3 (0x50d66, 0x50d80; also 0x50e9f), the 480-line "mode
+X" timing, or a 640 x 480 VESA mode — and both retrace at 60 Hz
+(`jack/movement.md`). Its screens wait through 0x12bf2, which catches up
+by the PIT clock / 13 ms when a frame runs late (`continue.md`).
 
 **In the clone**: `scripts/export_worldmap.py` writes each node's object
 (`icons`) and the sheets; `WorldMapScene.js` plays the bin and hat scripts

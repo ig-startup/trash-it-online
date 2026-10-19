@@ -64,15 +64,25 @@ const HOLD = Infinity;
  * y -240, drops to Jack's y - 225 and on, slowed by 0x15f90 a tick, until
  * it stops; 90 ticks later it rises — 10 before, Jack is gone into it —
  * after 100 more ticks it climbs at 0x9c40 a tick per tick, and past
- * y -440 the screen fades out (4 of 128 a tick) for the shop. The speed
- * it falls at is not read: the clone's 8 px a tick.
+ * y -440 the screen fades out (4 of 128 a tick) for the shop. It falls at
+ * 10 px a tick (+0x46 = 10).
  */
 const SHOP = {
-  dx: -90, startY: -240, landDy: -225, fall: 8, brake: 0x15f90 / 0x10000,
+  dx: -90, startY: -240, landDy: -225, fall: 10, brake: 0x15f90 / 0x10000,
   sit: 90, jackIn: 10, wait: 100, climb: 0x9c40 / 0x10000, gone: -440, fade: 32,
 };
 /** Drawn in front of every other thing on the map. */
 const SHOP_DEPTH = 5000;
+
+/**
+ * Jack taken by the shop (map_jack_taken F.EXE 0x1f827), in 16.16 as the
+ * game keeps it: his drawn width shrinks at a speed gathering -10000 a
+ * tick, his height grows by half of a second speed gathering -50000; past
+ * 10 px narrower he is behind the house; at 22 he rises with it — that
+ * speed now gathering -0x2ee0, summed into a climb of which half moves him
+ * each tick — until the climb reaches -150 px and he is gone.
+ */
+const TAKEN = { shrink: -10000, stretch: -50000, behindAt: -10, narrowest: -22, rise: -0x2ee0, goneAt: -150 };
 
 /**
  * The bins' and hats' scripts (docs/re/front/map-objects.md), as
@@ -104,6 +114,7 @@ export default class WorldMapScene extends Phaser.Scene {
    *   result?: 'won'|'lost'|'quit'|'continued', arrived?: boolean}} data
    */
   init(data) {
+    this._taken = null;
     this._players = data.players || [];
     this._story = data.story || null;
     this._password = data.password || null;
@@ -320,9 +331,9 @@ export default class WorldMapScene extends Phaser.Scene {
   }
 
   /**
-   * Whether any player pressed fire. F.EXE takes any button (input &
-   * 0xf0) — the second (0x20) also calls the shop; the clone gives that
-   * button to the shop alone.
+   * Whether any player pressed fire, the first button. F.EXE takes any
+   * button (input & 0xf0); the second also calls the shop, whose object
+   * ticks before Jack's, so it is fire only where the shop does not take it.
    */
   _fire() {
     let fired = Phaser.Input.Keyboard.JustDown(this._enter);
@@ -345,7 +356,12 @@ export default class WorldMapScene extends Phaser.Scene {
     const fire = this._fire();
     const shopKey = this._shopKey();
     if (w.lock > 0) w.lock -= 1;
-    if (this._flight) return this._flightTick();
+    if (this._flight) {
+      // the shop's object ticks before Jack's, so he follows it the same tick
+      const left = this._flightTick();
+      if (this._taken) this._takenTick();
+      return left;
+    }
     if (this._dialog) return this._dialogTick(fire || shopKey);
 
     if (!w.moving) {
@@ -366,17 +382,18 @@ export default class WorldMapScene extends Phaser.Scene {
       // 0x1f3a1: stopped on a point that is no warp, the second button
       // calls the shop — not with a special hammer in hand
       const here = story.nodeAt(w.at);
+      // (map_shop_flight); refused, the button goes on to Jack's tick as
+      // fire, as it does on a warp — the shop's object ticks first
       if (shopKey && !g && !(here && here.warp)) {
-        if (!story.canShop()) {
-          this._say('С ЭТИМ МОЛОТКОМ В МАГАЗИН НЕЛЬЗЯ');
-        } else {
+        if (story.canShop()) {
           this._flight = {
             x: w.x + SHOP.dx, y: SHOP.startY, vy: SHOP.fall, phase: 'fall', left: 0,
           };
           this._shopImg.setVisible(true);
           this._msg.setText('');
+          return false;
         }
-        return false;
+        this._say('С ЭТИМ МОЛОТКОМ В МАГАЗИН НЕЛЬЗЯ');
       }
       if (g) {
         const m = moves[w.at][g];
@@ -385,7 +402,7 @@ export default class WorldMapScene extends Phaser.Scene {
         w.moving = true;
         w.auto = false;
         this._msg.setText('');
-      } else if (fire) {
+      } else if (fire || shopKey) {
         return this._fireOn(w.at);
       }
     } else {
@@ -447,6 +464,8 @@ export default class WorldMapScene extends Phaser.Scene {
     const f = this._flight;
     const w = this._w;
     const land = w.y + SHOP.landDy;
+    // while the house is about he stands faced to us (map_jack_tick)
+    w.dir = 3;
     if (f.phase === 'fall') {
       f.y += f.vy;
       if (f.y >= land) {
@@ -465,7 +484,11 @@ export default class WorldMapScene extends Phaser.Scene {
       }
     } else if (f.phase === 'sit') {
       f.left -= 1;
-      if (f.left === SHOP.jackIn) this._jack.setVisible(false);
+      if (f.left === SHOP.jackIn) {
+        this._taken = {
+          a: 0, va: 0, b: 0, vb: 0, h: 0, c: 0, y: 0, phase: 1, behind: false,
+        };
+      }
       if (f.left === 0) {
         f.phase = 'wait';
         f.left = SHOP.wait;
@@ -487,6 +510,38 @@ export default class WorldMapScene extends Phaser.Scene {
       }
     }
     return false;
+  }
+
+  /** One tick of map_jack_taken (F.EXE 0x1f827), its 16.16 fields as integers. */
+  _takenTick() {
+    const t = this._taken;
+    if (t.phase === 3) return;  // removed (obj_remove)
+    let aa = 0;
+    let ab = 0;
+    if (t.phase === 1) {
+      aa = TAKEN.shrink;
+      ab = TAKEN.stretch;
+      if ((t.a >> 16) < TAKEN.behindAt) t.behind = true;
+      if ((t.a >> 16) <= TAKEN.narrowest) {
+        t.a = (TAKEN.narrowest << 16) | (t.a & 0xffff);
+        aa = 0;
+        ab = 0;
+        t.va = 0;
+        t.vb = 0;
+        t.phase = 2;
+      }
+      t.a += t.va;
+      t.va += aa;
+      t.b += t.vb;
+      t.vb += ab;
+    }
+    if (t.phase === 2) {
+      t.c += t.vb;
+      t.vb += TAKEN.rise;
+      if ((t.c >> 16) <= TAKEN.goneAt) t.phase = 3;
+    }
+    t.h -= t.vb >> 1;
+    t.y += t.c >> 1;
   }
 
   /** A pixel along the edge; at its end he stops on the point. */
@@ -628,8 +683,19 @@ export default class WorldMapScene extends Phaser.Scene {
     const i = w.moving
       ? sheet.walk[w.dir - 1] + (Math.floor(this._ticks / 2) % sheet.walkFrames)
       : sheet.stand[w.dir - 1];
-    const [, , , , ox, oy] = sheet.frames[i];
+    const [, , fw, fh, ox, oy] = sheet.frames[i];
     this._jack.setFrame(String(i)).setPosition(w.x + ox, w.y + oy).setDepth(drawDepth(null, w.y));
+    const t = this._taken;
+    if (t) {
+      // stretched by the hi words, as obj_draw (0x234bf) has it: the width
+      // about the frame's centre, the height up from its bottom
+      const sw = t.a >> 16;
+      const sh = t.h >> 16;
+      this._jack.setDisplaySize(Math.max(0, fw + sw), Math.max(0, fh + sh))
+        .setPosition(w.x + ox - (sw >> 1), w.y + oy + (t.y >> 16) - sh)
+        .setVisible(t.phase !== 3);
+      if (t.behind) this._jack.setDepth(SHOP_DEPTH - 1);
+    }
     this._icons.forEach((o) => o.img.setDepth(drawDepth(o.depth, o.icon.y)));
     if (this._flight) {
       const [, , , , ox, oy] = this._shopSheet.frames[0];

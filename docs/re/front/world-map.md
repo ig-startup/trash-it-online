@@ -19,8 +19,8 @@ same size: 0 nothing, 255 path, 1..127 the point of node *id*.
 for it is `OW`, 8, 0x88 — eight animations of seventeen, then a w, h per
 frame. Animation d-1 is direction d: 1 right, 2 down-right, 3 down (his
 face to us), 4 down-left, 5 left, 6 up-left, 7 up (his back, the braces
-crossed), 8 up-right. **Inferred:** how fast the frames step — the clone
-steps one every two pixels.
+crossed), 8 up-right. His walk steps a frame every 2 ticks, and as he
+moves a pixel a tick, every 2 pixels (`map_jack_tick`, `map-objects.md`).
 
 **The walk** (map_fire_pressed 0x1de35 runs once a tick): Jack stands on
 a pixel `(x, y)` (0xd9810, 0xd980a) and knows the neighbour he came from,

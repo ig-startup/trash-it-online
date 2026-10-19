@@ -62,8 +62,8 @@ const MONEY_AT = [-60 + 160, -71 + 128];
 const MONEY_PLACES = [10000, 1000, 100, 10, 1];
 /** A bar grows 5 px a tick (0x26efb), 4 rows high. */
 const BAR_GROW = 5;
-/** A ring grows 3 px a tick (0x1c273). */
-const RING_GROW = 3;
+/** A ring grows 2 px a tick on its longer side (0x1c0da). */
+const RING_GROW = 2;
 /** The yes/no pointer's sway (table 0x1b137), a step a tick. */
 const SWAY = [0, 1, 2, 3, 4, 3, 2, 1];
 
@@ -413,12 +413,19 @@ export default class ShopScene extends Phaser.Scene {
     this._growCard();
   }
 
-  /** STATSPR's ring, stretched to the hammer's w x h (template 0x89a30). */
+  /**
+   * STATSPR's ring, grown to the hammer's w x h (template 0x89a30,
+   * shop_ring_tick 0x1c0da): from nothing, the longer side 2 px a tick and
+   * the other in proportion — 4 each when square — both set to w x h once
+   * the width is there. obj_draw keeps the frame's centre across and its
+   * bottom, the stretch going to both sides and up.
+   */
   _ring(i, x, y, [w, h]) {
     const r = this._rings[i];
     r.setPosition(x, y).setVisible(true);
     r.want = { w, h };
     r.size = { w: 0, h: 0 };
+    r.base = { x: r.x, y: r.y, fw: r.frame.width, fh: r.frame.height };
     r.setDisplaySize(1, 1);
   }
 
@@ -433,9 +440,16 @@ export default class ShopScene extends Phaser.Scene {
     });
     this._rings.forEach((r) => {
       if (!r.visible || !r.want) return;
-      r.size.w = Math.min(r.want.w, r.size.w + RING_GROW);
-      r.size.h = Math.min(r.want.h, r.size.h + RING_GROW);
-      r.setDisplaySize(Math.max(1, r.size.w), Math.max(1, r.size.h));
+      const { w, h } = r.want;
+      const square = w === h;
+      r.size.w += square ? 2 * RING_GROW : w > h ? RING_GROW : (RING_GROW * w) / h;
+      r.size.h += square ? 2 * RING_GROW : h > w ? RING_GROW : (RING_GROW * h) / w;
+      if (r.size.w >= w) r.size = { w, h };
+      const dw = Math.floor(r.size.w);
+      const dh = Math.floor(r.size.h);
+      const b = r.base;
+      r.setDisplaySize(Math.max(1, dw), Math.max(1, dh))
+        .setPosition(b.x + Math.trunc((b.fw - dw) / 2), b.y + (b.fh - dh));
     });
   }
 
@@ -454,17 +468,16 @@ export default class ShopScene extends Phaser.Scene {
   _show() {
     const t = this._ticks;
     const browsing = this._state === BROWSE;
+    // the grid and the ?s never hide: the card is drawn over them (depth 1
+    // against 499 and 498; neither tick touches its visible bit)
     this._grid.setFrame(String(Math.floor(t / 4) % 20));
-    // the grid gives way to the card and the words (the clone's reading)
-    this._grid.setVisible(browsing);
-    this._covers.forEach((c) => c.setVisible(browsing));
-    // 0x1c70c: shown browsing, brightness 0x14 / 0x28 every 4 ticks
-    this._owned.setVisible(browsing).setAlpha((Math.floor(t / 4) & 1 ? 0x14 : 0x28) / 0x80);
+    // 0x1c70c: shown browsing, drawn half and half through HAMSHP_E.STP
+    // (template mode 0xa00d, -2); the brightness it writes is never drawn
+    this._owned.setVisible(browsing).setAlpha(0.5);
     // 0x1b2c0: browsing, only "back" stays lit
     this._lit.forEach((b, i) => b.setVisible(!browsing || i === BACK));
     // 0x1b31a: on a hammer, the brackets; on the buttons, the button in
-    // colour 254 — flashing 0x80 / 0x46 every 5 ticks
-    const bright = (Math.floor(t / 5) & 1 ? 0x80 : 0x46) / 0x80;
+    // colour 254 (the brightness 0x80 / 0x46 it writes is never drawn)
     if (browsing && this._col !== EXIT_COL) {
       this._place(this._cursor, 'hamshp_e', CURSOR[Math.floor(t / 3) & 3], this._col * CELL_W, this._row * CELL_H - 2);
       this._cursor.clearTint();
@@ -472,7 +485,6 @@ export default class ShopScene extends Phaser.Scene {
       this._place(this._cursor, 'hamshp_e', BUTTONS[this._button], 0, 0);
       this._cursor.setTintFill(this._shop.silhouette);
     }
-    this._cursor.setAlpha(bright);
     // 0x1b182: the pointer sways between yes and no, an arrow at the choice
     if (this._pointer) {
       const f = this._choice === 1 ? 43 : 42;

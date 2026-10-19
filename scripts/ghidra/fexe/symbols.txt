@@ -56,7 +56,8 @@
 0x1c34f  f  shop_card_tick                 ; the card, a step every 5 ticks
 0x1c2e4  f  shop_bar                       ; a bar: x - 62, y - 61, length, part
 0x1c7e6  f  shop_card_label                ; HAMSHP_E 54 + n at (-205, dy - 156)
-0x1c273  f  shop_ring_tick                 ; STATSPR stretched, +3 a tick
+0x1c273  f  shop_ring_tick_unused          ; dead code — no call, no jump, no pointer (the one dword equal to it sits in HAMSHP_E's data block, unread): an older ring growth, +3 a tick
+0x1c0da  f  shop_ring_tick                 ; the rings (template 0x89a30, STATSPR): in state 2 from nothing to w x h (+0xb4, +0xb8), the longer side 2 px a tick, the other in proportion; out of it hidden at y 200
 0x1c0bb  f  shop_plate_tick                ; shown in state 2 only
 0x1b5f0  f  shop_play_film                 ; state 7: the hammer's SMK, back to state 2
 0x26efb  f  draw_bars                      ; ten bars of 4 rows, 0xf2 0xf3 / 0x28 0x27, +5 a tick
@@ -93,10 +94,12 @@
 0x1f5f7  f  map_bin_tick                   ; scripts 0x89dfa rattle, 0x89e36 flat, 0x89efe crushed now
 0x1f73f  f  map_hat_tick                   ; scripts 0x89e4a, 0x89e9e, 0x89ebe
 0x1f689  f  map_t_node15_tick              ; T's node 15: frames 0-7, depth by Jack's y
-0x234bf  f  obj_draw                       ; x + frame ox, y + frame oy; +0x90 bit 8 mirrored
+0x234bf  f  obj_draw                       ; x + frame ox, y + frame oy; +0x90 bit 8 mirrored; queued into depth list +0x9a, less its distance below the screen's top (0..349) when +0x91 bit 0x40
 #
 # Blending (docs/re/front/continue.md "The mist is added light").
 0x135b2  f  load_blend_table               ; "%s.STP" into 0xc6148: MIST (continue), HAMSHP_E (shop), SHARDS
 0x26ce2  f  draw_objects                   ; the 500 depth lists; +0x1c 0 plain, -2 blend, -1 none, else remap
 0x26347  f  obj_draw_blend                 ; mode -2: the frame scaled through table[src * 256 + dst]
 0x539bc  f  blit_scaled_blend              ; the blitter behind it, clipped to 320 x 200
+0x2382b  f  obj_queue_depth                ; puts the object (edx) on depth list ax: 500 lists of 0x89c bytes from 0x2653c0, the count at +0x898
+0x1f827  f  map_jack_taken                 ; Jack under the shop's house: from +0xbc = 1 narrowing (+0xa4) behind it, at 22 px narrower (+0xbc = 2) rising with it until removed 150 px up

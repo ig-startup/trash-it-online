@@ -14,11 +14,23 @@ until it stops (sound 0x27; a bobbing script, 0x89f2e); 90 ticks later
 it goes — 10 before that Jack is taken (his `+0xbc` = 1) — waits 100
 ticks, climbs at 0x9c40 a tick per tick, and past y −440 the map fades
 out (4 of 128 a tick) and the front end goes to state 10, the record's
-node (`+0x1b8`) being the point Jack stood on. **Inferred:** the speed
-it falls at (the template's, not read; the clone's 8 px a tick); what
-Jack does when taken (the clone hides him); whether the second button
-on a level also fires it — any button is fire there (`& 0xf0`), the
-clone gives the second to the shop alone.
+node (`+0x1b8`) being the point Jack stood on. The house falls at **10 px
+a tick** — `map_shop_flight` sets its speed's whole part (`+0x46`, of the
+16.16 `+0x44` that `obj_move` adds to y) to 10 as it starts it.
+**Jack taken** (`map_jack_taken` 0x1f827, every tick of `map_jack_tick`):
+standing faced to us (direction 3) while the house is about, from `+0xbc`
+= 1 he narrows — his drawn width (`+0xa4`, the blitter's stretch) going
+down at a speed that starts at −0.15 and gathers 0.15 a tick — and past
+10 px narrower drops his y order and goes one depth behind the house; at
+22 px narrower (`+0xbc` = 2) he rises with it, his y and height moved by
+a speed gathering 0.18 a tick, until 150 px up he is removed (`obj_remove`).
+**The second button is fire too, where the shop does not take it.**
+`map_fire_pressed` takes any button (`& 0xf0`), but new map objects go
+in at the head of the list (0x256e8), so the shop's (made after Jack's,
+0x1fd7a) ticks first: on a point with no warp it starts and sets
+0x13971e, and Jack's tick then skips fire. Refused — a special hammer —
+or on a warp, the same press goes on to Jack's tick as fire. The clone
+does the same, and Jack is taken as above (`WorldMapScene.js`, `TAKEN`).
 
 **The money.** Entering (shop_init 0x1b632) the hammer in hand is traded
 in: its worth (shop table 0x89860, record `+4`; `front-end.md`) is added
@@ -61,7 +73,12 @@ origin; the bars at (x + 160, y + 100).
   4 5 6 6 6 6 3 0 30 — J sledge v1, v2, warhammer v1, piledriver v1; T
   nothing; M all thirty. The rest get a ? (shop_cover_closed 0x1c659).
 - **The hammer in hand** glows in its cell (shop_owned_glow 0x1c70c, cell
-  table 0x89ad0), brightness 0x14 / 0x28 every 4 ticks, browsing only.
+  table 0x89ad0), browsing only, drawn half and half through HAMSHP_E.STP
+  (template mode word 0xa00d: draw mode −2; checked against HAMSHP_E.PAL,
+  the table is the average — mean error 27 against 248 for the sum). The
+  brightness it writes, 0x14 / 0x28 every 4 ticks, is never drawn: nothing
+  in F.EXE's renderer reads an object's `+0xd4..+0xdf` (the three readers
+  only test `+0xd6` ≥ 0xa8 / 0xaa to show an object at all).
 - **Money**: five digits at (−60, −71), leading noughts left out
   (shop_money_digits 0x1bfed).
 
@@ -74,20 +91,25 @@ w × h, `+0x1c`/`+0x1e` spread w × h.
 **The cursor** (shop_cursor_tick 0x1b31a, state in 0xd6dba):
 
 - *1, browsing* — left/right through columns 0..5 with wrap, column 5
-  being the buttons (cursor 30: the "back" button flashing); up/down
+  being the buttons (cursor 30: on the "back" button); up/down
   through rows 0..5 with wrap. Fire on 30 leaves; on a hammer sold here
   → state 2; on one not sold, a sound. The brackets cycle 20 21 22 21 a
-  frame every 3 ticks, brightness 0x80 / 0x46 every 5.
+  frame every 3 ticks (its brightness, 0x80 / 0x46 every 5, is not drawn —
+  the cursor does not flash).
 - *2, the buttons* — up/down through buy, film, back, starting on back.
-  The button is drawn as a silhouette (colour 254), flashing. The card
+  The button is drawn as a silhouette (colour 254), steady. The card
   builds a step every 5 ticks (shop_card_tick 0x1c34f): the plate at
   (−252, −240); TIMMIES and the price; GIRTH and its bar; SPLAT; CONTROL
   and its word; RANGE; RESTRIKE and its word; AREA and STATSPR 0 at
   (−62, −2); SPREAD (moved 120 right) and STATSPR 1 at (58, −2). Labels
   at (−205, dy − 156) for dy 0, 15 … 90, 92; the bars (shop_bar 0x1c2e4,
   draw_bars 0x26efb) 4 rows — red 0xf2 0xf3 0xf3 0xf2, green 0x28 0x27
-  0x27 0x28 — growing 5 px a tick; the rings stretched to w × h, growing
-  3 a tick. Out of state 2 all of it goes.
+  0x27 0x28 — growing 5 px a tick; the rings (`shop_ring_tick` 0x1c0da)
+  grow from nothing to w × h, the longer side 2 px a tick and the other in
+  proportion — 4 each when square — both set to w × h once the width is
+  there; `obj_draw` keeps a stretched frame's centre across and its bottom.
+  Out of state 2 the card goes (the plate, the words, the bars, the rings
+  moved to y 200 and hidden); the grid and the ?s stay under it.
   - *buy*: the hammer in hand → "you already own it!", 80 ticks, back to
     1. Else "buy the" / "<name> ?" / "yes ~ no" (state 3).
   - *film* (state 7, 0x1b5f0): `D\SMK\` film number cursor + 1, then
@@ -107,7 +129,9 @@ template 0x89b2c: letters from frame 0 either case, digits from 32,
 signs by table (! 26, ? 27, - 28, : 29, . 30, , 31, ' 46, % 44), a
 space 7 wide, a letter its width + 1, '@' a new line 15 down.
 
-**Inferred:** the grid and the ?s hide outside state 1 (the clone's
-reading — the card and the words stand on the black panel); the glow's
-and the cursor's brightness drawn as alpha; the rings stretched from
-their top left.
+The grid and the ?s never hide: neither tick touches its visible bit
+(`+0x90` bit 0x10, which the plate, the glow and the rings clear outside
+their states), and no pointer to the grid is kept; the card is drawn over
+them, depth 1 against 499 and 498. 0x1c273, which an earlier note took
+for the rings' tick (+3 a tick), is dead code: no call, no jump, and the
+one dword equal to it sits in the HAMSHP_E data block with no reader.

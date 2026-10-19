@@ -26,8 +26,9 @@ and costs a life instead, below level 12 (0x20e1d).
 - hoovered walking: `timmies` +1 (popup 0);
 - hoovered knocked flat (slot 8): +2 (popup 3); a king timmy — which can
   only be hoovered knocked — `gits` +20 (popup 6);
-- **Inferred:** the same while shaking it off (slot 9, `git_hoovered_9`,
-  whose decompiled body makes the same two calls);
+- the same while shaking it off (slot 9): `git_hoovered_9` (0x31bbf) is
+  `git_hoovered_8` with animation 12 for 11 — it jumps into 0x31aaf, the
+  same code, from the animation call on;
 - binned (`timbin_swallow` 0x2f7ea): `gits` +1.
 
 Each also adds to a BCD copy (`+0x64`, `+0x6c`) and the total at 0x287bfc
