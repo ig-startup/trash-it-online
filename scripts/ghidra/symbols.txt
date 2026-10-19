@@ -171,7 +171,7 @@
 0x24e55  f  jack_hoover_held               ; slot 28
 0x250d9  f  jack_hoover_walk               ; slot 29
 0x2ab7a  f  jack_hoover_put_away           ; slot 71
-0x25468  f  jack_hoover_button             ; slot 9; not traced
+0x25468  f  jack_hoover_to_hat             ; slot 9: BUT1 alone puts the hoover in the hat, hands empty, then jack_stand
 0x28035  f  jack_throw_up_bag              ; spawns a sprite thrown up at -2 px/tick; "emptying the bag?"
 0x27ff7  f  jack_lay_down_hammer           ; clears +0x9a, hides the hammer — "lays it down?"
 0x25bda  f  jack_climb                     ; slot 33, frame = height

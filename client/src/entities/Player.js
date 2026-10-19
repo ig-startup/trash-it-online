@@ -69,6 +69,7 @@ const FRICTION = perS2(2000);      // every tick, keys or not (VA 0x22d31)
 const AT_REST = perS(399);         // below this the shared step stops him
 const SKID_BRAKE = perS2(5000);    // the skid brakes on its own (VA 0x2266d)
 const SKID_STOP = perS(10000);     // …and hands over to standing below this
+const PUT_AWAY_BRAKE = perS2(4000); // putting the hoover away slides less (VA 0x25468)
 const WINDUP_NUDGE = perS(0x8000); // a tap of a direction while winding up
 /**
  * The roll (VA 0x29072, 0x2930c, 0x29589). A run counts its ticks in
@@ -122,6 +123,9 @@ const range = (pose, from, to) => {
 const SHEET_STRIP_DRAW = [...range('hatReach', 0, 10), ['hatReach', 10], ...range('hooverOut', 9, 0)];
 const SHEET_STRIP_STOW = [...range('hooverOut', 0, 9), ['hatReach', 10], ['hatReach', 10],
   ...range('hatReach', 9, 0)];
+// Slot 9: the hoover back into the hat (113-122) and the empty hand down
+// from it (81-90) — BUT1 without UP (0x25468).
+const SHEET_STRIP_PUT_AWAY = [...range('hooverOut', 0, 9), ...range('hatReach', 10, 19)];
 // Slots 11 and 10: the hammer out of the hat (sheet 90-81, 81, 80-71) and
 // back in (71-90). Their hammer lists carry the show / hide flags.
 const HAMMER_STRIP_DRAW = [...range('hatReach', 19, 10), ['hatReach', 10], ...range('hatReach', 9, 0)];
@@ -184,6 +188,13 @@ const STATES = {
     // …and the strip brings the hammer back out of the hat (its list sets
     // the show flag), so he ends up holding it.
     slot: 71, strip: SHEET_STRIP_STOW, ms: 35, next: 'hammerStand', locks: true,
+  },
+  // BUT1 alone puts it away and leaves his hands empty: 0x25468, slot 9, a
+  // frame every two ticks, then standing (0x22892). He slides to a stop
+  // meanwhile, 4000 off his speed a tick.
+  hooverPutAway: {
+    slot: 9, strip: SHEET_STRIP_PUT_AWAY, ms: 2 * TICK_MS, next: 'stand', locks: true,
+    brakes: PUT_AWAY_BRAKE,
   },
 
   // Carrying. 0x267e3 / 0x26971 bend down and search while Down is held
@@ -759,7 +770,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     // ── States that own the player until their animation is done ──────────
     if (spec.locks) {
-      body.setVelocityX(spec.brakes ? this._brake(body.velocity.x, dt) : 0);
+      const rate = spec.brakes === true ? SKID_BRAKE : spec.brakes;
+      body.setVelocityX(spec.brakes ? this._brake(body.velocity.x, dt, rate) : 0);
       return;
     }
 
@@ -814,13 +826,14 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       return;
     }
 
-    // ── The hoover: BUT1 puts it away (0x2ab7a, 0x25468) ──────────────────
+    // ── The hoover: BUT1 puts it away (0x24e55, 0x250d9) ──────────────────
+    // Alone, into the hat with nothing in hand (0x25468); with UP, swapped
+    // for the hammer (0x2ab7a) — not where there is none.
     if (HOOVER_STATES.has(this.state)) {
-      // UP+BUT1 swaps it for the hammer — not where there is none.
-      if (but1 && !(this._hand & HAND.keepHoover)
-          && !(cursors.up.isDown && (this._hand & HAND.noHammer))) {
-        body.setVelocityX(0);
-        this._enter('hooverStow', now);
+      const swap = cursors.up.isDown;
+      if (but1 && !(this._hand & HAND.keepHoover) && !(swap && (this._hand & HAND.noHammer))) {
+        if (swap) body.setVelocityX(0);
+        this._enter(swap ? 'hooverStow' : 'hooverPutAway', now);
         return;
       }
       const moved = this._steer(cursors, body, dt, PROFILES.slow);
@@ -1602,9 +1615,9 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   }
 
   /** The braking a windup, a strike and the skid share: ∓5000 a tick. */
-  _brake(vx, dt) {
+  _brake(vx, dt, rate = SKID_BRAKE) {
     if (Math.abs(vx) < SKID_STOP) return 0;
-    return vx - Math.sign(vx) * SKID_BRAKE * dt;
+    return vx - Math.sign(vx) * rate * dt;
   }
 
   /**

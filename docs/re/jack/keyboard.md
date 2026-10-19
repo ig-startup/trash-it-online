@@ -55,7 +55,11 @@ In the hard hat (0x24727): UP pressed comes out (0x244c0); BUT2 pressed
 goes to 0x26539 (slot 43) or 0x2a199 (slot 69) depending on 0x60c25.
 
 With the hoover (0x24e55): LEFT/RIGHT walk with it (0x250d9); UP + BUT1
-puts it away (0x2ab7a); BUT1 alone goes to 0x25468 (slot 9); DOWN alone
+swaps it for the hammer (0x2ab7a, slot 71, ends in 0x23499 — not while
+`+0x9a` is set, nor under option bit 1); BUT1 alone puts it in the hat
+and leaves the hands empty (jack_hoover_to_hat 0x25468, slot 9: frames
+113-122 then 81-90, one per two ticks, sliding to a stop at 4000 a tick,
+then jack_stand 0x22892). Both set the hoover's `+0x42` bit 2. DOWN alone
 calls 0x28035, which spawns a sprite thrown upward at -2 px/tick —
 emptying the bag? (not traced). Option bit 8 forbids both.
 
