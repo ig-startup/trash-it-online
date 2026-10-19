@@ -573,8 +573,9 @@ def write_index(ids, bonus=()):
 def main(argv):
     if argv and argv[0] == "--all":
         # The T* and U* files are the worlds' side levels — numbers 29
-        # and 30 on the F.EXE maps, the only levels with a demo `.J` —
-        # and the only twelve without a bell; the clone leaves them out.
+        # and 30 on the F.EXE maps, the only story levels with a `.J`:
+        # G.EXE plays them back from it as a show that cannot be won
+        # (docs/re/front/side-levels.md); the clone leaves them out.
         every = sorted({os.path.splitext(f)[0] for f in os.listdir(LEVELS)
                         if f.upper().endswith(".WAM")})
         # Twelve more (CC, CH, … DS) hold a single object on a 288x160

@@ -19,9 +19,10 @@ export const START_NODE = 1;
 
 /**
  * What the clone does not build yet, refused: the side levels T and U
- * (numbers 29, 30 — the only levels with a demo, and no bell) and the gates
- * (kind 4). The bonus screens, C (12) and the exits' D (13), are played
- * (scenes/bonusRound.js).
+ * (numbers 29, 30) and the gates (kind 4). T and U are shows — G.EXE plays
+ * the level back from its .J recording, fire stops it, and it is never
+ * won or trashed (docs/re/front/side-levels.md). The bonus screens, C (12)
+ * and the exits' D (13), are played (scenes/bonusRound.js).
  */
 const SIDE_NUMBERS = new Set([29, 30]);
 
@@ -100,7 +101,7 @@ export default class Story {
     if (n.number > 11) {
       // the bonus screens and the side levels: once each
       if (trashed) return { act: 'refuse', why: 'УЖЕ ПРОЙДЕНО' };
-      if (SIDE_NUMBERS.has(n.number)) return { act: 'refuse', why: 'ЭТОТ УРОВЕНЬ ЕЩЁ НЕ СДЕЛАН' };
+      if (SIDE_NUMBERS.has(n.number)) return { act: 'refuse', why: 'ДЕМО-ПОКАЗ ОРИГИНАЛА — В КЛОНЕ ЕЩЁ НЕТ' };
       return { act: 'play', level: n.level };
     }
     // A level of a stage below the last one won is shut (VA 0x1df8c). A

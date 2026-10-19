@@ -4,8 +4,7 @@
   each backdrop plane samples.
 - Sound scripts 29–32 are a lone `skip` (op 14) whose five words the
   interpreter ignores — something else must read them.
-- `F.EXE`: what a gate node (kind 4) charges; node words 17 and 18; the
-  the T/U side levels (no bell — how is one won?).
+- `F.EXE`: what a gate node (kind 4) charges; node words 17 and 18.
 - `F.EXE`'s screen files `PROJ/*.DAT`: past the sheet names and the
   per-frame sizes, how the screens' objects and their animation rates are
   laid out (the map Jack's frame rate, the landmarks, `LEVSLBIN`).

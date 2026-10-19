@@ -16,8 +16,9 @@ from `game_main`) writes three counters (`logic/counters.md`), and
 | `+0x18` | `+0x1c` | **panels** taken, +1 each (`jack_touch_panel` 0x1bacb) | any level played to its end: added to the **lives**, then cleared — before "continue?" is asked |
 | `+0x1c` | `+0x20` | the timer, 0x96fb0 | not read |
 
-A level quit (G sets state 0x11 when 0x96bc6 is set) skips all of it and
-costs a life instead, below level 12 (0x20e1d).
+A level quit — and every level played back from a `.J`, for which G
+writes state 0x11 (0x96bc6, `front/side-levels.md`) — skips all of it
+and costs a life instead, below level 12 (0x20e1d).
 
 **What a timmy is worth** to its hoover's player (`git_hoovered`
 0x322c5 and the tail at 0x31b6e it shares with `git_hoovered_8`):
