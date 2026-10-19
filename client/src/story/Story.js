@@ -19,7 +19,7 @@ export const START_NODE = 1;
 
 /**
  * What the clone does not build yet, refused: the side levels T and U
- * (numbers 29, 30) and the gates (kind 4). T and U are shows — G.EXE plays
+ * (numbers 29, 30). They are shows — G.EXE plays
  * the level back from its .J recording, fire stops it, and it is never
  * won or trashed (docs/re/front/side-levels.md). The bonus screens, C (12)
  * and the exits' D (13), are played (scenes/bonusRound.js).
@@ -47,6 +47,8 @@ export default class Story {
     this.hammer = Number.isInteger(start.hammer) ? start.hammer : FIRST_HAMMER;
     /** The timmy points a node paid when last won, by node (+0x20a). */
     this.paid = {};
+    /** The lives a node's panels gave when last played, by node (+0x26a). */
+    this.gotLives = {};
     this.enterWorld(start.world || 0);
   }
 
@@ -84,19 +86,32 @@ export default class Story {
 
   /**
    * Fire pressed with Jack stopped on `id` (map_fire_pressed, VA 0x1de35,
-   * then map_process_node, 0x1ffe9).
+   * then map_process_node, 0x1ffe9). A level, an exit that is a level, or a
+   * gate first asks on the map's dialog (0x1eaf4, docs/re/front/map-dialog.md):
+   * 'play' — "play level?"; 'replay' — a won level, bought back with the
+   * timmy points and the lives it paid; 'gate' — the timmy toll.
    * @returns {{act: 'play', level: string}
+   *   | {act: 'ask', kind: 'play'|'replay'|'gate', id: number, points?: number,
+   *      cost?: number, continues?: number, price?: number, have?: number}
    *   | {act: 'next'} | {act: 'refuse', why: string} | {act: 'none'}}
    */
   fire(id) {
     const n = this.nodeAt(id);
-    if (n && n.kind === 'gate' && !this.isTrashed(id)) return { act: 'refuse', why: 'ВОРОТА ЕЩЁ НЕ СДЕЛАНЫ' };
-    if (!n || n.number < 0) return { act: 'none' };
+    if (!n) return { act: 'none' };
     const trashed = this.isTrashed(id);
+    id = Number(id);
+    if (n.kind === 'gate') {
+      if (trashed) return { act: 'none' };
+      return { act: 'ask', kind: 'gate', id, price: n.price, have: this.timmies };
+    }
+    if (n.number < 0) return { act: 'none' };
+    // what the level can pay: 2 a timmy knocked, 20 a king (0x1ebb0)
+    const points = 2 * (n.timmies || 0) + 20 * (n.kings || 0);
     if (n.kind === 'exit') {
-      // trashed, the world is done; else its D screen first
+      // trashed, the world is done; its D screen is played straight off
       if (trashed || !n.level) return { act: 'next' };
-      return { act: 'play', level: n.level };
+      if (n.number > 11) return { act: 'play', level: n.level };
+      return { act: 'ask', kind: 'play', id, points };
     }
     if (n.number > 11) {
       // the bonus screens and the side levels: once each
@@ -104,23 +119,46 @@ export default class Story {
       if (SIDE_NUMBERS.has(n.number)) return { act: 'refuse', why: 'ДЕМО-ПОКАЗ ОРИГИНАЛА — В КЛОНЕ ЕЩЁ НЕТ' };
       return { act: 'play', level: n.level };
     }
-    // A level of a stage below the last one won is shut (VA 0x1df8c). A
-    // won one may be played again only while the timmy points it paid are
-    // still in hand — not spent in the shop (0x1e037).
+    // A level of a stage below the last one won is shut (VA 0x1df8c); a won
+    // one is bought back with what it paid, so it is shut too while those
+    // timmy points are not in hand (0x1e037).
     if (n.stage < this.stage) return { act: 'refuse', why: 'СЮДА УЖЕ НЕ ВЕРНУТЬСЯ' };
-    if (trashed && this.timmies < (this.paid[id] || 0)) {
-      return { act: 'refuse', why: 'ТИММИ ЭТОГО УРОВНЯ ПОТРАЧЕНЫ' };
-    }
-    return { act: 'play', level: n.level };
+    if (!trashed) return { act: 'ask', kind: 'play', id, points };
+    const cost = this.paid[id] || 0;
+    if (this.timmies < cost) return { act: 'refuse', why: 'ТИММИ ЭТОГО УРОВНЯ ПОТРАЧЕНЫ' };
+    return {
+      act: 'ask', kind: 'replay', id, points, cost, continues: this.gotLives[id] || 0,
+    };
+  }
+
+  /**
+   * "Yes" to a replay (0x1f134): the timmy points and the lives the level
+   * paid last time are given back.
+   */
+  buyBack(id) {
+    this.timmies -= this.paid[id] || 0;
+    this.paid[id] = 0;
+    this.lives -= this.gotLives[id] || 0;
+    this.gotLives[id] = 0;
+  }
+
+  /** "Yes" to a gate (0x1f244): it is trashed — open — and its toll paid. */
+  openGate(id) {
+    const n = this.nodeAt(id);
+    this.trashed.add(Number(id));
+    this.timmies -= n ? n.price : 0;
   }
 
   /**
    * A level played to its end, won or lost (F.EXE VA 0x20e1d): the panels
-   * it took are lives (record +0x1c, G.EXE jack_touch_panel 0x1bacb).
+   * it took are lives (record +0x1c, G.EXE jack_touch_panel 0x1bacb), and
+   * kept per node (+0x26a) — a replay takes them back.
    * @param {{lives?: number}} tally
+   * @param {number} [id] the node played
    */
-  played(tally = {}) {
+  played(tally = {}, id = this.node) {
     this.lives += tally.lives || 0;
+    this.gotLives[Number(id)] = tally.lives || 0;
   }
 
   /**
@@ -171,6 +209,7 @@ export default class Story {
     // the timmy points do not come along to a new world (0x2125f)
     this.timmies = 0;
     this.paid = {};
+    this.gotLives = {};
     return true;
   }
 

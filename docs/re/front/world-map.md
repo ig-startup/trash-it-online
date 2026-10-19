@@ -63,10 +63,10 @@ map_process_node 0x1ffe9 when the front end comes round:
 
 | node | not trashed | trashed |
 |---|---|---|
-| level (kind 1) | play it — unless its stage is below the last won (+0x1bc), refused | play again, while the timmy points it paid (+0x20a) are in hand and the stage allows |
+| level (kind 1) | asks "play level?" (`map-dialog.md`) — unless its stage is below the last won (+0x1bc), refused | while the timmy points it paid (+0x20a) are in hand and the stage allows, offers it back for them and the lives it gave |
 | number > 11 (kind 2: C bonus 12, T/U 29/30) | play it — T/U is a recorded show and never gets trashed (`side-levels.md`) | refused |
 | exit (kind 3) | play its D screen (number 13) | the world is done: next world |
-| gate (kind 4) | 0x24e39 mode 1 — what it charges is not traced | — |
+| gate (kind 4) | the timmy toll (node word 16): paid, it is trashed (`map-dialog.md`) | — |
 
 Winning trashes the node (map_node_trashed 0x20072), sets the stage, and
 adds the level's timmy points to the shop's money.
@@ -77,6 +77,6 @@ an exit's D costs nothing. A D won ends the world at once.
 
 **The second button** on a point calls the hammer shop: `hammer-shop.md`.
 
-**Not in the clone yet**: the T/U shows (`side-levels.md`) and the gates are refused
+**Not in the clone yet**: the T/U shows (`side-levels.md`) are refused
 (the C/D bonus rounds are in: `levels/bonus-round.md`); the films. The
 screen and its panel: `map-panel.md`.

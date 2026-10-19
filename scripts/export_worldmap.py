@@ -230,6 +230,12 @@ SHOP_OPEN = 0x8d90c       # per world, 30 flags by row * 5 + column
 SHOP_CELL = 0x89ad0       # hammer index -> its cell, row * 5 + column
 SHOP_WORDS = {"bought": 0x89784, "buyThe": 0x89798, "yesNo": 0x897ac,
               "poor": 0x897c0, "owned": 0x897d4}
+#: The map's dialog (0x1eaf4): its words, English (record +0x204 = 0).
+DIALOG_WORDS = {"available": 0x89db2, "buyYourWay": 0x89c72, "inFor": 0x89c86,
+                "timmy": 0x89d62, "timmies": 0x89c5e, "oneContinue": 0x89c9a,
+                "noContinues": 0x89d8a, "yesNo": 0x89cae, "tollGate": 0x89cd6,
+                "youNeed": 0x89cfe, "youHave": 0x89d12, "tryAgain": 0x89d26,
+                "openGate": 0x89d3a, "playLevel": 0x89cc2, "quit": 0x89d9e}
 #: The font template the shop writes with (0x89b2c): the YELMEDFT frame of
 #: 'a'/'A' and '0', of each sign, and the widths (space, gap, line).
 FONT = 0x89b2c
@@ -327,6 +333,9 @@ def main():
                 "level": None if level in (None, "exit") else "level_" + level,
                 "number": n["number"], "kind": n["kind"], "warp": n["warp"],
                 "open": n["open"], "stage": n["stage"],
+                # the map's dialog (0x1eaf4): the level's timmies and kings,
+                # a gate's toll
+                "timmies": n["timmies"], "kings": n["kings"], "price": n["price"],
             }
         moves = {}
         for pid, (x, y) in sorted(points.items()):
@@ -354,6 +363,7 @@ def main():
         "jack": export_jack(),
         "continue": export_continue(),
         "shop": export_shop(),
+        "dialog": {k: f.c.cstring(f.c.u32(va)) for k, va in DIALOG_WORDS.items()},
         # the panel over the map (map_screen_init 0x1fcc2): its icons and
         # the digits its numbers are written in
         "panel": export_sheet("LSPANEL", "sheet_lspanel.png"),

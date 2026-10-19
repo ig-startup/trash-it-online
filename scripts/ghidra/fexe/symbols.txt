@@ -66,3 +66,6 @@
 0x1d4e0  f  write_line                     ; a glyph object each; flag 0x8000 centres on x
 0x1d20c  f  font_frame                     ; character -> frame by the font template
 0x18144  f  level_score_screen             ; score and timmy points, five digits each
+0x1eaf4  f  map_dialog_tick                ; the sign (+0xc0 mode): 0 buy back, 1/2 toll gate, 3 play level?, 4 quit
+0x1e9da  f  dialog_yes_no                  ; the '~': left 43 yes, right 42 no; a button: 4 if no, else 3
+0x1eae8  f  dialog_word_tick               ; a word of the sign, screen-pinned

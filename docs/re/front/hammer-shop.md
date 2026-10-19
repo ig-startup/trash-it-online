@@ -27,7 +27,8 @@ to the timmy points (`+0x1be`). Leaving without buying (hammer_shop
 up. The points do not travel: arriving in a new world sets them to 0
 (front_after_level, 0x2125f). A won level pays its timmies into
 `+0x20a[node]`; it can be replayed only while the points hold that much
-(map_fire_pressed 0x1e037) — spend them and it is shut; losing it pays
+(map_fire_pressed 0x1e037), and replaying it takes them back
+(`map-dialog.md`) — spend them and it is shut; losing it pays
 nothing and opens it again (0x21106).
 
 **The screen** (`PROJ/HAMSHP_E.DAT`, one palette, HAMSHP_E.PAL): slot

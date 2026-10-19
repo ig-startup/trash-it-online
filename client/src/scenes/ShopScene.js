@@ -17,6 +17,7 @@
  */
 import Phaser from 'phaser';
 import { loadKeySets, LocalKeys, SOLO_EXTRA } from '../input/keySets';
+import { writeYel } from './yelFont';
 
 const PIC_W = 320;
 const PIC_H = 200;
@@ -307,35 +308,12 @@ export default class ShopScene extends Phaser.Scene {
     this._write(text, -24 + 160, -37 + 128);
   }
 
-  /**
-   * A line in YELMEDFT, centred on x (0x1d4e0 with flag 0x8000): letters
-   * from frame 0, digits from 32, the signs from the template's table; a
-   * space is 7 wide, each letter its width and 1 on; '@' a new line 15 down.
-   */
+  /** Words in YELMEDFT, each line centred on x (yelFont.js). */
   _write(text, x, y) {
-    const font = this._shop.font;
-    const frames = this._shop.sheets.yelmedft.frames;
-    const lines = text.split('@').filter((l) => l.length);
-    lines.forEach((line, n) => {
-      const glyphs = [];
-      let at = 0;
-      for (const ch of line) {
-        let f = -1;
-        if (ch >= 'a' && ch <= 'z') f = font.lower + ch.charCodeAt(0) - 97;
-        else if (ch >= 'A' && ch <= 'Z') f = font.upper + ch.charCodeAt(0) - 65;
-        else if (ch >= '0' && ch <= '9') f = font.digits + ch.charCodeAt(0) - 48;
-        else if (font.signs[ch] !== undefined) f = font.signs[ch];
-        if (ch === ' ' || ch === '~' || f < 0) {
-          // '~' marks where the yes/no pointer stands; it draws nothing
-          at += font.space;
-          continue;
-        }
-        glyphs.push([f, at]);
-        at += frames[f][2] + font.gap;
-      }
-      const left = x - Math.floor(at / 2);
-      glyphs.forEach(([f, gx]) => this._texts.push(this._put('yelmedft', f, left + gx, y + n * font.line)));
-    });
+    const { images } = writeYel(this, {
+      key: key('yelmedft'), frames: this._shop.sheets.yelmedft.frames, font: this._shop.font,
+    }, text, x, y);
+    this._texts.push(...images);
   }
 
   _clearTexts() {

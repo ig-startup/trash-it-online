@@ -3,7 +3,9 @@
  * docs/re/front/world-map.md). Jack walks the paths of the world's LVSPAT
  * picture pixel by pixel, stops on every point, may only turn back on a
  * level not yet trashed, and fire on a level plays it with everyone at
- * this keyboard. The second button calls the hammer shop: it flies down
+ * this keyboard — after a yes on the map's dialog, which also sells a won
+ * level back and opens the toll gates (docs/re/front/map-dialog.md). The
+ * second button calls the hammer shop: it flies down
  * for Jack and away with him (0x1f3a1, docs/re/front/hammer-shop.md).
  *
  * The walking itself was worked out once, by scripts/export_worldmap.py,
@@ -13,6 +15,7 @@
  */
 import Phaser from 'phaser';
 import Story from '../story/Story';
+import MapDialog from './mapDialog';
 import { loadKeySets, LocalKeys, SOLO_EXTRA } from '../input/keySets';
 
 const MAP_W = 640;
@@ -159,6 +162,7 @@ export default class WorldMapScene extends Phaser.Scene {
     if (!this.textures.exists('lsjack')) need.push(() => this.load.image('lsjack', maps.jack.image));
     if (!this.textures.exists('lspanel')) need.push(() => this.load.image('lspanel', maps.panel.image));
     if (!this.textures.exists('shop_lsshop')) need.push(() => this.load.image('shop_lsshop', maps.shop.sheets.lsshop.image));
+    if (!this.textures.exists('shop_yelmedft')) need.push(() => this.load.image('shop_yelmedft', maps.shop.sheets.yelmedft.image));
     new Set(map.icons.map((i) => i.sheet)).forEach((name) => {
       const key = sheetKey(name);
       if (!this.textures.exists(key)) need.push(() => this.load.image(key, maps.sheets[name].image));
@@ -225,6 +229,17 @@ export default class WorldMapScene extends Phaser.Scene {
     this._shopImg = this.add.image(0, 0, 'shop_lsshop', '0').setOrigin(0, 0)
       .setDepth(SHOP_DEPTH).setVisible(false);
     this._flight = null;
+    cutFrames(this.textures.get('shop_yelmedft'), maps.shop.sheets.yelmedft.frames);
+    this._dialogOpts = {
+      originX: PANEL_AT,
+      signKey: 'shop_lsshop',
+      signFrames: this._shopSheet.frames,
+      yel: { key: 'shop_yelmedft', frames: maps.shop.sheets.yelmedft.frames, font: maps.shop.font },
+      words: maps.dialog,
+      // on the screen's own camera, as the panel
+      pin: (o) => { this.cameras.main.ignore(o); this._textCam.ignore(o); },
+    };
+    this._dialog = null;
     // map_screen_init / 0x1dbd9: stopped on the record's node, from nowhere
     const p = map.points[story.node];
     this._w = {
@@ -326,6 +341,7 @@ export default class WorldMapScene extends Phaser.Scene {
     const shopKey = this._shopKey();
     if (w.lock > 0) w.lock -= 1;
     if (this._flight) return this._flightTick();
+    if (this._dialog) return this._dialogTick(fire || shopKey);
 
     if (!w.moving) {
       // map_take_warp: a warp node sends him to its pair, walking on
@@ -393,6 +409,32 @@ export default class WorldMapScene extends Phaser.Scene {
 
     if (w.moving) this._step();
     return false;
+  }
+
+  /** One tick of the map's dialog. @returns {boolean} left the scene */
+  _dialogTick(fire) {
+    const d = this._dialog;
+    const answer = d.tick({ left: this._held('left'), right: this._held('right'), fire });
+    if (answer === 'done') {
+      this._dialog = null;
+      return false;
+    }
+    if (answer !== 'yes') return false;
+    const story = this._story;
+    const ask = d.ask;
+    if (ask.kind === 'gate') {
+      // 0x1f244: the gate is trashed, its toll paid, and the sign goes
+      story.openGate(ask.id);
+      return false;
+    }
+    if (ask.kind === 'replay') story.buyBack(ask.id);
+    story.node = ask.id;
+    const n = story.nodeAt(ask.id);
+    this.scene.start('GameScene', {
+      players: this._players, mode: 'coop', myPlayerId: this._players[0].id,
+      local: true, levelId: n.level, story,
+    });
+    return true;
   }
 
   /** One tick of the shop's flight (0x1f3a1). @returns {boolean} left the scene */
@@ -508,6 +550,12 @@ export default class WorldMapScene extends Phaser.Scene {
         local: true, levelId: r.level, story,
       });
       return true;
+    }
+    if (r.act === 'ask') {
+      // the keys are not read for Jack while it is up (d980e = 1000)
+      this._dialog = new MapDialog(this, this._dialogOpts, r);
+      this._msg.setText('');
+      return false;
     }
     if (r.act === 'next') {
       if (!story.nextWorld()) {

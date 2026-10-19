@@ -13,7 +13,7 @@ from `game_main`) writes three counters (`logic/counters.md`), and
 |---|---|---|---|
 | `+0x0c` | `+0x10` | the **rubble**: 0x287bf0, each piece hoovered its area / 16, doubled under option 0x80 (`add_rubble_score` 0x19fd2, `count_hoovered` 0x61327; any player's hoover) | won: added to the **score** (`+0x14`) |
 | `+0x14` | `+0x18` | **player 1's** timmies + gits (player struct `+0x68` + `+0x70`, 0x28b9e4 + 0x28b9ec) — the other players' are not counted | won: added to the **timmy points** (`+0x1be`), and kept per node (`+0x20a`) |
-| `+0x18` | `+0x1c` | **panels** taken, +1 each (`jack_touch_panel` 0x1bacb) | any level played to its end: added to the **lives**, then cleared — before "continue?" is asked |
+| `+0x18` | `+0x1c` | **panels** taken, +1 each (`jack_touch_panel` 0x1bacb) | any level played to its end: added to the **lives**, kept per node (`+0x26a`, a replay takes them back — `map-dialog.md`), then cleared — before "continue?" is asked |
 | `+0x1c` | `+0x20` | the timer, 0x96fb0 | not read |
 
 A level quit — and every level played back from a `.J`, for which G
