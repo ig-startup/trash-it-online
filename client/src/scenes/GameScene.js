@@ -26,6 +26,7 @@ import Bonuses from './bonuses';
 import Popups from './popups';
 import Bell from './bell';
 import BonusRound, { preloadBonusRound } from './bonusRound';
+import TimmyBins from './timmyBins';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
@@ -295,9 +296,11 @@ export default class GameScene extends Phaser.Scene {
     this._objectTotal = level.destructibles.length;
     this._destroyedCount = 0;
     this._bellTrash = bell.trash || 0;
+    // A subtype-2 bell waits for so many timmies in the bins (VA 0x33fdd).
+    this._bellBins = bell.bins || 0;
     this._bell = new Bell(this, bell, (x, from, to) => (to >= bellGround ? bellGround
       : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)),
-    { hidden: this._bellTrash > 0 || !level.bell, fallbackColor: WORLD_COLORS.bell });
+    { hidden: this._bellTrash > 0 || this._bellBins > 0 || !level.bell, fallbackColor: WORLD_COLORS.bell });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bell.destroy());
 
     // ── A bonus screen's object (G.EXE VA 0x10c1f; bonusRound.js) ─────────
@@ -388,6 +391,11 @@ export default class GameScene extends Phaser.Scene {
       levelHeight + 120, {
         // A ball coming down into a cannon's bowl is taken in (VA 0x20c15).
         falling: (h) => {
+          if (h.kind === 'timmy' && this._bins && this._gits
+            && this._bins.take(h.sprite.x, h.sprite.y, h.vy)) {
+            this._gits.binned(h.sprite);
+            return true;
+          }
           if (this._seesaws && this._seesaws.fallingLoose(h, this._seesawHooks)) return true;
           const taken = (h.kind === 'ball' && this._cannons && this._cannons.tryLoad(h))
             || (this._suckers && this._suckers.catchLoose(h));
@@ -506,9 +514,30 @@ export default class GameScene extends Phaser.Scene {
           });
         },
         prize: (kind, count, x, y, left) => { if (this._bonuses) this._bonuses.prize(kind, count, x, y, left); },
+        bin: (x, y, vy) => !!this._bins && this._bins.take(x, y, vy),
       })
       : null;
     if (this._gits) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._gits.destroy());
+
+    // ── Timmy bins (.OB classes 18-21, only in 8K) ───────────────────────
+    // A timmy that comes down into one is swallowed and counts; once the
+    // level's number is in, the bell lets go. See timmyBins.js.
+    this._bins = this._gits && PROP_ANIMS.timbin && (level.bins || []).length
+      ? new TimmyBins(this, level.bins, {
+        floor: (x, from, to) => (to >= bottom ? bottom : floorUnder(blockAt, x, from, to)),
+        credit: () => {
+          this._gits.collected += 1;
+          this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
+          if (this._bellBins > 0) {
+            this._bellBins -= 1;
+            if (this._bellBins === 0) this._releaseBell();
+            this._showBins();
+          }
+        },
+        hop: () => this.cameras.main.shake(120, 0.006),
+      })
+      : null;
+    if (this._bins) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bins.destroy());
     // ── Bonuses, dispensers, secret panels ───────────────────────────────
     // .OB classes 33, 8 and 46. See bonuses.js.
     this._superHoover = 0;     // ticks of the super hoover left (0x3f4024)
@@ -708,6 +737,7 @@ export default class GameScene extends Phaser.Scene {
       strokeThickness: 3,
     }).setOrigin(0.5, 0).setDepth(10));
     this._showTrash();
+    this._showBins();
 
     this._debugText =this._hud(this.add.text(220, this.scale.height - 4, '', {
       fontSize: '11px',
@@ -841,6 +871,7 @@ export default class GameScene extends Phaser.Scene {
     if (this._ufos) this._ufos.update(delta);
     if (this._bonuses) this._bonuses.update(delta);
     if (this._popups) this._popups.update(delta);
+    if (this._bins) this._bins.update(delta);
     if (this._gits) {
       const got = this._gits.update(delta, hoovers);
       if (got) this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
@@ -1471,6 +1502,12 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
     this._trashText.setText(`РАЗНЕСИ ${this._bellTrash}%: ${pct}%`);
+  }
+
+  /** 8K's "collect the timmies": how many the bin still wants. */
+  _showBins() {
+    if (!this._trashText || this._bellTrash) return;
+    this._trashText.setText(this._bellBins > 0 ? `ТИММИ В БАК: ${this._bellBins}` : '');
   }
 
   /** The bell pops into view: kicked up, and down it comes (VA 0x340af). */

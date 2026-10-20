@@ -326,7 +326,6 @@
 0xa0288  d  grab_point                     ; 11 ahead, 5 up
 0x93eb0  d  throw_reach_vx                 ; 32 steps, 0.5 … 3.0 px/tick
 0x93f30  d  throw_lift_vy                  ; 8 steps, 0.5 … 4.0 px/tick
-0xa3622  d  timmy_bin_stages
 0xa4970  d  impact_rubble_masks
 0x9fef6  d  hammer_trail_template
 0x96e18  d  sucker_wobble

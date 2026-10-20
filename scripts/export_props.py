@@ -46,6 +46,9 @@ PROPS = {
     # directly — the walk is 1-16, the fall 6-9, the skid 17-25.
     "timmy": ("TIMMY.SPR", list(range(35))),
     "ktimmy": ("KTIMMY.SPR", None),
+    # The timmy bin (.OB classes 18-21): frame = how far into swallowing
+    # one it is, by the table at 0xa3622 (docs/re/objects/timmy-bin.md).
+    "timbin": ("TIMBIN.SPR", list(range(9))),
     "spk": ("SPK.SPR", None),          # 26-34 bristling, 35-42 its needles
     "bom": ("BOM.SPR", list(range(34))),  # the walking bomb; 34 is empty
     # Dynamite: 202 placements across 42 levels, the third most common

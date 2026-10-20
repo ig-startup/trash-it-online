@@ -1,0 +1,13 @@
+# The timmy bin (.OB classes 18-21, only in 8K) — see docs/re/objects/timmy-bin.md.
+0x2f785  f  timbin_wait                    ; start state: looks for a falling timmy at its foot, then swallows it
+0x2f7ea  f  timbin_swallow                 ; 52 ticks by two tables, then the timmy is its player's; the last one sets level option 0x800
+0x2f26e  f  sprite_find_in_box             ; ? first sprite of the searcher's category whose point is in a box and that a callback accepts
+0x2f2f0  f  point_in_facing_box            ; ? the other's (x, y) in a box relative to this sprite, mirrored when it faces left
+0x11a92  f  spawn_got_popup                ; ? GOT.SPR rising above a sprite, frame eax, offset ebx/ecx; one of four motions
+0x11b99  f  got_tick                       ; ? GOT.SPR's start state
+0x1e54d  f  effect_pair_sideways           ; ? start_effect twice, at vx -1 and vy +2/-2
+0xa3622  d  timmy_bin_stages
+0xa368c  d  timmy_bin_binned               ; 10-byte rows by tick: TIMMY frame word, dx, dy, width +, height +
+0xa361a  d  timmy_bin_mouth                ; x, y, w, h: -9, -8, 19, 8
+0xa35ea  d  tmpl_binned_timmy              ; TIMMY.SPR, the stand-in drawn behind the bin
+0xa3578  d  timmies_to_bin                 ; rules +0x3a; the bin that brings it to 0 lets the subtype-2 bell go

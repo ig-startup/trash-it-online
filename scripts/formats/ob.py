@@ -104,7 +104,7 @@ RULES = {
     0x38: 'the time limit, minutes and seconds as decimal digits (315 = 3:15), '
           'made packed BCD five at a time (VA 0x19b9d); 0 keeps 20:00 — '
           'see time_limit()',
-    0x3a: 'timmies the bin wants (0xa3578, default 10)   (1 level: 8K, 10)',
+    0x3a: 'timmies the bins must take before a subtype-2 bell lets go (0xa3578, default 10; 8K: 10; VA 0x2f7ea)',
     0x3c: 'the most bomb gits alive at once (0x287c62; objects/gits.md)  (17 levels)',
     0x3e: 'the most spike gits alive at once (0x287c66)  (77 levels)',
     0x40: 'the force of a Tommy striking a block (git_strike_block)  (11 levels)',
