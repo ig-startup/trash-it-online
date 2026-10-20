@@ -287,7 +287,7 @@
 0x2384d  f  draw_buckets_clear             ; the 500 depth lists emptied
 0x23ed0  f  str_copy                       ; as G's
 0x23ee1  f  str_cat                        ; as G's
-0x240fa  f  release_memory_block           ; as G's
+0x240fa  f  save_file                      ; fopen(name, "wb"), fwrite, fclose — as G's 0x2e7e0
 0x24a19  f  resolve_path_cd                ; a file not found is looked for on the CD drive (0xd667d)
 0x25769  f  obj_alloc_before               ; a free object into the live list before EAX
 0x25859  f  obj_alloc_after                ; after EAX — obj_spawn's
@@ -352,3 +352,18 @@
 0x27954  f  joystick_button_bits_b
 0x2796c  f  joystick_button_bits_c
 0x27982  f  joystick_button_bits_d
+#
+# Files, the CD, the language.
+0x249af  f  load_front_record              ; TRASHIT.DAT into the record (0x89178)
+0x249cd  f  save_front_record              ; TRASHIT.DAT written back from it
+0x24a9f  f  load_config                    ; TRASHIT.CFG
+0x24ccd  f  cd_check                       ; the CD drive (0xd667d) labelled TRASHIT? — the result is jumped over (jmp at 0x24cf3 right after the test), so the "insert the CD" loop behind it never runs
+0x24c50  f  drive_label_is                 ; drive AL's label equals the string at EDX
+0x24b96  f  volume_label                   ; "%c:\*.*" with the volume attribute -> the label, 8 + 3 joined
+0x24acf  f  sheet_name_language            ; "_e.SPR" gets the language's letter: "egfis"[record +0x204]
+0x249e7  f  screen_clear                   ; the back buffer (0x94504), 200 rows of 320 zeroed
+0x56360  f  memset_bytes                   ; EBX bytes at EAX = DL
+0x233f0  f  sound_and_text_tick            ; sound_tick, then the debug text (0x5236e) when no frames are pending
+0x19022  f  return_1_19022                 ; savegame_write's last step: 1
+0x2321d  f  return_1_2321d                 ; sprite_load_into_slot's check: always 1
+0x21c94  f  return_arg                     ; EAX unchanged
