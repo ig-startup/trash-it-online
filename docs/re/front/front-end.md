@@ -83,5 +83,6 @@ The battle sets are a table of their own (VA 0x8d8e0) — see below.
 runs 40 more ticks and fades out; no language is picked, and nothing
 calls it. The language is the record's `+0x204` (`sheet_name_language`,
 "egfis"), which `front_init` sets from 0xd667e — 0 in the image, and the
-only two references to it read it: this build always runs in English,
-though the French, German, Italian and Spanish files are all on the disc.
+only two references to it read it: this build always runs in English.
+Of the other languages only the get-ready screens (`GETRDY_F/G/I/S.DAT`)
+and the strings inside F.EXE are on the disc; every other screen is `_E`.
