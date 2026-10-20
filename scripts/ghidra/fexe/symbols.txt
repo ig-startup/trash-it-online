@@ -154,9 +154,9 @@
 0x2098c  f  title_screen                   ; state 0: title_init, then its ticks until a choice ends it
 0x20920  f  title_tick                     ; the menu handler, the start transition, the frame; UP + Esc 250 ticks -> movie_select
 0x21857  f  title_init                     ; FRMWRK_E.DAT, CD track 8, the picture, title_menu
-0x209c6  f  title_menu                     ; start / options / quit; 30 s of nothing -> attract_next
-0x20c50  f  start_menu                     ; battle / arcade / story (words only, the strings blank); Esc back
-0x20afe  f  options_menu                   ; pad config / audio config / done
+0x209c6  f  title_menu                     ; START / OPTIONS / QUIT IT!; 30 s of nothing -> attract_next
+0x20c50  f  start_menu                     ; BATTLE / ARCADE / QUEST (the debug strings blank); Esc back
+0x20afe  f  options_menu                   ; AUDIO CONF / CONTROLLER CONFIG / DONE (debug strings "pad config", "audio config": swapped)
 0x21716  f  attract_next                   ; the next of 0x8dcb0: 2 3 * 4 0 * 1 — a demo D level, or * the credits
 0x12882  f  menu_set_handler               ; EAX run each tick (0x184750), its first call sets it up (0x184760)
 0x126cd  f  menu_open                      ; EAX the item strings, 0-ended; cursor 0, nothing chosen (-1)
@@ -196,3 +196,26 @@
 0x1d45a  f  script_stop                    ; the controller (EAX) freed
 0x1d3e4  f  scripts_stop_for_object        ; every controller driving object EAX
 0x1d78a  f  script_low_commands            ; commands 60000..0xea8e: set object fields (+0x3e, +0x42 vx, +0x44 vy, +0x48 ax …); returns 1 to read on
+#
+# The options: audio and controllers (docs/re/front/options.md).
+0x153d3  f  audio_config                   ; "audio configuration": a pad's four buttons pick record +0x30, the level music
+0x150a7  f  audio_config_init
+0x15291  f  audio_config_tick              ; 0x40 -> 0, 0x10 -> 1 (none), 0x80 -> 2, 0x20 -> 3; then 23 blinks and out
+0x1501d  f  audio_icon_tick                ; frame by +0x30 from 0x14bc4 (10 7 9 8), blinking by 0x14ba6
+0x10ad6  f  pad_config                     ; CONTROLLER CONFIG: who plays on what; 0x8917c = 1 so front_main applies it
+0x1064a  f  pad_config_init                ; CONPAD.SPR: 4 player columns x 5 device rows, the DONE plate, the cursor
+0x105dd  f  detect_devices                 ; joystick A, B (0xa663c, 0xa663e), GrIP pads (0xa6640)
+0x1062d  f  pad_config_defaults            ; 0x852d0: per player (18 bytes) device +0, rows allowed +2..+0xa
+0x10bd1  f  pad_config_draw                ; each cell: allowed, chosen, not allowed
+0x10e83  f  pad_config_cursor_tick         ; any pad: L R player, U D device row (row 5 DONE); fire: take it, or set it up
+0x10d97  f  pad_config_row_down            ; the next allowed row below, -1 none
+0x10dd5  f  pad_config_row_up
+0x112bd  f  pad_config_save                ; 0x8531c = 1, players 1 and 2's devices kept
+0x10053  f  keys_redefine_start            ; the keyboard row picked again: six keys asked for, "press a key...."
+0x10e0f  f  keys_copy_out                  ; player DX's six keys (0x51653c + 0x13c n) to EAX
+0x10e49  f  keys_copy_in
+0x14f07  f  pad_layout_screen              ; "<colour> player reconfigure your controller": three layouts -> record +0x2c + player
+0x14c59  f  pad_layout_init
+0x14f83  f  pad_layout_tick                ; UP / DOWN round 0..2 (0xd61dc)
+0x1125b  f  apply_player_input             ; "Setting player_input": each player's device and six keys into the record (+0x70 + 14 n, the keys from +0x72)
+0x111e1  f  save_joystick_setup            ; the joystick driver's words (0xa431c ...) into the record +0xa8

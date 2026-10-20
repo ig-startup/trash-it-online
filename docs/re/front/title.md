@@ -32,12 +32,16 @@ first one shaking the camera; when it is gone past x 20 the handler acts.
 
 | menu | items | each does |
 |---|---|---|
-| `title_menu` 0x209c6 | start · options · quit | start → `start_menu`; options → `options_menu`; quit → "QUIT selected", `exit_front` with the record's word 0 = -1 |
-| `start_menu` 0x20c50 | battle · arcade · story | after the start transition: `battle_framework`, `arcade_framework`, the story (state 1); Esc back to the title menu |
-| `options_menu` 0x20afe | pad config · audio config · done | pad config (0x153d3), audio config (0x10ad6), done → the title menu |
+| `title_menu` 0x209c6 | START · OPTIONS · QUIT IT! | start → `start_menu`; options → `options_menu`; quit → "QUIT selected", `exit_front` with the record's word 0 = -1 |
+| `start_menu` 0x20c50 | BATTLE · ARCADE · QUEST | after the start transition: `battle_framework`, `arcade_framework`, the story (state 1); Esc back to the title menu |
+| `options_menu` 0x20afe | AUDIO CONF · CONTROLLER CONFIG · DONE | `audio_config` (0x153d3), `pad_config` (0x10ad6), back to the title menu |
 
-The start menu's strings are blank: its three words are pictures only.
-Choosing in it starts `title_start_transition` (0x13069): a camera
+The words are frames of `FWTEXT_E.SPR` (slot 1; 0-2 the start menu's,
+3-4 and 5, 8 the options', 6, 7, 12 the title's), each placed by its
+own frame origin. The debug strings do not always match: the start
+menu's are blank, and the options' read "pad config", "audio config" —
+the other way round from the words and from what the items do.
+Choosing in the start menu starts `title_start_transition` (0x13069): a camera
 shake, the next picture, 90 ticks, a fade out and the CD stopped, then
 the game type runs. (Two more lists sit at 0x8dc94: "1 player" /
 "2 players", unused here.)
