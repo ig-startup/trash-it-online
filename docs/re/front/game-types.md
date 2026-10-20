@@ -62,3 +62,24 @@ packed-BCD m:ss.t that adds a tenth every 6 ticks and **stops at
 60:00.0** (`cmp 0x60000`); nothing in the arcade runs out of time. The
 results (VA 0x11e2c) put the team times at `+0x158` in order (VA 0x20730)
 and let equal times share a place.
+
+**Before the level** (F.EXE, read 20.10.2026). Battle and arcade both
+pick on a **reel** (`level_select_init` 0x18a3c, ARLVSL_E / BATLSL_E):
+two 225-px pictures side by side scroll as one strip
+(`level_select_reel` 0x18daa). Holding LEFT or RIGHT while it is at rest
+sets it going; the speed grows by 1 a tick to 15, then the push turns
+round and it slows to a stop. The row under it is the choice — arcade, one
+of the 15 rows of 0x8d6f0 (world 19 = K, level, hammer for all four
+players, the index at `+0xe0`); battle, one of the 5 sets (`+0xfc`). A
+button once it has stopped takes it; Esc goes back to the title
+(`level_select_tick` 0x18cbd).
+
+Then **"Get ready"** (`get_ready_screen` 0x1a08d, `GETRDY_<lang>.DAT`):
+arcade shows its mission lines and waits up to 12000 ticks; battle
+**types its rules out letter by letter** (`get_ready_type_text` 0x1a316)
+from `grbattle.spr` — 96 letters in English, 68 French, 47 German, 66
+Italian, 106 Spanish (0x19ef1) — after 25 ticks, one every second tick,
+a click every third. A button pressed before the end makes it four letters a
+tick; when the text is out the screen waits 480 ticks (40 if hurried).
+The first 60 ticks take no input (`get_ready_tick` 0x19fbb); after that a
+button (battle: only once the text is out) starts the level, Esc goes back.

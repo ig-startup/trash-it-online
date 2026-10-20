@@ -39,7 +39,10 @@
 0x1c947  f  obj_move                       ; position += velocity (16.16)
 0x1c991  f  obj_accelerate                 ; velocity += acceleration
 0x167c5  f  world_arrival_screen           ; "password is" in state 5
-0x1a08d  f  arcade_level_select            ; game type 2: the K rows and their mission lines
+0x1a08d  f  get_ready_screen               ; GETRDY_<lang>.DAT before a battle or arcade level: arcade, the mission lines, 12000 ticks; battle, the rules typed (780); a button or Esc (answer 0) ends it
+0x19f73  f  get_ready_load                 ; the screen reset, GETRDY_<lang>.DAT loaded, its answer 1 into 0xd6678
+0x19fbb  f  get_ready_tick                 ; (not cut out by Ghidra) 60 ticks deaf, then a button (battle: once the text is out) or Esc; the timer 0xd666e runs out
+0x1a316  f  get_ready_type_text            ; battle: grbattle.spr letters one by one (96 E, 68 F, 47 G, 66 I, 106 S at 0x19ef1), after 25 ticks one every second tick, four a tick once a button is pressed; a click every third
 0x1b92a  f  hammer_shop                    ; trade in on entry, back on leaving unbought (docs/re/front/hammer-shop.md)
 0x1b632  f  shop_init                      ; HAMSHP_E.DAT: picture, grid, buttons, cursor, rings, plate; money += worth
 0x1ba69  f  shop_fire                      ; state 0xd6dba: 1 browse, 2 buttons, 3 yes/no, 5 wait, 6 bought, 7 film
@@ -112,6 +115,7 @@
 0x52e94  f  blit_zoom?                     ; reached from 0x26235 (not cut out as a function): the frame scaled by EDX about the point 0x516a18, 0x516a1c
 0x27a34  f  blit_zoom_b?                   ; the same kind, reached from 0x25fb3, steps back through the source
 0x285a4  f  blit_zoom_remap?               ; the same kind through a table, reached from 0x26227
+0x2a8a3  d  scale_step_table               ; as G's: 151 row pointers, then [source size] → row of 16.16 steps (source / drawn size), to 0x503f7; Ghidra took it for 23 functions
 0x50eda  f  stretch_row_256_to_320         ; four pixels to five: a 256-wide row onto a 320-wide one (sixteen calls in a row from ~0x24524)
 0x2382b  f  obj_queue_depth                ; puts the object (edx) on depth list ax: 500 lists of 0x89c bytes from 0x2653c0, the count at +0x898
 0x1f827  f  map_jack_taken                 ; Jack under the shop's house: from +0xbc = 1 narrowing (+0xa4) behind it, at 22 px narrower (+0xbc = 2) rising with it until removed 150 px up
@@ -239,6 +243,8 @@
 0x18952  f  play_again_screen              ; PLYAGN_E.DAT; 1 = yes
 0x1879d  f  play_again_init
 0x18a3c  f  level_select_init              ; ARLVSL_E (arcade) or BATLSL_E (battle)
+0x18daa  f  level_select_reel              ; two 225-px pictures scrolled; LEFT / RIGHT held at rest spin it (speed ±1 a tick to 15, then back to 0); the row under it: arcade, level, world and hammer from 0x8d6f0 (+0xe0); battle, the set (+0xfc)
+0x18cbd  f  level_select_tick              ; (not cut out by Ghidra) the reel; a button once it stops takes the row (0xd63c2 = 1), Esc 0
 0x174e5  f  teams_screen_init              ; SLTEAM_E.DAT
 #
 # Saved games (docs/re/front/savegame.md).
@@ -255,6 +261,10 @@
 0x18fd4  f  savegame_read                  ; SAVEGAME, 0x2000 bytes: 1 read, 2 short, 3 none
 0x19034  f  savegame_write
 0x19958  f  savegame_ready                 ; always 1
+0x1720d  f  save_card_full?                ; console leftover, unreachable (game_save never answers 4): "vacant block is less than required, delete a block?", then the delete list
+0x16fb4  f  save_delete_list_init?         ; the screen cleared, two pointers (templates 0x35, 0x36) and "delete a memory card slot"
+0x170c6  f  save_delete_list_names?        ; each slot's name 12 px apart, a non-name character shown as '?'
+0x1732a  f  save_delete_list_tick?         ; UP / DOWN round the slots, the pointers either side of the name
 #
 # Shared with G.EXE: the same code, matched body to body against G's names (difflib >= 0.9 on the
 # normalised decompilation, read side by side).
@@ -401,5 +411,5 @@
 0x101f6  f  keys_swap_duplicate            ; a key already given to another of the six swaps places with it
 0x10379  f  keys_redefine_end              ; the prompt removed, the cursor back
 0x1a678  f  language_screen_init           ; LANGSL_E.DAT
-0x1695a  f  save_message_draw              ; the line for save state 0xd629a (1 failed, 3 saved, 10 ...), redrawn when it changes
+0x1695a  f  save_message_draw              ; the line for save state 0xd629a (1 failed, 2 not formatted, 3 saved, 4 delete a slot, 5 saving, 6 overwrite?, 7 cancelled, 9 save game, 10 card full; English at 0x87208..), redrawn when it changes
 0x171be  f  is_name_char                   ; a-z A-Z 0-9 ! space . , -
