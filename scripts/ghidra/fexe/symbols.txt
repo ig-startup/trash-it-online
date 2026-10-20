@@ -518,5 +518,8 @@
 0x101f6  f  keys_swap_duplicate            ; a key already given to another of the six swaps places with it
 0x10379  f  keys_redefine_end              ; the prompt removed, the cursor back
 0x1a678  f  language_screen_init           ; LANGSL_E.DAT
+0x1a751  f  language_screen                ; (not cut out, unreferenced) "doing init language select": LANGSL_E's picture until a button (sound 2), 40 ticks, fade out — nothing is chosen
+0x1a705  f  language_screen_tick           ; any button ends it
+0x1a747  f  language_screen_out_tick
 0x1695a  f  save_message_draw              ; the line for save state 0xd629a (1 failed, 2 not formatted, 3 saved, 4 delete a slot, 5 saving, 6 overwrite?, 7 cancelled, 9 save game, 10 card full; English at 0x87208..), redrawn when it changes
 0x171be  f  is_name_char                   ; a-z A-Z 0-9 ! space . , -
