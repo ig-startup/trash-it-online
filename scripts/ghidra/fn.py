@@ -241,7 +241,8 @@ def use_fexe():
     WORK = os.environ.get("TRASHIT_GHWORK_F", os.path.expanduser("~/ghwork/f"))
     SYMS = os.path.join(HERE, "fexe")
     LIBRARY_LO = 0x55560        # fexe/symbols.py
-    DATA_RANGES = ((0x2a8a3, 0x503f7),)     # F's scale_step_table, as G's
+    DATA_RANGES = ((0x135e8, 0x13624),      # memory_card_messages
+                   (0x2a8a3, 0x503f7))      # F's scale_step_table, as G's
 
 
 def main(argv):
