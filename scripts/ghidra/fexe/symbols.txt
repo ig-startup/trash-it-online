@@ -111,7 +111,7 @@
 # Blending (docs/re/front/continue.md "The mist is added light").
 0x135b2  f  load_blend_table               ; "%s.STP" into 0xc6148: MIST (continue), HAMSHP_E (shop), SHARDS
 0x135e8  d  memory_card_messages           ; 15 string pointers, 5 languages x 3: "memory card load unsuccessful", "the memory card in slot", "contains no trash it save games" (Ghidra took it for code at 0x135f2)
-0x13624  f  quest_start_drift_tick?        ; (not cut out) GAMRST's frame-1 object: drifts 0.3 px right, 0.2 down a tick, wrapping at x 320 (a sound, 0x14) and y 203
+0x13624  f  quest_start_hand_tick          ; (not cut out) GAMRST's pointing hand (frame 1, template 0x8627c): a jab every 32 ticks — out up-left from 4.9, 3.2 px a tick, slowing and coming back — a sound (0x14) each; LOAD waits for the jab to end
 0x26ce2  f  draw_objects                   ; the 500 depth lists; +0x1c 0 plain, -2 blend, -1 none, else remap
 0x26347  f  obj_draw_blend                 ; mode -2: the frame scaled through table[src * 256 + dst]
 0x539bc  f  blit_scaled_blend              ; the blitter behind it, clipped to 320 x 200
@@ -127,7 +127,7 @@
 0x26235  f  obj_draw_heat                  ; (not cut out, unreferenced) draw_objects skips mode -1, so the heat haze is never drawn
 0x27a34  f  blit_rle_mirror                ; as G's: mirrored; obj_draw_plain's when +0x92 & 0x88
 0x285a4  f  blit_rle_remap_mirror          ; as G's; obj_draw_remap's, mirrored
-0x2a8a3  d  scale_step_table               ; as G's: 151 row pointers, then [source size] → row of 16.16 steps (source / drawn size), to 0x503f7; Ghidra took it for 23 functions
+0x2a8a3  d  scale_step_table               ; as G's, byte for byte: 151 row pointers, then [source size s][drawn size d] 16.16 steps, (s - 0.25) / d (d = 1: s - 1/65536), to 0x503f7; Ghidra took it for 23 functions
 0x50eda  f  stretch_row_256_to_320         ; four pixels to five: a 256-wide row onto a 320-wide one (sixteen calls in a row from ~0x24524)
 0x2382b  f  obj_queue_depth                ; puts the object (edx) on depth list ax: 500 lists of 0x89c bytes from 0x2653c0, the count at +0x898
 0x1f56d  f  map_shop_flight_tail           ; a fragment of map_shop_flight Ghidra cut out: state 4, the house climbing, the fade to state 10
@@ -341,8 +341,8 @@
 0x242f1  f  bios_set_mode                  ; int 10h with AX
 0x24b5c  f  vga_grab_then_set_mode         ; the 64000 bytes at 0xa0000 into EAX, then bios_set_mode
 0x24b06  f  vga_show_direct                ; retrace, palette, ECX bytes from EAX straight to 0xa0000, retrace, palette
-0x24c77  f  beep                           ; PC speaker: sound, delay, nosound
-0x24c90  f  beep_four?                     ; four tones in a row, then nosound
+0x24c77  f  beep_low                       ; cd_check's: 200 Hz for 700 ms (no disc)
+0x24c90  f  beep_rising                    ; cd_check's: 500, 1000, 1500, 2000 Hz, 100 ms each (disc found)
 0x24cbd  f  keyboard_flush                 ; getch while kbhit
 0x25ce5  f  sheet_palette_load             ; a sheet's .PAL: 0x300 bytes into the palette pool (0x513868 on), "Can't load %s" past its end
 0x26d97  f  load_sheet_slot                ; AX: one slot's sheet (a one-entry, -1-ended list for load_sheets_into_slots)
@@ -366,7 +366,7 @@
 0x51d74  f  input_poll_devices             ; GrIP polled if present, then the four players
 0x51c00  f  player_input_update            ; previous = held, held = the device's bits, pressed = held & ~previous
 0x51f4b  f  read_pad                       ; device 4 the joystick (buttons | axes), else the GrIP pad's status
-0x51f77  f  keyboard_read_player?          ; the player's keys through key_down; the last one 0x200
+0x51f77  f  keyboard_read_player_keys      ; device 1: the player's key map (+8, shorts): L 1 / R 2, U 4 / D 8, 0x10, 0x20, slots 8 and 9 -> 0x100, 0x200 (6, 7 not read); the front end tests only 0xf0
 0x523c0  f  camera_set_target              ; as G's: "x y z %d %d %d", zoom kept 320..0x27ff, the shake offset, the view box
 0x52707  f  camera_ease                    ; as G's: x, y by 1/8, zoom by 1/4 a tick
 0x52514  f  camera_mode_frame              ; camera mode 0x516a2c = 1
@@ -381,14 +381,17 @@
 0x54a51  f  pit_set_divisor                ; PIT channel 0, mode 2, EAX
 0x54a7b  f  pit_set_period_us              ; µs -> divisor (x 1.193), 0 past 55 ms
 0x54aaa  f  ail_timers_program             ; the PIT to the shortest period of the 16 timers (0xa4c14 used, 0xa4c94 µs)
-0x54b10  f  ail_timer_install?             ; the code and data locked, the 16 timers cleared, the int 8 handler in
-0x54c26  f  ail_timer_remove?              ; the PIT back to 18.2 Hz, the old int 8 vector back
+0x54b10  f  ail_timer_install              ; the timer code locked, Windows' VTD asked for (int 2Fh 1684h), the 16 timers cleared, int 8's old vectors kept and 0x548ae put in
+0x54c26  f  ail_timer_remove               ; the PIT back to 18.2 Hz (divisor 0), int 8's old vector back
 0x553f5  f  ail_lock_timer_memory          ; the timer tables and code locked (DPMI) against paging
 0x54c5d  f  ail_api_get_real_vect          ; DPMI 0200h
 0x54c85  f  ail_api_set_real_vect          ; DPMI 0201h
-0x54cfd  f  ail_api_install_USE16_ISR?     ; a real-mode callback and its descriptors set up (DPMI)
+0x54cfd  f  ail_api_set_USE16_ISR          ; behind AIL_set_USE16_ISR (0x631xx, not cut out): descriptors for the 16-bit handler (code 0x54ca8, data 0xa4d98), then the vector (DPMI 0204h/0205h), the old one in 0xa4d8a
 0x54f13  f  ail_api_restore_USE16_ISR
-0x54f58  f  ail_get_flags                  ; pushfd / pop
+0x54f58  f  ail_api_disable_interrupts     ; pushfd, pop eax, cli: the flags before
+0x54f5c  f  ail_api_restore_interrupts     ; IF back as the saved flags had it
+0x630e0  f  AIL_disable_interrupts
+0x630d0  f  AIL_restore_interrupts
 0x54fc3  f  ail_api_call_driver            ; a real-mode call into the driver (DPMI 0301h), the lock held
 0x550a3  f  ail_api_register_timer         ; the first free of 16 timers, its callback; -1 if none
 0x550e4  f  ail_api_set_timer_user

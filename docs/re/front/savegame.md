@@ -8,7 +8,10 @@ the console's words over a plain file.
 
 **QUEST starts at a choice** (`quest_start_screen` 0x137c8,
 `PROJ/GAMRST_E.DAT`; from `front_after_level` 0x20e1d): three rows, UP /
-DOWN, a button to take one, Esc back to the title (3).
+DOWN, a button to take one, Esc back to the title (3). The cursor is a
+pointing hand (`quest_start_hand_tick` 0x13624) that jabs at the row every
+32 ticks with a sound and moves 40 px a row; LOAD waits for the jab to
+finish.
 
 | row | does |
 |---|---|
