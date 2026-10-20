@@ -40,6 +40,21 @@ C runtime). Many of the game's error messages name the function they are
 in (`"BUG in 'record_pad_entry'"`), and `symbols.py strings` lists those
 too.
 
+**F.EXE** (`fn.py … --f`, names in `scripts/ghidra/fexe/`) is laid out the
+same way: the front end 0x10000-0x2a8a3, then the blitters' step table to
+0x503f7 (`scale_step_table`, 151 row pointers and rows of 16.16 steps,
+(s − 0.25) / d — the same bytes as G's at 0x3967b —
+Ghidra cut it into 23 "functions", left out of the count), then the
+engine G.EXE shares (input, VGA, palette, camera, debug text; most of it
+named "as G's" by `fexe/match_g.py`), the Watcom C runtime pieces and
+Miles' own C part (its timer service over the PIT and int 8, DPMI
+vectors, the DOS file calls its log uses) up to 0x55560, where the
+library line is. A few routines Ghidra never cut out as functions
+(`get_ready_tick` 0x19fbb, `level_select_tick` 0x18cbd,
+`map_draw_tick` 0x1fb47, `quest_start_hand_tick` 0x13624) are named
+all the same; the fragments it did cut from the middle of one carry the
+owner's name and `_tail`.
+
 **Field names.** The C reaches every structure through raw offsets —
 `*(int *)(in_EAX + 0x30)`. `fields.py` rewrites the ones it can prove
 into names from `scripts/ghidra/fields.txt` (`in_EAX->vx`), and `run.sh`

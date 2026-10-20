@@ -76,3 +76,13 @@ in the table. The shop itself: `hammer-shop.md`.
 **Arcade** (VA 0x8d6f0, rows `section, number, hammer, picture`): the
 fifteen K levels with their mission lines (above, under "Objectives").
 The battle sets are a table of their own (VA 0x8d8e0) — see below.
+
+**The language screen is a leftover** (read 20.10.2026). `language_screen`
+(0x1a751, "doing init language select") shows LANGSL_E.DAT's picture
+(`langsel.spr`, 21 frames — the flags) until any button, plays sound 2,
+runs 40 more ticks and fades out; no language is picked, and nothing
+calls it. The language is the record's `+0x204` (`sheet_name_language`,
+"egfis"), which `front_init` sets from 0xd667e — 0 in the image, and the
+only two references to it read it: this build always runs in English.
+Of the other languages only the get-ready screens (`GETRDY_F/G/I/S.DAT`)
+and the strings inside F.EXE are on the disc; every other screen is `_E`.

@@ -28,10 +28,10 @@
 0x2e3ec  f  frame_width                    ; of frame edx in a sheet
 0x2e3fe  f  draw_digit                     ; a HUD digit (≤ 10) with blit_rle, advancing x
 0x2e5fb  f  plot_world_pixel               ; a pixel at a world point, when in view
-0x2e7e0  f  release_memory_block           ; a library free and close, 1 on success
+0x2e7e0  f  save_file                      ; fopen(name, "wb"), fwrite the buffer (edx, ebx bytes), fclose — 1 on success, 0 if it would not open
 0x2e820  f  path_join_ext                  ; builds a file name with the extension 0x90d7c
 0x2e892  f  load_file_2
-0x2e8b0  f  release_memory
+0x2e8b0  f  save_front_record              ; TRASHIT.DAT written back from the record (exit_game)
 0x2e8ca  f  load_sound_bank_call
 0x2e8dc  f  sprite_sheets_forget           ; the 256 loaded-sheet flags at 0x58779c cleared
 0x2e9a3  f  pause_save_screen              ; the 320×200 view to 0xa61a8
@@ -87,10 +87,10 @@
 0x6a204  f  keyboard_install               ; the old int 9 vector kept, ours in
 0x6a240  f  keyboard_remove
 0x6a26a  f  sprite_sheets_forget_2
-0x6a6a2  f  draw_entity_flip_y             ; draw_entity_scaled variants by mirroring and blend: set up the blitter's corners
-0x6a7ab  f  draw_entity_plain
-0x6a8cf  f  draw_entity_flip_x
-0x6a9ef  f  draw_entity_flip_xy
+0x6a6a2  f  draw_entity_mirrored           ; draw_sprite_layers' unscaled draws: set up the blitter's corners — mode 0 with +0x40 bit 4 (blit_rle_mirror)
+0x6a7ab  f  draw_entity_remap              ; a remap mode, not mirrored (blit_rle_remap)
+0x6a8cf  f  draw_entity_remap_mirrored     ; a remap mode, +0x40 bit 4 (blit_rle_remap_mirror)
+0x6a9ef  f  draw_entity_heat               ; mode -1 (blit_rle_heat)
 0x6aafb  f  draw_entity_blend_2
 0x6ac07  f  draw_entity_depth              ; a scene sprite scaled by 0x50000000 / (z − camera z), shift +0x4a
 0x6acd1  f  draw_entity_depth_saved        ; the same, saving the screen under it first (save_screen_rect)

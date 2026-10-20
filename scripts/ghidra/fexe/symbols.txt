@@ -20,6 +20,14 @@
 0x13579  f  camera_clip_centred            ; clip box -160..160, -150..100
 0x1fa7d  f  map_camera_tick                ; camera after Jack, x 160..480, y 128..408; picture scrolled; panel
 0x1fc24  f  map_sheet_init                 ; the world sheet as 20 x 15 tiles of 32
+0x1db75  f  sheet_init                     ; AX: sheet 0xd6684[n] header cleared, its width and height, filled when EDX = 1
+0x1db6c  f  sheet_view_set                 ; the sheet's window at (EDX, EBX)
+0x52859  f  sheet_copy_view                ; 320 x 200 of the 640-wide sheet from its window into the back buffer (when 0xa696c = 0)
+0x1db67  f  sheet_copy_view_thunk
+0x1fb47  f  map_draw_tick                  ; (not cut out) the world sheet's window on the camera (0xc613e - 160, 0xc6142 - 128), copied in
+0x1fb57  f  map_draw_tick_tail             ; a fragment Ghidra cut out of it
+0x1fb85  f  world_map_screen               ; the map: map_screen_init, ticks map_camera_tick until a node is taken (0x139720) or the state is 7
+0x1fb86  f  world_map_screen_b             ; the same, Ghidra's second entry one byte in
 0x201a4  f  map_panel_numbers              ; hide the digits, write timmy points, score, lives
 0x2025a  f  panel_number                   ; "%d" in LSPANEL digits: frame = char - 0x2e, width + 2 on
 0x12896  f  play_node_film                 ; record +0xdc != -1 -> play it
@@ -38,8 +46,12 @@
 0x1ab4c  f  fade_wait
 0x1c947  f  obj_move                       ; position += velocity (16.16)
 0x1c991  f  obj_accelerate                 ; velocity += acceleration
+0x1c9fa  f  text_line_tick                 ; write_text's letters: removed (and their scripts) when 0xd9724 names their group (+0xf2)
 0x167c5  f  world_arrival_screen           ; "password is" in state 5
-0x1a08d  f  arcade_level_select            ; game type 2: the K rows and their mission lines
+0x1a08d  f  get_ready_screen               ; GETRDY_<lang>.DAT before a battle or arcade level: arcade, the mission lines, 12000 ticks; battle, the rules typed (780); a button or Esc (answer 0) ends it
+0x19f73  f  get_ready_load                 ; the screen reset, GETRDY_<lang>.DAT loaded, its answer 1 into 0xd6678
+0x19fbb  f  get_ready_tick                 ; (not cut out by Ghidra) 60 ticks deaf, then a button (battle: once the text is out) or Esc; the timer 0xd666e runs out
+0x1a316  f  get_ready_type_text            ; battle: grbattle.spr letters one by one (96 E, 68 F, 47 G, 66 I, 106 S at 0x19ef1), after 25 ticks one every second tick, four a tick once a button is pressed; a click every third
 0x1b92a  f  hammer_shop                    ; trade in on entry, back on leaving unbought (docs/re/front/hammer-shop.md)
 0x1b632  f  shop_init                      ; HAMSHP_E.DAT: picture, grid, buttons, cursor, rings, plate; money += worth
 0x1ba69  f  shop_fire                      ; state 0xd6dba: 1 browse, 2 buttons, 3 yes/no, 5 wait, 6 bought, 7 film
@@ -98,9 +110,419 @@
 #
 # Blending (docs/re/front/continue.md "The mist is added light").
 0x135b2  f  load_blend_table               ; "%s.STP" into 0xc6148: MIST (continue), HAMSHP_E (shop), SHARDS
+0x135e8  d  memory_card_messages           ; 15 string pointers, 5 languages x 3: "memory card load unsuccessful", "the memory card in slot", "contains no trash it save games" (Ghidra took it for code at 0x135f2)
+0x13624  f  quest_start_hand_tick          ; (not cut out) GAMRST's pointing hand (frame 1, template 0x8627c): a jab every 32 ticks — out up-left from 4.9, 3.2 px a tick, slowing and coming back — a sound (0x14) each; LOAD waits for the jab to end
 0x26ce2  f  draw_objects                   ; the 500 depth lists; +0x1c 0 plain, -2 blend, -1 none, else remap
 0x26347  f  obj_draw_blend                 ; mode -2: the frame scaled through table[src * 256 + dst]
 0x539bc  f  blit_scaled_blend              ; the blitter behind it, clipped to 320 x 200
+0x25d57  f  obj_draw_plain                 ; mode 0: a 320 x 200 frame copied whole, else by size: blit_scaled (< 151 px), blit_mid (< 256), blit_large
+0x25fbd  f  obj_draw_remap                 ; any other mode: the same through the remap table +0x1c
+0x23ae9  f  copy_screen                    ; a full-screen frame, 200 rows of 320 bytes
+0x29e10  f  blit_scaled                    ; frames under 151 px each way, 16.16 steps
+0x291bc  f  blit_scaled_remap              ; the same, each pixel through the table 0x372488
+0x265ec  f  blit_mid                       ; frames 151..255 px
+0x26800  f  blit_mid_remap
+0x269e8  f  blit_large                     ; frames 256 px and over
+0x52e94  f  blit_rle_heat                  ; as G's: mode -1, the screen 2 px to the right through the shape; only obj_draw_heat calls it
+0x26235  f  obj_draw_heat                  ; (not cut out, unreferenced) draw_objects skips mode -1, so the heat haze is never drawn
+0x27a34  f  blit_rle_mirror                ; as G's: mirrored; obj_draw_plain's when +0x92 & 0x88
+0x285a4  f  blit_rle_remap_mirror          ; as G's; obj_draw_remap's, mirrored
+0x2a8a3  d  scale_step_table               ; as G's, byte for byte: 151 row pointers, then [source size s][drawn size d] 16.16 steps, (s - 0.25) / d (d = 1: s - 1/65536), to 0x503f7; Ghidra took it for 23 functions
+0x50eda  f  stretch_row_256_to_320         ; four pixels to five: a 256-wide row onto a 320-wide one (sixteen calls in a row from ~0x24524)
 0x2382b  f  obj_queue_depth                ; puts the object (edx) on depth list ax: 500 lists of 0x89c bytes from 0x2653c0, the count at +0x898
+0x1f56d  f  map_shop_flight_tail           ; a fragment of map_shop_flight Ghidra cut out: state 4, the house climbing, the fade to state 10
 0x1f827  f  map_jack_taken                 ; Jack under the shop's house: from +0xbc = 1 narrowing (+0xa4) behind it, at 22 px narrower (+0xbc = 2) rising with it until removed 150 px up
 0x18d3c  f  level_select_screen            ; after an arcade or battle level quit: ARLVSL_E (arcade) or BATLSL_E (battle), its answer from 0xd63c2 — 0 to the title
+#
+# The frame: what every screen runs (docs/re/front/frame.md).
+0x1a7c0  f  front_main                     ; the front end from G's call: init, the screens (0x208f5), "Exiting FRONT"
+0x1ac0e  f  front_init                     ; record +0xd8 != 0xabbabad: first run — defaults, magic set; else just the pools
+0x12bf2  f  run_ticks                      ; AX ticks of the screen's routine (0x85ede), 1..4 a frame by timer / 13 ms ("Rate %d"); 0 one frame
+0x1ab15  f  screen_tick                    ; one tick when frame_end flagged it: Esc edge, shake, objects, input, fade, scripts, draw
+0x1a9e3  f  screen_reset                   ; a new screen: sprites, input records, camera, objects, seed 0x12345678, no timeout
+0x1ad29  f  sprites_reset                  ; frame flag off, sprite_pool_reset
+0x1ca2b  f  scripts_reset                  ; AX controllers of 0x84 bytes from 0xd6ddc emptied
+0x1d41e  f  scripts_tick                   ; script_tick for each live controller
+0x1c8bf  f  obj_create_picture             ; slot AX, depth CX, x DX, y BX, frame [esp+4]; the slot's colours (0x8e62c + 0x58 slot: first, last, palette) into the screen palette
+0x2420b  f  palette_set_range              ; colours DX..BX from EAX (3 bytes each) into the palette 0x2149a8; fade done flag off
+0x2054b  f  camera_reset                   ; camera x, y (0xc613c, 0xc6140) and the shake to 0
+0x20588  f  camera_shake_start             ; x: AX amplitude, BX step, DX maximum; y: CX amplitude, [esp+4] maximum, [esp+8] step
+0x205ba  f  camera_shake_tick              ; camera = ± random(amplitude), sign by tick parity; amplitude += step on odd ticks, back down past max, off at 0
+0x2083e  f  screen_timeout_set             ; AX seconds (x 60 ticks) of no input, then EDX is called; -1 none
+0x20869  f  screen_timeout_tick            ; any key of the last player restarts it; at 0 the callback once, returns 1
+0x52012  f  input_tick                     ; lock count 0xc6122 down, devices read, four player records updated
+0x52053  f  input_read_devices             ; each player's device word (0x516534 + 0x13c n) into 0xc607c
+0x13397  f  input_player_update            ; record AX (18 bytes at 0xc608c): held, pressed, 2 ticks back, auto-repeat 15 then every 4
+0x5207f  f  keyboard_read_keys             ; scancodes 0x60 0x61 0x5e 0x63 -> L R U D (1 2 4 8), Enter 0x10
+0x520e8  f  keyboard_input_update          ; 0x513d38 held, 0x513d3a last, 0x513d3c pressed
+0x51ab3  f  key_down                       ; byte table 0xa44b8 by scancode
+0x547fa  f  timer_ms                       ; PIT channel 0 to milliseconds, never backwards
+0x24d4b  f  objects_tick                   ; removals and additions queued, then each live object: behaviour (+8), obj_draw
+0x2563b  f  objects_reset                  ; both pools freed, the queues empty
+0x25ac3  f  links_init                     ; 0x226 links of 0x14 bytes from 0x3735fc, all free
+0x25653  f  obj_pool_init                  ; 0x226 objects of 0x10c bytes from 0x3760f4, all free
+0x259e7  f  link_alloc                     ; free list 0x39a0c8 -> live list 0x39a0c4
+0x25a62  f  link_free
+0x25921  f  obj_free                       ; live list 0x39a0c0 -> free list 0x39a0bc
+0x25aef  f  list_count                     ; length of the list EAX (next at +0x14)
+0x52d06  f  cd_play_track                  ; AX: stop what plays, AIL_redbook_track_info, AIL_redbook_play
+0x52d8e  f  cd_stop
+0x52cdd  f  cd_close
+0x23ee9  f  exit_front                     ; formats a message, video, CD, sound, keyboard off, prints it, exits — "Exiting FRONT" and every fatal one
+0x22a6f  f  sound_shutdown                 ; samples stopped, AIL_shutdown
+0x54790  f  sprintf
+0x250e0  f  obj_spawn                      ; template EAX, queued: in the list from the next objects_tick
+0x256e8  f  obj_alloc                      ; a free object to the head of the live list (0x39a0cc), none past 0x226
+0x26eda  f  obj_silhouette_on              ; bit 0 of +0x93: drawn through the remap 0x943dc (all colour 254)
+0x26ee2  f  obj_silhouette_off             ; and +0x1c = 0
+0x20513  f  front_record_clear             ; the 0x2cc bytes of the front record (0x89178)
+0x20730  f  sort_with_index                ; bubble sort of EBX dwords at EAX, the dwords at EDX alongside; DX 2 down, else up
+#
+# The title, its menus and the attract mode (docs/re/front/title.md).
+0x208f5  f  front_states                   ; record +0x206: 0 title, 1 story, 2 battle, 3 arcade — until 0x18475a
+0x2098c  f  title_screen                   ; state 0: title_init, then its ticks until a choice ends it
+0x20920  f  title_tick                     ; the menu handler, the start transition, the frame; UP + Esc 250 ticks -> movie_select
+0x21857  f  title_init                     ; FRMWRK_E.DAT, CD track 8, the picture, title_menu
+0x209c6  f  title_menu                     ; START / OPTIONS / QUIT IT!; 30 s of nothing -> attract_next
+0x20c50  f  start_menu                     ; BATTLE / ARCADE / QUEST (the debug strings blank); Esc back
+0x20afe  f  options_menu                   ; AUDIO CONF / CONTROLLER CONFIG / DONE (debug strings "pad config", "audio config": swapped)
+0x21716  f  attract_next                   ; the next of 0x8dcb0: 2 3 * 4 0 * 1 — a demo D level, or * the credits
+0x12882  f  menu_set_handler               ; EAX run each tick (0x184750), its first call sets it up (0x184760)
+0x126cd  f  menu_open                      ; EAX the item strings, 0-ended; cursor 0, nothing chosen (-1)
+0x126f8  f  menu_tick                      ; UP / DOWN move the cursor round, sound; a button chooses (0x184764)
+0x12ad4  f  menu_words_reset               ; the next word drops at once (delay 0)
+0x12aee  f  menu_word                      ; a menu word: template, item, x, y from, y to, frames..., -1; each 3 ticks after the last
+0x1293e  f  menu_word_tick                 ; drops and bounces to its row; silhouette if the cursor's; chosen: flies off right, the camera shakes
+0x12923  f  title_follower_tick            ; x of the object it follows (+0x10); gone past x 20
+0x13069  f  title_start_transition         ; start chosen: a shake, the next picture, 90 ticks, fade, CD off
+0x113f5  f  credits_screen                 ; CREDITS.DAT, CD track 4, until credits_end
+0x11300  f  credits_init
+0x11447  f  credits_tick                   ; a button skips a page (script + 0x148) while page < 5; page 5: 6 s, then any button
+0x1153b  f  credits_page_tick
+0x1142e  f  credits_end                    ; fade out, done
+0x1ae0c  f  movie_select                   ; MOVIESEL.DAT: 25 films by name, fire plays one, Esc leaves
+0x1b027  f  movie_select_tick              ; LEFT / RIGHT through 0x892d0 (film numbers), its name from 0x1ada4
+0x126ba  f  play_film                      ; play_smacker with the two stack words
+0x12654  f  film_game_over                 ; film 0x1f "gameover"
+0x12671  f  film_gt_logo                   ; film 0x2f "gt"
+0x12694  f  film_arcane_logo               ; film 0x2d "arcalogo"
+0x126a7  f  film_intro                     ; film 0x2c "front"
+0x21989  f  front_to_title                 ; record +0x206, +0x208 = 0
+#
+# Battle and arcade (docs/re/front/game-types.md).
+0x212d2  f  battle_framework               ; state 2: players, level select, the set's levels, results, play again
+0x214c2  f  arcade_framework               ; state 3: players, teams, the K level per team, results
+0x19d2b  f  players_screen                 ; "select number of players" -> record +4; -1 Esc
+0x19b27  f  players_screen_init
+0x177df  f  teams_screen                   ; "another team" / "start", four at most -> +0x108
+0x13e39  f  battle_results                 ; the screen, then battle_next_level
+0x13e80  f  battle_next_level              ; next of the set; at its end the most points win, a tie -> set 10 on the same level
+0x13fa1  f  battle_points                  ; by place: 2/1, 4/2/1, 8/4/2/1
+0x11df6  f  arcade_results                 ; more than one team
+0x11e2c  f  arcade_places                  ; team times sorted, equal times share a place
+0x1b5c6  f  shop_cursor_item               ; column x 6 + row; the buttons 0x1e
+0x128c8  f  title_figure_tick              ; once chosen and the words settled: the swing script (0x85e34 title, 0x85d90 start), whose eaa1 sets 0x184766 = 2 at the hit
+0x1d45a  f  script_stop                    ; the controller (EAX) freed
+0x1d3e4  f  scripts_stop_for_object        ; every controller driving object EAX
+0x1d78a  f  script_low_commands            ; commands 60000..0xea8e: set object fields (+0x3e, +0x42 vx, +0x44 vy, +0x48 ax …); returns 1 to read on
+#
+# The options: audio and controllers (docs/re/front/options.md).
+0x153d3  f  audio_config                   ; "audio configuration": a pad's four buttons pick record +0x30, the level music
+0x150a7  f  audio_config_init
+0x15291  f  audio_config_tick              ; 0x40 -> 0, 0x10 -> 1 (none), 0x80 -> 2, 0x20 -> 3; then 23 blinks and out
+0x1501d  f  audio_icon_tick                ; frame by +0x30 from 0x14bc4 (10 7 9 8), blinking by 0x14ba6
+0x10ad6  f  pad_config                     ; CONTROLLER CONFIG: who plays on what; 0x8917c = 1 so front_main applies it
+0x1064a  f  pad_config_init                ; CONPAD.SPR: 4 player columns x 5 device rows, the DONE plate, the cursor
+0x105dd  f  detect_devices                 ; joystick A, B (0xa663c, 0xa663e), GrIP pads (0xa6640)
+0x1062d  f  pad_config_defaults            ; 0x852d0: per player (18 bytes) device +0, rows allowed +2..+0xa
+0x10bd1  f  pad_config_draw                ; each cell: allowed, chosen, not allowed
+0x10e83  f  pad_config_cursor_tick         ; any pad: L R player, U D device row (row 5 DONE); fire: take it, or set it up
+0x10d97  f  pad_config_row_down            ; the next allowed row below, -1 none
+0x10dd5  f  pad_config_row_up
+0x112bd  f  pad_config_save                ; 0x8531c = 1, players 1 and 2's devices kept
+0x10053  f  keys_redefine_start            ; the keyboard row picked again: six keys asked for, "press a key...."
+0x10028  f  key_name_copy                  ; AX scancode: its name from the table 0xa4648 into EDX
+0x10e0f  f  keys_copy_out                  ; player DX's six keys (0x51653c + 0x13c n) to EAX
+0x10e49  f  keys_copy_in
+0x14f07  f  pad_layout_screen              ; "<colour> player reconfigure your controller": three layouts -> record +0x2c + player
+0x14c59  f  pad_layout_init
+0x14f83  f  pad_layout_tick                ; UP / DOWN round 0..2 (0xd61dc)
+0x1125b  f  apply_player_input             ; "Setting player_input": each player's device and six keys into the record (+0x70 + 14 n, the keys from +0x72)
+0x111e1  f  save_joystick_setup            ; the joystick driver's words (0xa431c ...) into the record +0xa8
+0x11244  f  save_joystick_setup_tail        ; a fragment Ghidra cut out of it: the centre words 0xa4344, 0xa4348 into +0x28, +0x2c
+#
+# Battle and arcade screens (docs/re/front/game-types.md).
+0x14119  f  battle_points_init             ; ILSBAT_E.DAT, "loading battle points award gfx"; battle_points
+0x149e1  f  battle_winner_screen           ; BATWN?_E.DAT by the winner's colour (most points, 0xd61ce)
+0x1183f  f  arcade_results_init            ; ARCWIN_E.DAT; arcade_places; the times "time %x!%x!%x"
+0x18952  f  play_again_screen              ; PLYAGN_E.DAT; 1 = yes
+0x1879d  f  play_again_init
+0x18a3c  f  level_select_init              ; ARLVSL_E (arcade) or BATLSL_E (battle)
+0x18daa  f  level_select_reel              ; two 225-px pictures scrolled; LEFT / RIGHT held at rest spin it (speed ±1 a tick to 15, then back to 0); the row under it: arcade, level, world and hammer from 0x8d6f0 (+0xe0); battle, the set (+0xfc)
+0x18cbd  f  level_select_tick              ; (not cut out by Ghidra) the reel; a button once it stops takes the row (0xd63c2 = 1), Esc 0
+0x174e5  f  teams_screen_init              ; SLTEAM_E.DAT
+#
+# Saved games (docs/re/front/savegame.md).
+0x137c8  f  quest_start_screen             ; GAMRST_E.DAT: 0 new game, 1 loaded, 2 password, 3 Esc
+0x13687  f  quest_start_init
+0x13811  f  quest_start_tick               ; UP / DOWN three rows; LOAD: game_load, or "the memory card ... contains no trash it save games"
+0x16c6b  f  save_screen                    ; GAMSAV_E.DAT, at a new world (and the end of world 8)
+0x16777  f  save_screen_init               ; with world_arrival_screen behind it
+0x16dc2  f  save_screen_tick               ; two rows: save (game_save) or go on
+0x1907d  f  save_screen_reset
+0x190a3  f  game_load                      ; a slot picked and read back into the record
+0x19252  f  game_save                      ; "<world> t-<timmy points>" (a '.' and a count against a twin), the record into the slot, the file written
+0x1970f  f  save_slot_pick                 ; the file read, its six names listed, the seventh row cancel; an empty slot is no load
+0x18fd4  f  savegame_read                  ; SAVEGAME, 0x2000 bytes: 1 read, 2 short, 3 none
+0x19034  f  savegame_write
+0x19958  f  savegame_ready                 ; always 1
+0x1720d  f  save_card_full                 ; console leftover, unreachable (game_save never answers 4): "vacant block is less than required, delete a block?", then the delete list
+0x16fb4  f  save_delete_list_init          ; the screen cleared, two pointers (templates 0x35, 0x36) and "delete a memory card slot"
+0x170c6  f  save_delete_list_names         ; each slot's name 12 px apart, a non-name character shown as '?'
+0x1732a  f  save_delete_list_tick          ; UP / DOWN round the slots, the pointers either side of the name
+#
+# Shared with G.EXE: the same code, matched body to body against G's names (difflib >= 0.9 on the
+# normalised decompilation, read side by side).
+0x219a6  f  load_sound_bank                ; "ERROR: Couldn't load sound bank" — as G's load_sound_bank
+0x21af9  f  looped_sounds_update           ; as G's
+0x21c22  f  voice_start_if                 ; as G's
+0x21cbf  f  sound_start_owned              ; as G's: a voice for the caller, counted
+0x21de8  f  sound_voice_alloc              ; as G's
+0x21eb6  f  dig_driver_uninstall           ; as G's
+0x22a30  f  dig_driver_uninstall_2         ; the same, a second copy
+0x21ebb  f  sound_bank_index               ; sample pointers from the bank's offset table
+0x21ef1  f  sound_voice_start              ; as G's
+0x21f20  f  sound_tick                     ; each live voice: its effects, its script
+0x22252  f  sound_voice_stop               ; AIL_stop_sample, the voice freed
+0x2243e  f  voice_effects_update           ; vibrato, pitch sweep, volume ramps (as G's 0x167e5)
+0x2287c  f  ping_pong                      ; *ecx += *ebx, turning *ebx round at ax and dx
+0x228d9  f  voice_set_loop                 ; a looped sample's loop block
+0x22a52  f  ail_startup                    ; AIL_startup, drivers from "dosdrv"
+0x22abf  f  grip_read_status               ; as G's
+0x22bed  f  grip_list_pads                 ; "Found %d GRIP pads"
+0x22c34  f  grip_detect                    ; "Found GRIP" / "Unable to initialize GrIP"
+0x22c95  f  grip_load_library              ; GRIP.GLL
+0x22e17  f  grip_shutdown                  ; the driver off, its DOS memory freed
+0x22e3e  f  grip_load_driver               ; as G's
+0x23082  f  grip_free_dos_memory           ; as G's
+0x23101  f  row_table_init                 ; as G's
+0x231fe  f  file_stem                      ; as G's
+0x23279  f  open_file_or_die               ; as G's
+0x2341e  f  set_draw_mode                  ; template +0x1c: 0x8000|0x4000 -> -1, |0x2000 -> -2 (added light), else remap 0x944dc[n]
+0x2384d  f  draw_buckets_clear             ; the 500 depth lists emptied
+0x23ed0  f  str_copy                       ; as G's
+0x23ee1  f  str_cat                        ; as G's
+0x240fa  f  save_file                      ; fopen(name, "wb"), fwrite, fclose — as G's 0x2e7e0
+0x24a19  f  resolve_path_cd                ; a file not found is looked for on the CD drive (0xd667d)
+0x25769  f  obj_alloc_before               ; a free object into the live list before EAX
+0x25859  f  obj_alloc_after                ; after EAX — obj_spawn's
+0x27024  f  joystick_detect                ; port 0x201 timed up to three times, then both axes' ranges (≤ 0x8000) and dead zones (a quarter each side); the centre steady within 80 in 10000 reads: 0 found, 1 none, 2 unsteady
+0x51ccc  f  input_devices_detect           ; all four players keyboard (1); GrIP pads numbered from 2 one per player, else a joystick -> player 1 device 4 ("Found joypad")
+0x22920  f  sound_digital_install          ; DIG.INI driver, 22050 Hz, 15 sample handles ("%d voices available"); 0 if none
+0x12d6f  f  sound_digital_defaults         ; three Miles calls on the driver after install
+0x12d21  f  mem_alloc_aligned16            ; Miles' allocator: a block rounded up to 16 bytes, the offset in the byte before it
+0x12d56  f  mem_free_aligned16
+0x2041c  f  mem_fill                       ; EBX into EAX, EDX units of 1, 2 or 4 bytes
+0x27129  f  joystick_centre                ; as G's
+0x271dd  f  joystick_read_axes             ; as G's joystick_read_axes_2
+0x275cf  f  joystick_read_axes_2           ; as G's
+0x276c6  f  joystick_read_buttons          ; as G's
+0x279a2  f  joystick_time_axis             ; as G's
+0x228b5  f  random_step                    ; as G's: 0xd6d34 ^= it << 1, << 1, +1 if the top bit was set
+0x23173  f  video_mode_save                ; as G's: int 10h mode kept (0x2556bf), then the grey ramp
+0x2318a  f  grey_ramp_init                 ; 255 grey entries at 0x2149a8
+0x241a7  f  front_startup                  ; video mode, keyboard, Miles, the CD, the players' keys, pad defaults, row table, font
+0x23318  f  front_engine_reset             ; the three draw buffers, objects and depth lists cleared, the sound bank, palette tint, clip box
+0x52bd6  f  cd_open                        ; AIL_redbook_open(0) into 0x516d68
+0x51c6c  f  players_keys_reset             ; the four players' key maps (copy_key_map)
+0x51c38  f  player_keys_reset
+0x5236e  f  debug_text_flush               ; as G's
+0x523b4  f  debug_text_clear               ; as G's
+0x242f1  f  bios_set_mode                  ; int 10h with AX
+0x24b5c  f  vga_grab_then_set_mode         ; the 64000 bytes at 0xa0000 into EAX, then bios_set_mode
+0x24b06  f  vga_show_direct                ; retrace, palette, ECX bytes from EAX straight to 0xa0000, retrace, palette
+0x24c77  f  beep_low                       ; cd_check's: 200 Hz for 700 ms (no disc)
+0x24c90  f  beep_rising                    ; cd_check's: 500, 1000, 1500, 2000 Hz, 100 ms each (disc found)
+0x24cbd  f  keyboard_flush                 ; getch while kbhit
+0x25ce5  f  sheet_palette_load             ; a sheet's .PAL: 0x300 bytes into the palette pool (0x513868 on), "Can't load %s" past its end
+0x26d97  f  load_sheet_slot                ; AX: one slot's sheet (a one-entry, -1-ended list for load_sheets_into_slots)
+0x6513e  f  sound                          ; Watcom C: PC speaker at EAX Hz (PIT channel 2)
+0x6517f  f  nosound
+0x63bb2  f  delay                          ; EAX ms, by DOS idle calls
+0x64c82  f  kbhit
+0x65190  f  getch
+0x59a0e  f  fread
+0x59bd8  f  fclose
+0x5045a  f  letters_clear                  ; the letter list 0x513870 emptied (count 0xa4478)
+0x50466  f  letters_add                    ; EAX onto it
+0x50480  f  letters_remove_all             ; each removed ("Kill %x"), then emptied
+0x504bb  f  letters_silhouette             ; obj_silhouette_on for each
+0x504df  f  letters_create                 ; CX letter objects 10 px apart from (AX, DX), the string EBX, each its index (+0xe8)
+0x50540  f  char_to_frame                  ; a character's frame in the font: A-Z 0.., 0-9 0x20.., punctuation by table, space -1; "Unknown val %d" quits
+0x507c8  f  copy_buffer_to_vga             ; as G's: 64000 bytes from EAX to 0xa0000
+0x508a1  f  copy_buffer_to_vga_2           ; the same again
+0x509ae  f  present_frame                  ; as G's: the 320 x 200 view (stride 576, 0xa449c) to 0xa0000
+0x51c81  f  players_keys_from_record       ; each player's 12 key bytes, record +0x72 + 14 n, into 0x51653c + 0x13c n
+0x51d74  f  input_poll_devices             ; GrIP polled if present, then the four players
+0x51c00  f  player_input_update            ; previous = held, held = the device's bits, pressed = held & ~previous
+0x51f4b  f  read_pad                       ; device 4 the joystick (buttons | axes), else the GrIP pad's status
+0x51f77  f  keyboard_read_player_keys      ; device 1: the player's key map (+8, shorts): L 1 / R 2, U 4 / D 8, 0x10, 0x20, slots 8 and 9 -> 0x100, 0x200 (6, 7 not read); the front end tests only 0xf0
+0x523c0  f  camera_set_target              ; as G's: "x y z %d %d %d", zoom kept 320..0x27ff, the shake offset, the view box
+0x52707  f  camera_ease                    ; as G's: x, y by 1/8, zoom by 1/4 a tick
+0x52514  f  camera_mode_frame              ; camera mode 0x516a2c = 1
+0x5251e  f  camera_mode_point              ; mode 2, the point (EAX, EDX, EBX)
+0x5253e  f  camera_mode_debug              ; mode 3
+0x52a2d  f  palette_fade_apply             ; the fade level 0xd6d5c as the tint's three channels, palette_tint when it changed
+0x52e2e  f  cd_stop_wait                   ; before reading the CD: an audio track playing is stopped, waiting until it is
+# Miles Sound System's own C part, below the library line: the AIL_* wrappers log the call and come here.
+0x547ec  f  ail_lock                       ; the timer service's lock count 0xa4d82 up
+0x547f3  f  ail_unlock
+0x54890  f  ail_timer_ms_resync            ; the ms clock restarted after the PIT changes
+0x54a51  f  pit_set_divisor                ; PIT channel 0, mode 2, EAX
+0x54a7b  f  pit_set_period_us              ; µs -> divisor (x 1.193), 0 past 55 ms
+0x54aaa  f  ail_timers_program             ; the PIT to the shortest period of the 16 timers (0xa4c14 used, 0xa4c94 µs)
+0x54b10  f  ail_timer_install              ; the timer code locked, Windows' VTD asked for (int 2Fh 1684h), the 16 timers cleared, int 8's old vectors kept and 0x548ae put in
+0x54c26  f  ail_timer_remove               ; the PIT back to 18.2 Hz (divisor 0), int 8's old vector back
+0x553f5  f  ail_lock_timer_memory          ; the timer tables and code locked (DPMI) against paging
+0x54c5d  f  ail_api_get_real_vect          ; DPMI 0200h
+0x54c85  f  ail_api_set_real_vect          ; DPMI 0201h
+0x54cfd  f  ail_api_set_USE16_ISR          ; behind AIL_set_USE16_ISR (0x631xx, not cut out): descriptors for the 16-bit handler (code 0x54ca8, data 0xa4d98), then the vector (DPMI 0204h/0205h), the old one in 0xa4d8a
+0x54f13  f  ail_api_restore_USE16_ISR
+0x54f58  f  ail_api_disable_interrupts     ; pushfd, pop eax, cli: the flags before
+0x54f5c  f  ail_api_restore_interrupts     ; IF back as the saved flags had it
+0x630e0  f  AIL_disable_interrupts
+0x630d0  f  AIL_restore_interrupts
+0x54fc3  f  ail_api_call_driver            ; a real-mode call into the driver (DPMI 0301h), the lock held
+0x550a3  f  ail_api_register_timer         ; the first free of 16 timers, its callback; -1 if none
+0x550e4  f  ail_api_set_timer_user
+0x55106  f  ail_api_release_timer_handle
+0x55127  f  ail_api_release_all_timers
+0x55147  f  ail_api_start_timer
+0x55171  f  ail_api_start_all_timers
+0x55191  f  ail_api_stop_timer
+0x551bb  f  ail_api_stop_all_timers
+0x551db  f  ail_api_set_timer_period       ; then ail_timers_program
+0x5520b  f  ail_api_set_timer_frequency    ; Hz -> µs period
+0x55235  f  ail_api_set_timer_divisor      ; a PIT divisor -> µs period
+0x55277  f  dos_open                       ; int 21h 3Dh, -1 on error
+0x55293  f  dos_create                     ; int 21h 3Ch
+0x552ae  f  dos_open_append                ; open for writing, or create it; then to its end (the AIL log)
+0x55371  f  dos_seek_set                   ; int 21h 4200h
+0x55395  f  dos_seek_cur                   ; 4201h
+0x5539b  f  dos_seek_end                   ; 4202h
+0x553a1  f  dos_close                      ; int 21h 3Eh
+0x5541a  f  malloc                         ; Watcom C
+0x554fd  f  free
+0x503f7  f  wait_any_key                   ; as G's
+0x5041c  f  wait_keys_released             ; as G's
+0x5085e  f  clear_buffer_64000             ; as G's
+0x50937  f  clear_back_buffer              ; as G's
+0x50a5a  f  vga_copy_four_planes           ; as G's
+0x50ad9  f  vga_copy_plane                 ; as G's
+0x50ebd  f  vga_set_palette                ; as G's
+0x51a78  f  keyboard_table_clear           ; as G's
+0x51baa  f  keyboard_install               ; as G's
+0x51be9  f  keyboard_remove                ; as G's
+0x51f2a  f  copy_key_map                   ; as G's
+0x5210e  f  load_char_font                 ; as G's
+0x5216d  f  debug_text_draw                ; as G's
+0x5230a  f  glyph_draw                     ; as G's
+0x52928  f  palette_tint_reset             ; as G's
+0x5296d  f  palette_tint                   ; as G's
+0x52a04  f  palette_apply_if_dirty         ; as G's
+0x5509d  f  ail_log_suppressed             ; as G's
+0x55271  f  ail_log_suppressed_2           ; as G's
+0x552ed  f  dos_read                       ; int 21h 3Fh in chunks under 64 KB (G's dos_write twin, but reading)
+0x5532f  f  dos_write                      ; as G's: int 21h 40h in chunks under 64 KB
+#
+# Empty: a bare ret each (checked byte by byte) — debug hooks compiled out.
+0x12bf1  f  empty_12bf1  ; ret
+0x190a2  f  empty_190a2  ; ret
+0x1ae08  f  empty_1ae08  ; ret
+0x1c861  f  empty_1c861  ; ret
+0x2040a  f  empty_2040a  ; ret
+0x22a88  f  empty_22a88  ; ret
+0x23189  f  empty_23189  ; ret
+0x233ef  f  empty_233ef  ; ret
+0x2341d  f  empty_2341d  ; ret
+0x52309  f  empty_52309  ; ret
+#
+# Not functions: fragments Ghidra cut out at a jump target, which `symbols.py strings` took for empty ones.
+0x12ace  f  epilogue_12ace                 ; pops and ret shared by the code before it (menu_word_tick and others jump here)
+0x13e32  f  epilogue_13e32                 ; the same
+0x16722  f  epilogue_16722                 ; the same (save_screen_tick)
+0x1813d  f  epilogue_1813d                 ; the same
+0x19b21  f  epilogue_19b21                 ; the same
+0x1f39a  f  epilogue_1f39a                 ; the same
+0x203c4  f  epilogue_203c4                 ; the same (camera_shake_tick)
+0x2202c  f  epilogue_2202c                 ; the same (sound_tick)
+0x23273  f  epilogue_23273                 ; the same
+0x241a1  f  epilogue_241a1                 ; the same
+0x2622f  f  epilogue_2622f                 ; the same (the zoomed draw at 0x26235 ends here)
+0x2799c  f  epilogue_2799c                 ; the same
+0x52cd6  f  epilogue_52cd6                 ; the same (cd_play_track)
+0x27557  f  joystick_axis_bits_a           ; a fragment of joystick_read_axes: an axis against the centre (0xa4344) -> direction bits
+0x2756b  f  joystick_axis_bits_b
+0x27583  f  joystick_axis_bits_c
+0x275a4  f  joystick_axis_bits_d
+0x27940  f  joystick_button_bits_a         ; the same in joystick_read_buttons
+0x27954  f  joystick_button_bits_b
+0x2796c  f  joystick_button_bits_c
+0x27982  f  joystick_button_bits_d
+#
+# Files, the CD, the language.
+0x249af  f  load_front_record              ; TRASHIT.DAT into the record (0x89178)
+0x249cd  f  save_front_record              ; TRASHIT.DAT written back from it
+0x24a9f  f  load_config                    ; TRASHIT.CFG
+0x24ccd  f  cd_check                       ; the CD drive (0xd667d) labelled TRASHIT? — the result is jumped over (jmp at 0x24cf3 right after the test), so the "insert the CD" loop behind it never runs
+0x24c50  f  drive_label_is                 ; drive AL's label equals the string at EDX
+0x24b96  f  volume_label                   ; "%c:\*.*" with the volume attribute -> the label, 8 + 3 joined
+0x24acf  f  sheet_name_language            ; "_e.SPR" gets the language's letter: "egfis"[record +0x204]
+0x249e7  f  screen_clear                   ; the back buffer (0x94504), 200 rows of 320 zeroed
+0x56360  f  memset_bytes                   ; EBX bytes at EAX = DL
+0x233f0  f  sound_and_text_tick            ; sound_tick, then the debug text (0x5236e) when no frames are pending
+0x19022  f  return_1_19022                 ; savegame_write's last step: 1
+0x2321d  f  return_1_2321d                 ; sprite_load_into_slot's check: always 1
+0x21c94  f  return_arg                     ; EAX unchanged
+#
+# RNC ProPack (docs/re/formats/pak.md).
+0x11f1b  f  unpropack_or_die               ; rnc_unpack, or "failed to 'unpropack()' RNC buffer" and exit_front
+0x11f38  f  rnc_unpack                     ; "RNC" checked; method byte +3: 0 stored (copied), 1 rnc_unpack_m1, 2 rnc_unpack_m2; -1 not RNC, -2 unknown method
+0x11ffa  f  rnc_unpack_m1                  ; method 1: Huffman tables, literals and matches
+0x12049  f  rnc_m1_blocks                  ; method 1's block loop: three tables, the literal runs copied, the matches
+0x12126  f  rnc_unpack_m2                  ; method 2: bit-by-bit, MSB first
+0x122b8  f  rnc_init                       ; output, input past the 0x12-byte header, end = output + unpacked size (big-endian)
+0x12316  f  rnc_table_clear                ; CL entries of 16 bytes
+0x1233b  f  rnc_m1_bits                    ; AL bits LSB first, refilled 16 at a time
+0x123a7  f  rnc_m2_bits                    ; AL bits MSB first, refilled a byte at a time
+0x1240e  f  rnc_m1_read_table              ; a Huffman table: count (5 bits), lengths (4 bits each), codes made
+0x12463  f  rnc_m1_make_codes              ; canonical codes by length 1..16, bit-reversed
+0x124dd  f  bit_reverse                    ; the low CL bits of EAX reversed
+0x124fa  f  rnc_m1_decode                  ; a value through a table: its symbol, then its extra bits
+0x1256b  f  rnc_m2_length                  ; method 2's match length
+0x1259f  f  rnc_m2_offset                  ; method 2's match offset
+0x547c0  f  strncmp
+#
+# The password grid, the team names, the score reels.
+0x15e3c  f  password_screen_init           ; PASWRD_E.DAT
+0x15fa9  f  password_cursor_tick           ; a 6-wide grid: a-z and signs in 0..29, two buttons at 31 and 34 below; held 20 ticks repeats; frame = the cell
+0x161d5  f  password_word_draw             ; the typed word (20 at most) in glyphs, '!' and '*' too, spaces 7 px; the cursor blinking
+0x17a38  f  team_name_fire                 ; a letter (a-z, *, !, space) onto the team's name, 14 at most; 29 rubs one out; 31 another team (0xd631e = 2), 34 start (3)
+0x17b74  f  team_name_cursor_tick          ; the same grid as the password's
+0x17ddd  f  team_name_draw                 ; the name in glyphs, wrapped at x 120
+0x183ff  f  level_score_wait               ; level_score_screen, then its ticks until done
+0x18439  f  score_reels_init               ; 20 digit objects: two numbers of ten
+0x184ce  f  score_reels_set                ; the ten reels to their positions (0xd6380)
+0x184f2  f  score_reel_set                 ; AX position, EDX reel: its two digit objects at position % 23 px, frames (position / 23) % 10 and the next
+0x18586  f  score_reels_tick               ; each digit spins (frame / 23) until it shows its number, a sound each, a louder one every fifth; a button stops them all at once
+0x1326a  f  title_shards_spawn             ; the picture breaks: a piece per 16-byte entry of 0x85f0c (x, y, kind, -, vx, vy 16.16) until -1; frame kind x 8 + random 0..7, 40 x 40
+0x14837  f  battle_points_draw             ; each playing player's points, "%d" in digit frames
+0x1491f  f  battle_points_no_score_tick    ; at tick 430 each playing player who scored nothing gets script 0x86734
+0x101f6  f  keys_swap_duplicate            ; a key already given to another of the six swaps places with it
+0x10379  f  keys_redefine_end              ; the prompt removed, the cursor back
+0x1a678  f  language_screen_init           ; LANGSL_E.DAT
+0x1a751  f  language_screen                ; (not cut out, unreferenced) "doing init language select": LANGSL_E's picture until a button (sound 2), 40 ticks, fade out — nothing is chosen
+0x1a705  f  language_screen_tick           ; any button ends it
+0x1a747  f  language_screen_out_tick
+0x1695a  f  save_message_draw              ; the line for save state 0xd629a (1 failed, 2 not formatted, 3 saved, 4 delete a slot, 5 saving, 6 overwrite?, 7 cancelled, 9 save game, 10 card full; English at 0x87208..), redrawn when it changes
+0x171be  f  is_name_char                   ; a-z A-Z 0-9 ! space . , -

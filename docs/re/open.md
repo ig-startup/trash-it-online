@@ -4,6 +4,11 @@ Nothing in the game's rules or files is known to be unread, no routine
 name is a guess (no `?` is left in the symbol files) and no note is marked
 **Inferred**. What is left is the clone carrying over what is decoded.
 
+F.EXE, the front end, is read to the end too (2026-10-20): every routine
+below the library line named, none a guess (`fn.py progress --f`); the
+blitter variants renamed by what they do in both exes — mirror, remap,
+heat haze, no vertical flip ([rle](formats/rle.md)).
+
 Closed in the last pass (2026-10-20): every guessed name checked against
 its code — a life for every 10000 of rubble ([level-record](front/level-record.md)),
 the hat's BUT2 when boxed in and the ground pound ([keyboard](jack/keyboard.md)),

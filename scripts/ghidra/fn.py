@@ -18,6 +18,9 @@ already works here; the body still shows the names of that run.
 
 The decompilation is read from $TRASHIT_GHWORK (default ~/ghwork/g),
 decomp_fields.c there; pass --raw for decomp.c.
+
+    --f    the same for F.EXE, the front end: ~/ghwork/f/decomp.c
+           (scripts/ghidra/fexe/run.sh) and the names in scripts/ghidra/fexe/
 """
 import os
 import re
@@ -27,18 +30,24 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 WORK = os.environ.get("TRASHIT_GHWORK", os.path.expanduser("~/ghwork/g"))
+SYMS = HERE
 CLONE = ("client/src", "server/src", "shared")
 
 HEAD = re.compile(r"^// ==== (\S+) @ ([0-9a-f]+)\n", re.M)
 CALL = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 
 
+def symbol_dir_files():
+    d = os.path.join(SYMS, "symbols.d")
+    return sorted(os.path.join(d, f) for f in os.listdir(d) if f.endswith(".txt")) \
+        if os.path.isdir(d) else []
+
+
 def load_symbols():
     """{addr: name} for functions, from every symbol file, symbols.txt last."""
-    files = [os.path.join(HERE, "symbols_lib.txt")]
-    d = os.path.join(HERE, "symbols.d")
-    files += sorted(os.path.join(d, f) for f in os.listdir(d) if f.endswith(".txt"))
-    files.append(os.path.join(HERE, "symbols.txt"))
+    files = [os.path.join(SYMS, "symbols_lib.txt")]
+    files += symbol_dir_files()
+    files.append(os.path.join(SYMS, "symbols.txt"))
     out = {}
     for path in files:
         if not os.path.exists(path):
@@ -132,7 +141,8 @@ def cmd_where(d, key):
     for where in (["docs/re"], list(CLONE), ["scripts"]):
         r = subprocess.run(["git", "grep", "--untracked", "-n", "-w", "-I"] + pats + ["--"] + where,
                            cwd=REPO, capture_output=True, text=True)
-        lines = [l for l in r.stdout.splitlines() if not l.startswith("scripts/ghidra/symbols")]
+        lines = [l for l in r.stdout.splitlines()
+                 if not re.match(r"scripts/ghidra/(fexe/)?symbols", l)]
         print("== %s: %d" % (" ".join(where), len(lines)))
         for l in lines[:20]:
             print("  " + l[:200])
@@ -175,9 +185,7 @@ def cmd_frontier(d, top=30, lib=False):
 def hand_named():
     """Addresses named in symbols.txt and symbols.d/ — by a person reading
     the routine, not generated from strings or callers (symbols_lib.txt)."""
-    files = [os.path.join(HERE, "symbols.txt")]
-    d = os.path.join(HERE, "symbols.d")
-    files += sorted(os.path.join(d, f) for f in os.listdir(d) if f.endswith(".txt"))
+    files = [os.path.join(SYMS, "symbols.txt")] + symbol_dir_files()
     out = set()
     for f in files:
         for line in open(f, encoding="utf-8"):
@@ -227,9 +235,22 @@ def cmd_progress(d):
             lo, len(left), len(part), sum(size[a] for a in left), sum(size[a] for a in part)))
 
 
+def use_fexe():
+    """Point everything at F.EXE: its dump, its names, its library line."""
+    global WORK, SYMS, LIBRARY_LO, DATA_RANGES
+    WORK = os.environ.get("TRASHIT_GHWORK_F", os.path.expanduser("~/ghwork/f"))
+    SYMS = os.path.join(HERE, "fexe")
+    LIBRARY_LO = 0x55560        # fexe/symbols.py
+    DATA_RANGES = ((0x135e8, 0x13624),      # memory_card_messages
+                   (0x2a8a3, 0x503f7))      # F's scale_step_table, as G's
+
+
 def main(argv):
     raw, lib = "--raw" in argv, "--lib" in argv
-    argv = [x for x in argv if x not in ("--raw", "--lib")]
+    if "--f" in argv:
+        use_fexe()
+        raw = True              # F has no decomp_fields.c
+    argv = [x for x in argv if x not in ("--raw", "--lib", "--f")]
     if not argv or argv[0] not in ("show", "brief", "where", "grep", "frontier", "progress"):
         sys.exit(__doc__)
     d = Decomp(raw)

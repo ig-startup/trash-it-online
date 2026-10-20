@@ -67,6 +67,10 @@ the current delay; the rest are commands:
 | `eaa4 v` | the controller's tag (+0x70) |
 | `eaaf s` | play sound s (0x21a3b) |
 | `ea93 m` | the mode: 0 frame, 1 +0xbc, 2 +0xc0, 3 and 4 the controller's own |
+| `eaa1 a v` | the word at address a = v — how the title figure's swing tells the menu it has hit (`title.md`) |
+| `eaa2 a v` | the same, a dword |
+| `eaad` | the script ends, its controller freed (`script_stop` 0x1d45a) |
+| `eaae` | the object removed (`obj_remove`) |
 
 A **bin** (LEVSLBIN: frames 0-3 the lid lifting, 4-6 the bin crushed
 flat) picks its script once (`map_bin_tick` 0x1f5f7):
