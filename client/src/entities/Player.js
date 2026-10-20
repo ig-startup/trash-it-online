@@ -6,6 +6,7 @@ import {
   PROP_ANIMS, PROP_FRAME_INFO, HAMMER_BY_SLOT, HOOVER_BY_SLOT, hasProps,
 } from './props';
 import { JACK_FRAME_INFO, JACK_SCALE } from './jackSprites';
+import { playSfx, SFX } from '../audio/sfx';
 import { MAX_CHARGE } from '../../../shared/constants.mjs';
 import {
   hammerAt, hammerKey, hammerFrameInfo, FIRST_HAMMER,
@@ -130,6 +131,33 @@ const SHEET_STRIP_PUT_AWAY = [...range('hooverOut', 0, 9), ...range('hatReach', 
 // back in (71-90). Their hammer lists carry the show / hide flags.
 const HAMMER_STRIP_DRAW = [...range('hatReach', 19, 10), ['hatReach', 10], ...range('hatReach', 9, 0)];
 const HAMMER_STRIP_STOW = range('hatReach', 0, 19);
+
+
+/**
+ * The sound a state starts with — the play_sound calls in Jack's state
+ * routines (sound ids, see audio/sfx.js): the jump and the landing
+ * (jack_jump, jack_land), the wind-ups, the hammer or hoover in and out of
+ * the hat (jack_hammer_to_hat), taking hold, letting a throw go (jack_aim),
+ * the hat, being flattened and flying home.
+ */
+const ENTER_SOUND = {
+  rise: SFX.JUMP,
+  land: SFX.JUMP,
+  windupSide: SFX.WINDUP_SIDE,
+  windupOver: SFX.WINDUP_OVER,
+  hammerDraw: SFX.HAT_REACH,
+  hammerStow: SFX.HAT_REACH,
+  hooverDraw: SFX.HAT_REACH,
+  hooverStow: SFX.HAT_REACH,
+  hooverPutAway: SFX.HAT_REACH,
+  pickUp: SFX.PICK_UP,
+  throwRelease: SFX.THROW,
+  hatOut: SFX.HAT_OUT,
+  hatJump: SFX.HAT_HOP,
+  stung: SFX.STUNG,
+  flattened: SFX.FLATTENED,
+  flyHome: SFX.FLY_HOME,
+};
 
 const STATES = {
   // 0x22892, slot 1 — standing, the hub nearly everything returns to
@@ -1362,7 +1390,12 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
   /** The climb's frame is his height: `(y >> 1) & 15` (VA 0x25de3). */
   _climbFrame() {
+    const was = this._animFrame;
     this._animFrame = (Math.floor(this.y) >> 1) & 15;
+    // jack_climb: a rung's sound on frames 0 and 8, up and down their own
+    if (this.isLocal && this._animFrame !== was && (this._animFrame & 7) === 0) {
+      playSfx(this._animFrame < was || (was === 0 && this._animFrame === 15) ? SFX.CLIMB_UP : SFX.CLIMB_DOWN);
+    }
     this._showFrame(STATES.climb);
   }
 
@@ -1836,6 +1869,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     if (this.state === name) return;
     const prev = this.state;
     this.state = name;
+    if (this.isLocal && ENTER_SOUND[name] !== undefined) playSfx(ENTER_SOUND[name]);
     const spec = STATES[name] || STATES.stand;
     if (STATES[prev] && STATES[prev].ladder && !spec.ladder) this._offLadder();
     // In hand once it is out of the hat, until it goes back in — or into
@@ -1877,6 +1911,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       guard += 1;
       this._animTimer += spec.ms;
       this._animFrame += 1;
+      // jack_walk: a step on frames 2 and 10 of the run (VA 0x239ea)
+      if (this.state === 'walk' && this.isLocal && (this._animFrame === 2 || this._animFrame === 10)) playSfx(SFX.STEP);
 
       if (this._animFrame >= this._length(spec)) {
         if (spec.loop) {

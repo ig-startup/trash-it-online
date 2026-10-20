@@ -295,6 +295,9 @@ def export(name):
         # `.COL` word 0: how Jack collides with it — 0 not at all, 1 solid,
         # 2 a platform from above, 4 a ladder, 5 a ladder's top (level.py).
         "col": o["col"],
+        # `.COL` word 1: its material, 0-9 — the sound of a blow on it and
+        # of a landing (docs/re/levels/col.md).
+        "mat": o["material"],
         # `.COL` word 2: a marker for the gits walking over it — 1 turns
         # them left, 2 right (VA 0x2fbfd; docs/re/objects/gits.md "The gits").
         **({"marker": o["marker"]} if o["marker"] else {}),

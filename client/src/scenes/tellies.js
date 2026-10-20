@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PROP_ANIMS, PROP_FRAME_INFO, applyPropFrame } from '../entities/props';
 import { COL } from './blockKinds';
+import { playSfx, SFX } from '../audio/sfx';
 
 /**
  * Teleporters — `.OB` class 27 (constructor VA 0x347c1, state 0x34890).
@@ -37,6 +38,7 @@ export default class Tellies {
    * @param {{x: number, y: number, id: number, target: number, alwaysOn: boolean}[]} placed
    */
   constructor(scene, placed, blockAt, bottom) {
+    this._scene = scene;
     this._blockAt = blockAt;
     this._bottom = bottom;
     this._acc = 0;
@@ -115,6 +117,8 @@ export default class Tellies {
         player, from: t, squeeze: 0, arrived: false,
         width: player.width,
       };
+      playSfx(SFX.TELLY_SEND);
+
       return far.passenger;
     }
     return null;
@@ -156,12 +160,17 @@ export default class Tellies {
     if (land !== null) { t.y = land; t.vy = 0; } else t.y += t.vy;
   }
 
+  /** Opening and closing sound, if the pad is in view (VA 0x348bd, link flag 0x80). */
+  _hum(t) {
+    if (this._scene.cameras.main.worldView.contains(t.x, t.y)) playSfx(SFX.TELLY_PAD);
+  }
+
   _step(t, hold, release) {
     this._fall(t);
     // The pad's cycle (VA 0x34961-0x34a1c).
     const onBeat = this._ticks % FRAME_EVERY === 0;
     if (t.state === 'opening' && onBeat) {
-      if (t.frame === 0) { t.beamT = 0; t.beamGrow = true; }
+      if (t.frame === 0) { t.beamT = 0; t.beamGrow = true; this._hum(t); }
       if (t.frame < LAST_FRAME) t.frame += 1;
       else { t.state = 'open'; t.timer = OPEN_TICKS; }
     } else if (t.state === 'closing' && onBeat) {
@@ -173,6 +182,7 @@ export default class Tellies {
         t.state = 'closing';
         t.beamT = 0;
         t.beamGrow = false;
+        this._hum(t);
       }
     } else if (t.state === 'shut') {
       t.timer -= 1;

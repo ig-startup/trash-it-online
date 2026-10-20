@@ -13,7 +13,9 @@ import { PROP_ANIMS, applyPropFrame } from '../entities/props';
  * friction every tick (`bell_touch_tick`, VA 0x34114), so it falls until
  * something holds it up, and again when that is smashed away. A bell held
  * back (subtype 8, see ob.py) stands still and unseen; let go, it is
- * kicked 4 px/tick upward and comes down (VA 0x340af).
+ * kicked 4 px/tick upward and comes down (VA 0x340af). It rings only when
+ * struck from above while it stands (`+0x40` bits 0x80 and 0x10) — the
+ * scene's overhead blow, see GameScene._ringBell.
  *
  * In the game's own units, stepped at its 60 Hz.
  */

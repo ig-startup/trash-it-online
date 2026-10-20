@@ -1,3 +1,4 @@
+import { playSfx, SFX } from '../audio/sfx';
 import { PROP_ANIMS, applyPropFrame } from '../entities/props';
 
 /**
@@ -38,6 +39,7 @@ export default class Popups {
 
   /** "+1", "+2" or "+20" at (x, y). */
   got(x, y, worth) {
+    playSfx(SFX.GOT, { delay: 0 });   // spawn_got_popup → play_sound_then_step
     const base = GOT_BASE[worth] ?? 0;
     const sprite = this._scene.add.image(0, 0, GOT_FRAMES[base]).setDepth(6);
     applyPropFrame(sprite, GOT_FRAMES[base]);

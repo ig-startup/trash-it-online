@@ -34,3 +34,26 @@ All Miles Sound System 3.x; `sound.py` reads all four.
   stepped over) and `end`: they are what the rules record's +0x2a picks
   into 0x287c6c (1/2/4/8 → 29/30/31/32), which nothing reads — an
   ambience per level that was never wired up (`levels/rules-record.md`).
+
+**Which sound what plays** — the `play_sound` calls in G.EXE, the id read
+off the `mov eax, imm` before each call (the decompiler drops the
+register argument): Jack's jump and landing 0x6f, a step on run frames 2
+and 10 0x1a, the side and overhead wind-ups 0x0c and 0x0d, the hammer or
+hoover in and out of the hat 0x10 (`jack_hammer_to_hat`), taking hold
+0x6c, a throw let go 0x6b, a ladder rung 0x53 up / 0x54 down on climb
+frames 0 and 8, flattened 0x6e, flying home 0x98, out of the hat 0x3e, the
+hat's hop 0x52; a blow on a block the material's sound (table 0x9fefe,
+1-10, each struck cell a tick later, `blow_walk_cells`), and 0x28 when it
+brought down more than 20 cells; a group or a piece of rubble landing the
+material's landing sound (table 0x9ff14, `group_landed`, `rubble_state`);
+the bell 0x5a a ring, 0x43 the last ring, 0x8f / 0x82 freed by the
+percentage / the bins; dynamite 0x58 struck, 0x38 lit by a touch, 0x59
+the blast; a teleporter pad opening or closing in view 0x36, sending 0x37;
+the GOT popup 0x64.
+
+**Voices**: 15 (the sample handles `ail_startup` gets); a sound takes a
+free one, else the next round the ring whose priority is no higher (never
+0x7fff), else it is not played (`sound_voice_alloc` 0x1618f). A `play`
+replaces the voice's sample, at volume 100; scripts step once a logic
+tick (`sound_tick` 0x162c7). The clone: `client/src/audio/sfx.js`, data
+from `scripts/export_sounds.py`; the pan ops are not played.

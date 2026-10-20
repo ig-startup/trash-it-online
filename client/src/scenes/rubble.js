@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { playSfx, LAND_BY_MATERIAL } from '../audio/sfx';
 
 /**
  * What a destroyed block becomes, and the hoover that clears it.
@@ -48,8 +49,9 @@ export default class Rubble {
    * @param {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle} src
    * @param {number} mask the blow's debris mask (hammer record +0x34 / +0x38,
    *   or the blast's 0x3ffff)
+   * @param {number} [mat] the block's material, which its bounce sounds of
    */
-  add(src, mask) {
+  add(src, mask, mat = 0) {
     if (this._pieces.length >= MAX_PIECES) {
       const oldest = this._pieces.shift();
       if (oldest.img.active) oldest.img.destroy();
@@ -73,6 +75,7 @@ export default class Rubble {
       resting: false,
       rest: REST_TICKS,
       sucked: false,
+      mat,
     });
   }
 
@@ -132,6 +135,9 @@ export default class Rubble {
           p.vy = 0;
           p.vx = 0;
           p.resting = true;
+        } else {
+          // a bounce that goes on sounds of what it was (VA 0x61036)
+          playSfx(LAND_BY_MATERIAL[p.mat] || LAND_BY_MATERIAL[0]);
         }
       }
       return false;

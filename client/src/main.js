@@ -7,6 +7,7 @@ import WorldMapScene from './scenes/WorldMapScene.js';
 import ContinueScene from './scenes/ContinueScene.js';
 import ShopScene from './scenes/ShopScene.js';
 import PauseScene from './scenes/PauseScene.js';
+import { initSfx } from './audio/sfx.js';
 
 class BootScene extends Phaser.Scene {
   constructor() {
@@ -19,6 +20,7 @@ class BootScene extends Phaser.Scene {
 
   create() {
     console.log('[BootScene] ready');
+    initSfx(this.game);
     this.scene.start('MenuScene');
   }
 }
