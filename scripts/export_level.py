@@ -6,7 +6,8 @@ per level:
 
   client/public/sprites/levels/<name>/shapes.png    all block artwork, packed
   client/public/sprites/levels/<name>/shapes.json   Phaser atlas for it
-  client/public/sprites/levels/<name>/background.png the .SCN wall texture
+  client/public/sprites/levels/<name>/background.png the .SCN backdrop (texture 1)
+  client/public/sprites/levels/<name>/floor.png      the .SCN ground (texture 0)
   client/public/levels/level_<name>.json             geometry for GameScene
 
 and the play order in `shared/levels.json`, which both the client and the
@@ -243,17 +244,25 @@ def export(name):
     os.makedirs(out_dir, exist_ok=True)
     prefix = "sprites/levels/%s" % name
 
-    # the wall behind everything; layer 0 is the plain one
-    background = None
+    # The backdrop (see docs/re/formats/scn.md): texture 1 stands upright
+    # behind the level from the horizon up, texture 0 is the ground below
+    # it. `.SDE` word 3 says whether texture 1 carries on to the top; if
+    # not, the rest is filled with the colour of its top-left pixel
+    # (VA 0x1c895, 0x6d2ab).
+    background = floor = backdrop = None
     scn_path = os.path.join(SPR, name + ".SCN")
     if os.path.exists(scn_path):
-        # A `.SCN` is 256-wide textures, not 320-wide screens; reading
-        # them 320 across sheared every row by 64 pixels, which is the
-        # smear the backdrop used to be. The first texture is the wall.
-        wall_w, wall_h, pixels = scn.textures(scn_path)[0]
-        _png.write_rgb(os.path.join(out_dir, "background.png"),
-                       wall_w, wall_h, [palette[v] for v in pixels])
+        tex = scn.textures(scn_path)
+        for i, fname in ((1, "background.png"), (0, "floor.png")):
+            w, h, pixels = tex[i]
+            _png.write_rgb(os.path.join(out_dir, fname),
+                           w, h, [palette[v] for v in pixels])
         background = "%s/background.png" % prefix
+        floor = "%s/floor.png" % prefix
+        with open(os.path.join(LEVELS, name + ".SDE"), "rb") as fh:
+            sde = struct.unpack_from("<8i", fh.read(0x20))
+        r, g, b = palette[tex[1][2][0]]
+        backdrop = {"toTop": bool(sde[3]), "fill": (r << 16) | (g << 8) | b}
 
     # one atlas frame per (shape, size) actually used
     shapes, sizes = {}, {}
@@ -513,6 +522,8 @@ def export(name):
         # has none (ob.time_limit).
         "timeLimit": ob.time_limit(placed),
         "background": background,
+        "floor": floor,
+        "backdrop": backdrop,
         "shapeAtlas": {"image": "%s/shapes.png" % prefix,
                        "data": "%s/shapes.json" % prefix},
         "shapes": sizes,

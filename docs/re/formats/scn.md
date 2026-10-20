@@ -46,6 +46,10 @@ picture is an unreferenced routine at 0x1cd94 that doubles it to 320x400.
 and `heat_tick` (0x60d5d, the `upd_HEAT` routine — a script by Jack's
 animation slot 4) is referenced from nowhere.
 
-The clone draws texture 0 flat and tiled — the look of the lowest detail
-level with a texture. Doing it as the game does needs the camera's depth,
-which the clone does not model.
+The clone draws both planes flat, at their own scale, with the street as
+the horizon: texture 1 tiled sideways with its bottom row on the street,
+carried up when `.SDE` word 3 is set (51 of the 125 shipped levels) and
+filled with its top-left pixel's colour above otherwise; texture 0 tiled
+below the street (`export_level.py` writes `background.png`, `floor.png`
+and `backdrop: {toTop, fill}`; `GameScene.create`). Doing it in
+perspective needs the camera's depth, which the clone does not model.
