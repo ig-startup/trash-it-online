@@ -255,3 +255,100 @@
 0x18fd4  f  savegame_read                  ; SAVEGAME, 0x2000 bytes: 1 read, 2 short, 3 none
 0x19034  f  savegame_write
 0x19958  f  savegame_ready                 ; always 1
+#
+# Shared with G.EXE: the same code, matched body to body against G's names (difflib >= 0.9 on the
+# normalised decompilation, read side by side).
+0x219a6  f  load_sound_bank                ; "ERROR: Couldn't load sound bank" — as G's load_sound_bank
+0x21af9  f  looped_sounds_update           ; as G's
+0x21c22  f  voice_start_if                 ; as G's
+0x21cbf  f  sound_start_owned              ; as G's: a voice for the caller, counted
+0x21de8  f  sound_voice_alloc              ; as G's
+0x21eb6  f  dig_driver_uninstall           ; as G's
+0x22a30  f  dig_driver_uninstall_2         ; the same, a second copy
+0x21ebb  f  sound_bank_index               ; sample pointers from the bank's offset table
+0x21ef1  f  sound_voice_start              ; as G's
+0x21f20  f  sound_tick                     ; each live voice: its effects, its script
+0x22252  f  sound_voice_stop               ; AIL_stop_sample, the voice freed
+0x2243e  f  voice_effects_update           ; vibrato, pitch sweep, volume ramps (as G's 0x167e5)
+0x2287c  f  ping_pong                      ; *ecx += *ebx, turning *ebx round at ax and dx
+0x228d9  f  voice_set_loop                 ; a looped sample's loop block
+0x22a52  f  ail_startup                    ; AIL_startup, drivers from "dosdrv"
+0x22abf  f  grip_read_status               ; as G's
+0x22bed  f  grip_list_pads                 ; "Found %d GRIP pads"
+0x22c34  f  grip_detect                    ; "Found GRIP" / "Unable to initialize GrIP"
+0x22c95  f  grip_load_library              ; GRIP.GLL
+0x22e17  f  grip_shutdown                  ; the driver off, its DOS memory freed
+0x22e3e  f  grip_load_driver               ; as G's
+0x23082  f  grip_free_dos_memory           ; as G's
+0x23101  f  row_table_init                 ; as G's
+0x231fe  f  file_stem                      ; as G's
+0x23279  f  open_file_or_die               ; as G's
+0x2341e  f  set_draw_mode                  ; template +0x1c: 0x8000|0x4000 -> -1, |0x2000 -> -2 (added light), else remap 0x944dc[n]
+0x2384d  f  draw_buckets_clear             ; the 500 depth lists emptied
+0x23ed0  f  str_copy                       ; as G's
+0x23ee1  f  str_cat                        ; as G's
+0x240fa  f  release_memory_block           ; as G's
+0x24a19  f  resolve_path_cd                ; a file not found is looked for on the CD drive (0xd667d)
+0x25769  f  obj_alloc_before               ; a free object into the live list before EAX
+0x25859  f  obj_alloc_after                ; after EAX — obj_spawn's
+0x27129  f  joystick_centre                ; as G's
+0x271dd  f  joystick_read_axes             ; as G's joystick_read_axes_2
+0x275cf  f  joystick_read_axes_2           ; as G's
+0x276c6  f  joystick_read_buttons          ; as G's
+0x279a2  f  joystick_time_axis             ; as G's
+0x503f7  f  wait_any_key                   ; as G's
+0x5041c  f  wait_keys_released             ; as G's
+0x5085e  f  clear_buffer_64000             ; as G's
+0x50937  f  clear_back_buffer              ; as G's
+0x50a5a  f  vga_copy_four_planes           ; as G's
+0x50ad9  f  vga_copy_plane                 ; as G's
+0x50ebd  f  vga_set_palette                ; as G's
+0x51a78  f  keyboard_table_clear           ; as G's
+0x51baa  f  keyboard_install               ; as G's
+0x51be9  f  keyboard_remove                ; as G's
+0x51f2a  f  copy_key_map                   ; as G's
+0x5210e  f  load_char_font                 ; as G's
+0x5216d  f  debug_text_draw                ; as G's
+0x5230a  f  glyph_draw                     ; as G's
+0x52928  f  palette_tint_reset             ; as G's
+0x5296d  f  palette_tint                   ; as G's
+0x52a04  f  palette_apply_if_dirty         ; as G's
+0x5509d  f  ail_log_suppressed             ; as G's
+0x55271  f  ail_log_suppressed_2           ; as G's
+0x552ed  f  dos_write                      ; as G's
+0x5532f  f  dos_write_2                    ; as G's
+#
+# Empty: a bare ret each (checked byte by byte) — debug hooks compiled out.
+0x12bf1  f  empty_12bf1  ; ret
+0x190a2  f  empty_190a2  ; ret
+0x1ae08  f  empty_1ae08  ; ret
+0x1c861  f  empty_1c861  ; ret
+0x2040a  f  empty_2040a  ; ret
+0x22a88  f  empty_22a88  ; ret
+0x23189  f  empty_23189  ; ret
+0x233ef  f  empty_233ef  ; ret
+0x2341d  f  empty_2341d  ; ret
+0x52309  f  empty_52309  ; ret
+#
+# Not functions: fragments Ghidra cut out at a jump target, which `symbols.py strings` took for empty ones.
+0x12ace  f  epilogue_12ace                 ; pops and ret shared by the code before it (menu_word_tick and others jump here)
+0x13e32  f  epilogue_13e32                 ; the same
+0x16722  f  epilogue_16722                 ; the same (save_screen_tick)
+0x1813d  f  epilogue_1813d                 ; the same
+0x19b21  f  epilogue_19b21                 ; the same
+0x1f39a  f  epilogue_1f39a                 ; the same
+0x203c4  f  epilogue_203c4                 ; the same (camera_shake_tick)
+0x2202c  f  epilogue_2202c                 ; the same (sound_tick)
+0x23273  f  epilogue_23273                 ; the same
+0x241a1  f  epilogue_241a1                 ; the same
+0x2622f  f  epilogue_2622f                 ; the same (the zoomed draw at 0x26235 ends here)
+0x2799c  f  epilogue_2799c                 ; the same
+0x52cd6  f  epilogue_52cd6                 ; the same (cd_play_track)
+0x27557  f  joystick_axis_bits_a           ; a fragment of joystick_read_axes: an axis against the centre (0xa4344) -> direction bits
+0x2756b  f  joystick_axis_bits_b
+0x27583  f  joystick_axis_bits_c
+0x275a4  f  joystick_axis_bits_d
+0x27940  f  joystick_button_bits_a         ; the same in joystick_read_buttons
+0x27954  f  joystick_button_bits_b
+0x2796c  f  joystick_button_bits_c
+0x27982  f  joystick_button_bits_d
