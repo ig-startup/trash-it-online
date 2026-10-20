@@ -367,3 +367,21 @@
 0x19022  f  return_1_19022                 ; savegame_write's last step: 1
 0x2321d  f  return_1_2321d                 ; sprite_load_into_slot's check: always 1
 0x21c94  f  return_arg                     ; EAX unchanged
+#
+# RNC ProPack (docs/re/formats/pak.md).
+0x11f1b  f  unpropack_or_die               ; rnc_unpack, or "failed to 'unpropack()' RNC buffer" and exit_front
+0x11f38  f  rnc_unpack                     ; "RNC" checked; method byte +3: 0 stored (copied), 1 rnc_unpack_m1, 2 rnc_unpack_m2; -1 not RNC, -2 unknown method
+0x11ffa  f  rnc_unpack_m1                  ; method 1: Huffman tables, literals and matches
+0x12049  f  rnc_m1_blocks                  ; method 1's block loop: three tables, the literal runs copied, the matches
+0x12126  f  rnc_unpack_m2                  ; method 2: bit-by-bit, MSB first
+0x122b8  f  rnc_init                       ; output, input past the 0x12-byte header, end = output + unpacked size (big-endian)
+0x12316  f  rnc_table_clear                ; CL entries of 16 bytes
+0x1233b  f  rnc_m1_bits                    ; AL bits LSB first, refilled 16 at a time
+0x123a7  f  rnc_m2_bits                    ; AL bits MSB first, refilled a byte at a time
+0x1240e  f  rnc_m1_read_table              ; a Huffman table: count (5 bits), lengths (4 bits each), codes made
+0x12463  f  rnc_m1_make_codes              ; canonical codes by length 1..16, bit-reversed
+0x124dd  f  bit_reverse                    ; the low CL bits of EAX reversed
+0x124fa  f  rnc_m1_decode                  ; a value through a table: its symbol, then its extra bits
+0x1256b  f  rnc_m2_length                  ; method 2's match length
+0x1259f  f  rnc_m2_offset                  ; method 2's match offset
+0x547c0  f  strncmp
