@@ -104,3 +104,95 @@
 0x2382b  f  obj_queue_depth                ; puts the object (edx) on depth list ax: 500 lists of 0x89c bytes from 0x2653c0, the count at +0x898
 0x1f827  f  map_jack_taken                 ; Jack under the shop's house: from +0xbc = 1 narrowing (+0xa4) behind it, at 22 px narrower (+0xbc = 2) rising with it until removed 150 px up
 0x18d3c  f  level_select_screen            ; after an arcade or battle level quit: ARLVSL_E (arcade) or BATLSL_E (battle), its answer from 0xd63c2 — 0 to the title
+#
+# The frame: what every screen runs (docs/re/front/frame.md).
+0x1a7c0  f  front_main                     ; the front end from G's call: init, the screens (0x208f5), "Exiting FRONT"
+0x1ac0e  f  front_init                     ; record +0xd8 != 0xabbabad: first run — defaults, magic set; else just the pools
+0x12bf2  f  run_ticks                      ; AX ticks of the screen's routine (0x85ede), 1..4 a frame by timer / 13 ms ("Rate %d"); 0 one frame
+0x1ab15  f  screen_tick                    ; one tick when frame_end flagged it: Esc edge, shake, objects, input, fade, scripts, draw
+0x1a9e3  f  screen_reset                   ; a new screen: sprites, input records, camera, objects, seed 0x12345678, no timeout
+0x1ad29  f  sprites_reset                  ; frame flag off, sprite_pool_reset
+0x1ca2b  f  scripts_reset                  ; AX controllers of 0x84 bytes from 0xd6ddc emptied
+0x1d41e  f  scripts_tick                   ; script_tick for each live controller
+0x1c8bf  f  obj_create_picture             ; slot AX, depth CX, x DX, y BX, frame [esp+4]; the slot's colours (0x8e62c + 0x58 slot: first, last, palette) into the screen palette
+0x2420b  f  palette_set_range              ; colours DX..BX from EAX (3 bytes each) into the palette 0x2149a8; fade done flag off
+0x2054b  f  camera_reset                   ; camera x, y (0xc613c, 0xc6140) and the shake to 0
+0x20588  f  camera_shake_start             ; x: AX amplitude, BX step, [esp] max; y: the same from CX, DX, [esp+4]
+0x205ba  f  camera_shake_tick              ; camera = ± random(amplitude), sign by tick parity; amplitude += step on odd ticks, back down past max, off at 0
+0x2083e  f  screen_timeout_set             ; AX seconds (x 60 ticks) of no input, then EDX is called; -1 none
+0x20869  f  screen_timeout_tick            ; any key of the last player restarts it; at 0 the callback once, returns 1
+0x52012  f  input_tick                     ; lock count 0xc6122 down, devices read, four player records updated
+0x52053  f  input_read_devices             ; each player's device word (0x516534 + 0x13c n) into 0xc607c
+0x13397  f  input_player_update            ; record AX (18 bytes at 0xc608c): held, pressed, 2 ticks back, auto-repeat 15 then every 4
+0x5207f  f  keyboard_read_keys             ; scancodes 0x60 0x61 0x5e 0x63 -> L R U D (1 2 4 8), Enter 0x10
+0x520e8  f  keyboard_input_update          ; 0x513d38 held, 0x513d3a last, 0x513d3c pressed
+0x51ab3  f  key_down                       ; byte table 0xa44b8 by scancode
+0x547fa  f  timer_ms                       ; PIT channel 0 to milliseconds, never backwards
+0x24d4b  f  objects_tick                   ; removals and additions queued, then each live object: behaviour (+8), obj_draw
+0x2563b  f  objects_reset                  ; both pools freed, the queues empty
+0x25ac3  f  links_init                     ; 0x226 links of 0x14 bytes from 0x3735fc, all free
+0x25653  f  obj_pool_init                  ; 0x226 objects of 0x10c bytes from 0x3760f4, all free
+0x259e7  f  link_alloc                     ; free list 0x39a0c8 -> live list 0x39a0c4
+0x25a62  f  link_free
+0x25921  f  obj_free                       ; live list 0x39a0c0 -> free list 0x39a0bc
+0x25aef  f  list_count                     ; length of the list EAX (next at +0x14)
+0x52d06  f  cd_play_track                  ; AX: stop what plays, AIL_redbook_track_info, AIL_redbook_play
+0x52d8e  f  cd_stop
+0x52cdd  f  cd_close
+0x23ee9  f  exit_front                     ; formats a message, video, CD, sound, keyboard off, prints it, exits — "Exiting FRONT" and every fatal one
+0x22a6f  f  sound_shutdown                 ; samples stopped, AIL_shutdown
+0x54790  f  sprintf
+0x250e0  f  obj_spawn                      ; template EAX, queued: in the list from the next objects_tick
+0x256e8  f  obj_alloc                      ; a free object to the head of the live list (0x39a0cc), none past 0x226
+0x26eda  f  obj_silhouette_on              ; bit 0 of +0x93: drawn through the remap 0x943dc (all colour 254)
+0x26ee2  f  obj_silhouette_off             ; and +0x1c = 0
+0x20513  f  front_record_clear             ; the 0x2cc bytes of the front record (0x89178)
+0x20730  f  sort_with_index                ; bubble sort of EBX dwords at EAX, the dwords at EDX alongside; DX 2 down, else up
+#
+# The title, its menus and the attract mode (docs/re/front/title.md).
+0x208f5  f  front_states                   ; record +0x206: 0 title, 1 story, 2 battle, 3 arcade — until 0x18475a
+0x2098c  f  title_screen                   ; state 0: title_init, then its ticks until a choice ends it
+0x20920  f  title_tick                     ; the menu handler, the start transition, the frame; UP + Esc 250 ticks -> movie_select
+0x21857  f  title_init                     ; FRMWRK_E.DAT, CD track 8, the picture, title_menu
+0x209c6  f  title_menu                     ; start / options / quit; 30 s of nothing -> attract_next
+0x20c50  f  start_menu                     ; battle / arcade / story (words only, the strings blank); Esc back
+0x20afe  f  options_menu                   ; pad config / audio config / done
+0x21716  f  attract_next                   ; the next of 0x8dcb0: 2 3 * 4 0 * 1 — a demo D level, or * the credits
+0x12882  f  menu_set_handler               ; EAX run each tick (0x184750), its first call sets it up (0x184760)
+0x126cd  f  menu_open                      ; EAX the item strings, 0-ended; cursor 0, nothing chosen (-1)
+0x126f8  f  menu_tick                      ; UP / DOWN move the cursor round, sound; a button chooses (0x184764)
+0x12ad4  f  menu_words_reset               ; the next word drops at once (delay 0)
+0x12aee  f  menu_word                      ; a menu word: template, item, x, y from, y to, frames..., -1; each 3 ticks after the last
+0x1293e  f  menu_word_tick                 ; drops and bounces to its row; silhouette if the cursor's; chosen: flies off right, the camera shakes
+0x12923  f  title_follower_tick            ; x of the object it follows (+0x10); gone past x 20
+0x13069  f  title_start_transition         ; start chosen: a shake, the next picture, 90 ticks, fade, CD off
+0x113f5  f  credits_screen                 ; CREDITS.DAT, CD track 4, until credits_end
+0x11300  f  credits_init
+0x11447  f  credits_tick                   ; a button skips a page (script + 0x148) while page < 5; page 5: 6 s, then any button
+0x1153b  f  credits_page_tick
+0x1142e  f  credits_end                    ; fade out, done
+0x1ae0c  f  movie_select                   ; MOVIESEL.DAT: 25 films by name, fire plays one, Esc leaves
+0x1b027  f  movie_select_tick              ; LEFT / RIGHT through 0x892d0 (film numbers), its name from 0x1ada4
+0x126ba  f  play_film                      ; play_smacker with the two stack words
+0x12654  f  film_game_over                 ; film 0x1f "gameover"
+0x12671  f  film_gt_logo                   ; film 0x2f "gt"
+0x12694  f  film_arcane_logo               ; film 0x2d "arcalogo"
+0x126a7  f  film_intro                     ; film 0x2c "front"
+0x21989  f  front_to_title                 ; record +0x206, +0x208 = 0
+#
+# Battle and arcade (docs/re/front/game-types.md).
+0x212d2  f  battle_framework               ; state 2: players, level select, the set's levels, results, play again
+0x214c2  f  arcade_framework               ; state 3: players, teams, the K level per team, results
+0x19d2b  f  players_screen                 ; "select number of players" -> record +4; -1 Esc
+0x19b27  f  players_screen_init
+0x177df  f  teams_screen                   ; "another team" / "start", four at most -> +0x108
+0x13e39  f  battle_results                 ; the screen, then battle_next_level
+0x13e80  f  battle_next_level              ; next of the set; at its end the most points win, a tie -> set 10 on the same level
+0x13fa1  f  battle_points                  ; by place: 2/1, 4/2/1, 8/4/2/1
+0x11df6  f  arcade_results                 ; more than one team
+0x11e2c  f  arcade_places                  ; team times sorted, equal times share a place
+0x1b5c6  f  shop_cursor_item               ; column x 6 + row; the buttons 0x1e
+0x128c8  f  title_figure_tick              ; once chosen and the words settled: the swing script (0x85e34 title, 0x85d90 start), whose eaa1 sets 0x184766 = 2 at the hit
+0x1d45a  f  script_stop                    ; the controller (EAX) freed
+0x1d3e4  f  scripts_stop_for_object        ; every controller driving object EAX
+0x1d78a  f  script_low_commands            ; commands 60000..0xea8e: set object fields (+0x3e, +0x42 vx, +0x44 vy, +0x48 ax …); returns 1 to read on

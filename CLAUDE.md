@@ -13,7 +13,7 @@ nothing else up front. Everything below is read when the task needs it.
 | what | where |
 |---|---|
 | what the original does — formats, rules, routines | `docs/re/INDEX.md` → one note |
-| a routine of G.EXE, decompiled | `python3 scripts/ghidra/fn.py show <name\|0xVA>` |
+| a routine of G.EXE, decompiled | `python3 scripts/ghidra/fn.py show <name\|0xVA>` (`--f` for F.EXE) |
 | names of routines, globals, struct fields | `scripts/ghidra/symbols.txt`, `symbols.d/*.txt`, `fields.txt` |
 | decoders of the original's files | `scripts/formats/` (list in its README) |
 | exporters original → client assets | `scripts/export_*.py` (`scripts/README.md`) |
