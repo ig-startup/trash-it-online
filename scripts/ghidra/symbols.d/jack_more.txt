@@ -1,0 +1,30 @@
+# Jack's smaller routines, read in the sweep of 2026-10-14.
+0x2187b  f  jack_frame_setup               ; per Jack per tick: the player's globals, input, look bit, combos, timers +0x15a/+0x15c, camera point, …
+0x21dfe  f  release_thrown                 ; a held thing leaves Jack with velocity (edx, ebx); timmies (0x35/0x3f) get git_30d8e
+0x21e6b  f  held_object_tick               ; a carried thing placed by Jack's animation slot (offset tables 0xa0284, 0xa02c4, …)
+0x22029  f  hammer_out_pick_up             ; drawing the hammer over the dropped one takes it back
+0x220ad  f  jack_over_dropped_hammer       ; Jack overlaps his own loose hammer
+0x2217f  f  drop_hammer_then_state
+0x22197  f  hide_hammer_then_state
+0x221ae  f  put_hoover_away_then_state
+0x2222a  f  can_put_down_here              ; a floor or ladder under the spot 1 px up
+0x2287a  f  mark_steep                     ; probe bit 0x40 → +0x42 |= 4
+0x23cde  f  mark_steep_keep_frame          ; the same, and +0x5a = the player's anim frame
+0x25bac  f  jack_land_settle
+0x27ce3  f  jack_air_grab                  ; slot 49, pad only — button 0x40 held in the air (entity_step 0x22e89, jack_ride_seesaw, jack_air_roll): steers as in the air and, from its third tick, searches for something to take hold of (sprite_search, jack_take_hold); lands on the floor, or past 358 px of fall goes to the long fall
+0x27fcf  f  hammer_flags_clear             ; all 37 armed flags (+0xb0) and +0xfa
+0x2805e  f  drop_hammer_and_hoover
+0x2806f  f  drop_hammer                    ; it falls from Jack with half his velocity (straight up a little in slot 62)
+0x280f1  f  put_hoover_away                ; a hoover out and drawn: dropped as a loose one
+0x28129  f  spawn_dropped_hoover           ; VAC with Jack's velocity, state 0x617dc
+0x2896f  f  jack_idle_fidget               ; slot 53: after 80-207 ticks standing still, an idle animation to frame 61
+0x2b315  f  jack_stomp_hits                ; the ground pound landing: up to 5 sprites in the box under him (sprite_search_box, category 4) — TIMMY, TOMMY, SUCKER and BELL sheets (0x35, 0x5b, 0x3e, 0x33) — get him as their hitter (+8) and +0x40 bit 0x80, struck from above; a sound (play_sound_then_step)
+0x2b6a5  f  jack_ride_75                   ; slot 75: on something (process_obj_on_something); BUT2 gets off
+0x2b719  f  jack_ride_76                   ; slot 76: the same, jumping off up 1 px with RIGHT/LEFT drift
+0x2ba7d  f  hammer_tricks_disarm           ; every frame: each player's armed flag for his hammer back to 0 — a trick lasts the tick its combination ends
+0x2baaa  f  jack_flung_by                  ; turned to face +8; with +0x41 bit 1 thrown off with a sound
+0x2be06  f  camera_offset_reset            ; player +0x152/+0x154
+0x2be20  f  players_start_state
+0x2bfa6  f  camera_mode_1
+0x2bfb0  f  camera_mode_point              ; mode 2 at (eax, edx, ebx)
+0x2bfd0  f  camera_mode_3

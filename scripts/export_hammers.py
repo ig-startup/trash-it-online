@@ -31,6 +31,8 @@ The fields (see "What a hammer blow carries" in docs/re/logic/collapse.md):
                                 many blocks one blow strikes (VA 0x1fcd3)
   reach         +0x4a..+0x50    ahead, down, across, deep — from Jack's feet
   overBox       +0x5e +0x60 +0x62  the overhead strike's box: ahead, wide, high
+  bonus         +0x52           (player +0x92) what a blow is multiplied by on a
+                                bonus screen's object (VA 0x1f935)
 """
 import json
 import os
@@ -53,12 +55,13 @@ OUT_JSON = os.path.join(REPO, "shared", "hammers.json")
 PREFIX = "sprites/hammers"
 
 # VA 0x1fcd3: per type, whether the force is halved and how many blocks one
-# blow may strike. Type 4 picks 2 or 3 at random; type 0 is 3 and halved
-# unless the caller passes flag bits the clone has not traced.
+# blow may strike. Type 4 picks 2 or 3 at random. Type 0 is aimed by the
+# keys held as the blow lands (jack_strike passes the input word): UP one
+# block at full force, DOWN two at full force, neither three at half.
 POINTERS_VA = 0xa2d0c
 
 TYPES = {
-    0: {"halves": True, "strikes": 3},
+    0: {"halves": True, "strikes": 3, "aimed": True},
     1: {"halves": True, "strikes": 3},
     2: {"halves": False, "strikes": 1},
     3: {"halves": False, "strikes": 2},
@@ -134,6 +137,7 @@ def main():
                       "w": _s16(rec, 0x4e), "h": _s16(rec, 0x50)},
             "overBox": {"dx": _s16(rec, 0x5e), "dy": OVER_DY,
                         "w": _s16(rec, 0x60), "h": _s16(rec, 0x62)},
+            "bonus": _s16(rec, 0x52),
             "atlas": {"image": "%s/%s.png" % (PREFIX, stem), "data": "%s/%s.json" % (PREFIX, stem)},
         }
         out.append(record)

@@ -23,11 +23,14 @@ import Ufos from './ufos';
 import Seesaws from './seesaws';
 import Gits from './gits';
 import Bonuses from './bonuses';
+import Popups from './popups';
 import Bell from './bell';
+import BonusRound, { preloadBonusRound } from './bonusRound';
 import {
   COL, applyCollisionKind, ladderAt, ladderTopUnder, floorUnder,
 } from './blockKinds';
 import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
+import { QUIT_LEVEL } from './PauseScene';
 import { LAST_ONE_SECONDS } from '../battle/LocalBattle';
 import { ARCADE_MAX_TENTHS, formatTenths, missionText } from '../battle/LocalArcade';
 
@@ -99,6 +102,8 @@ export default class GameScene extends Phaser.Scene {
     this._localBattle = data.localBattle || null;
     /** So does the arcade: the teams' turns and times (battle/LocalArcade.js). */
     this._arcade = data.arcade || null;
+    /** The story: a level played off the world map, back to it after (story/Story.js). */
+    this._story = data.story || null;
     if (this._localBattle && !this._battle) {
       const now = this._localBattle.current();
       this._battle = now.battle;
@@ -116,6 +121,8 @@ export default class GameScene extends Phaser.Scene {
     // An arcade level hands its row's hammer.
     if (this._arcade) {
       this._hammerIndex = this._arcade.entry.hammer;
+    } else if (this._story) {
+      this._hammerIndex = this._story.hammer;
     } else {
       this._hammerIndex = this._battle && Number.isInteger(this._battle.hammer)
         ? this._battle.hammer : FIRST_HAMMER;
@@ -140,6 +147,7 @@ export default class GameScene extends Phaser.Scene {
   /** Takes a level's data, and queues the artwork it names. */
   _useLevel(level) {
     this._level = level;
+    if (level.bonusRound) preloadBonusRound(this, level.bonusRound);
     if (level.background) {
       this.load.image(this._bgKey(level), level.background);
     }
@@ -281,15 +289,23 @@ export default class GameScene extends Phaser.Scene {
     // (VA 0x340af) — the arcade's "trash NN% to free the bell". The share
     // is of every object in the level, the unbreakable ones included
     // (`destroyed_percent`, VA 0x68724).
-    const bell = level.bell;
+    // A bonus screen has no bell: its round is won on the object instead.
+    const bell = level.bell || { x: -1000, y: -1000 };
     const bellGround = level.ground ? level.ground.y : levelHeight;
     this._objectTotal = level.destructibles.length;
     this._destroyedCount = 0;
     this._bellTrash = bell.trash || 0;
     this._bell = new Bell(this, bell, (x, from, to) => (to >= bellGround ? bellGround
       : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)),
-    { hidden: this._bellTrash > 0, fallbackColor: WORLD_COLORS.bell });
+    { hidden: this._bellTrash > 0 || !level.bell, fallbackColor: WORLD_COLORS.bell });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bell.destroy());
+
+    // ── A bonus screen's object (G.EXE VA 0x10c1f; bonusRound.js) ─────────
+    this._bonusRound = null;
+    if (level.bonusRound) {
+      this._bonusRound = new BonusRound(this, level.bonusRound, () => this._bonusWon());
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bonusRound.destroy());
+    }
 
     // ── Dynamite ──────────────────────────────────────────────────────────
     // 202 placements across 42 levels, of two kinds: 63 that a hammer
@@ -352,7 +368,8 @@ export default class GameScene extends Phaser.Scene {
       const spawnIndex = Math.max(0, this._players.findIndex((p) => p.id === pd.id));
       const spawn = level.spawnPoints[spawnIndex] || level.spawnPoints[0];
       const player = new Player(this, spawn.x, spawn.y, pd.color || '#ff4444', pd.id, true,
-        { hammer: this._hammerIndex });
+        { hammer: this._hammerIndex, hand: level.handOptions || 0 });
+      player.drawAtStart(this.time.now);
       const set = keySets[pd.pad ?? i] || keySets[0];
       const pad = this._keys.pad(set, here.length === 1 ? SOLO_EXTRA : {});
       const j = {
@@ -449,6 +466,11 @@ export default class GameScene extends Phaser.Scene {
     // The most common things in the game. Placed timmies sit locked to
     // their block until it dies, then walk; the hoover takes them, and
     // they count. See gits.js.
+    // GOT and the puff: what a thing taken leaves in the air (popups.js)
+    this._popups = hasProps(this) && PROP_ANIMS.got ? new Popups(this) : null;
+    if (this._popups) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._popups.destroy());
+    const got = (x, y, worth) => this._popups && this._popups.got(x, y, worth);
+    const puff = (x, y, w, h) => this._popups && this._popups.puff(x, y, w, h);
     this._gits = hasProps(this) && PROP_ANIMS.timmy
       ? new Gits(this, level, {
         blockAt,
@@ -470,6 +492,10 @@ export default class GameScene extends Phaser.Scene {
         loose: this._loose,
         shake: () => this.cameras.main.shake(120, 0.006),
         jacks: () => this._liveJacks().map((j) => j.player),
+        got,
+        // a falling block over a timmy (probe_crusher 0x60a00)
+        crusher: (left, right, top, feet) => (this._collapse
+          ? this._collapse.over(left, right, top, feet) : null),
         // The bomb's blast (VA 0x329dc): blocks from 15 px up, its force
         // the level's (rules +0x44 << +0x46), 10 across and 16 up and
         // down, four of them; the shock at its feet.
@@ -490,6 +516,7 @@ export default class GameScene extends Phaser.Scene {
     this._secrets = 0;         // panels taken (level_state +0x18)
     this._bonuses = hasProps(this) && PROP_ANIMS.dis
       ? new Bonuses(this, level, {
+        puff,
         floor: (x, from, to) => floorUnder(blockAt, x, from, to),
         blockIdAt: (x, y) => {
           const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
@@ -535,11 +562,13 @@ export default class GameScene extends Phaser.Scene {
     // at -6 px/tick with a random kick, and off his count.
     this._jacks.forEach(({ player }) => player.on('spill', (count) => {
       if (!this._gits) return;
-      const n = Math.min(count, this._gits.collected);
+      const own = this._gits.collectedBy.get(player) || 0;
+      const n = Math.min(count, own, this._gits.collected);
       for (let i = 0; i < n; i += 1) {
         this._gits.spawnFree(player.x, player.y - 20, (Math.random() * 2 - 1) * 2, -6);
       }
       this._gits.collected -= n;
+      this._gits.collectedBy.set(player, own - n);
       this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
     }));
 
@@ -619,6 +648,7 @@ export default class GameScene extends Phaser.Scene {
     this._timeLeft = level.timeLimit || DEFAULT_TIME;
     this._clockMs = 0;
     this._over = false;
+    this._quitting = false; // quit from the pause menu, the level ending
     // In the arcade the clock starts at 0 and counts up, in tenths.
     this._tenths = 0;
     if (this._arcade) this.timerText.setText(formatTenths(0));
@@ -711,9 +741,9 @@ export default class GameScene extends Phaser.Scene {
       this._flashBonus(missionText(this._arcade.entry.mission), 3500);
     }
 
-    // Esc leaves a game played at this keyboard for the menu.
+    // Esc pauses a game played at this keyboard (PauseScene.js).
     if (this._local) {
-      this.input.keyboard.on('keydown-ESC', () => this.scene.start('MenuScene'));
+      this.input.keyboard.on('keydown-ESC', () => this._pause());
     }
 
     console.log('[GameScene] created', {
@@ -787,6 +817,7 @@ export default class GameScene extends Phaser.Scene {
     this._checkHammerBell();
 
     this._bell.update(delta);
+    if (this._bonusRound && !this._over) this._bonusRound.update(delta);
     this._tickDynamite(time);
     if (this._cannons) this._tickCannons(delta);
     const stillIn = this._liveJacks();
@@ -809,6 +840,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (this._ufos) this._ufos.update(delta);
     if (this._bonuses) this._bonuses.update(delta);
+    if (this._popups) this._popups.update(delta);
     if (this._gits) {
       const got = this._gits.update(delta, hoovers);
       if (got) this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
@@ -889,6 +921,8 @@ export default class GameScene extends Phaser.Scene {
 
   /** Out of time at one keyboard: the level is lost (state 3) — play it again. */
   _timeUp() {
+    // the object burst: the round is won, whatever the clock says
+    if (this._bonusRound && this._bonusRound.burst) return;
     if (this._localBattle) {
       // those who rang are placed, the rest score nothing, the set goes on
       this._endLocalBattleLevel(true);
@@ -896,6 +930,10 @@ export default class GameScene extends Phaser.Scene {
     }
     this._over = true;
     this._jacks.forEach((j) => { if (!j.rang) this._leaveLevel(j); });
+    if (this._story) {
+      this.showResultOverlay('ВРЕМЯ ВЫШЛО', 'Уровень проигран', { then: () => this._backToMap('lost') });
+      return;
+    }
     this.showResultOverlay('ВРЕМЯ ВЫШЛО', 'Попробуйте ещё раз', { nextLevel: this._levelId });
   }
 
@@ -1095,12 +1133,20 @@ export default class GameScene extends Phaser.Scene {
     let reach;
     if (overhead) {
       reach = this._overheadBox(pl);
+    } else if (this._bonusRound) {
+      // On a bonus screen the blow strikes no block, only the object: its
+      // force times the hammer's `bonus`, at the blow's own point (VA 0x1f935).
+      const stats = pl.hammerStats;
+      const dir = pl.facingLeft ? -1 : 1;
+      this._bonusRound.hit(Math.round(pl.x) + dir * stats.reach.dx, Math.round(pl.y) + stats.reach.dy,
+        Math.imul(hammerForce(charge, stats, pl.heldAim), stats.bonus || 1));
+      return;
     } else {
       const stats = pl.hammerStats;
-      const force = hammerForce(charge, stats);
+      const force = hammerForce(charge, stats, pl.heldAim);
       const cells = this._hammerCells(pl);
       const blocks = [...this._destructibleMap.values()].filter((e) => e.rect.active);
-      let left = hammerStrikes(stats);
+      let left = hammerStrikes(stats, pl.heldAim);
       for (const c of cells) {
         if (left <= 0) break;
         const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(c.x, c.y));
@@ -1499,8 +1545,72 @@ export default class GameScene extends Phaser.Scene {
       const order = this._rung.length > 1
         ? this._rung.map((k, i) => `${i + 1}. ${this._nameOf(k.data.id)}`).join('\n')
         : 'Колокольчик твой';
+      if (this._story) {
+        this.showResultOverlay('УРОВЕНЬ ПРОЙДЕН', order, { then: () => this._backToMap('won') });
+        return;
+      }
       this.showResultOverlay('УРОВЕНЬ ПРОЙДЕН', order, { nextLevel: nextLevelId(this._levelId) });
     });
+  }
+
+  /** A bonus screen's object burst: the round is won, by everyone. */
+  _bonusWon() {
+    if (this._over) return;
+    this._over = true;
+    this._jacks.forEach((j) => { if (!j.rang) this._leaveLevel(j); });
+    if (this._story) {
+      this.showResultOverlay('БОНУС ПРОЙДЕН', '', { then: () => this._backToMap('won') });
+      return;
+    }
+    this.showResultOverlay('БОНУС ПРОЙДЕН', '', { nextLevel: nextLevelId(this._levelId) });
+  }
+
+  /** Esc: the game stops under the pause menu (pause_game 0x1007c). */
+  _pause() {
+    if (this._over || this._quitting) return;
+    this.scene.pause();
+    // the story's and the arcade's menu has quit level, battle's not
+    // (pause_hud 0x1aaa8 tests option 0x10000000 only); the coop is the clone's
+    this.scene.launch('PauseScene', {
+      menu: this._story || this._arcade ? 0 : 2,
+      done: (state) => this._unpause(state),
+    });
+  }
+
+  /**
+   * The pause over: resumed, or quit — then, as in G.EXE, the level plays
+   * on for 25 more ticks before it ends (0xa2f16 = 25, logic_frame
+   * 0x2cbb9). Quitting a story level is state 0x11: back to the map, which
+   * takes a life for it (F.EXE 0x20e1d, Story.quit); quitting the game is
+   * 0x10, back to the menu — as is an arcade level quit, which keeps no
+   * time (F.EXE 0x214c2).
+   */
+  _unpause(state) {
+    this.scene.resume();
+    // a button that picked from the menu is not a press in the game
+    this._keys.settle();
+    if (state === null) return;
+    this._quitting = true;
+    this.time.delayedCall(25 * 1000 / 60, () => {
+      if (this._over) return;
+      this._over = true;
+      if (state === QUIT_LEVEL && this._story) this._backToMap('quit');
+      else this.scene.start('MenuScene');
+    });
+  }
+
+  /** The story goes on on the world map, the level won or lost. */
+  _backToMap(result) {
+    // What the level leaves in the shared record for F.EXE
+    // (print_level_counters 0x10a62, docs/re/front/level-record.md): the
+    // rubble as the score, player 1's timmies, a life per panel taken.
+    const first = this._jacks[0] && this._jacks[0].player;
+    const tally = {
+      score: this._rubbleTaken || 0,
+      timmies: (this._gits && first && this._gits.collectedBy.get(first)) || 0,
+      lives: this._secrets || 0,
+    };
+    this.scene.start('WorldMapScene', { players: this._players, story: this._story, result, tally });
   }
 
   /** A player has rung, or looks on: his Jack leaves the level, the others go on. */
@@ -1554,6 +1664,7 @@ export default class GameScene extends Phaser.Scene {
       local: this._local,
       localBattle: this._localBattle,
       arcade: this._arcade,
+      story: this._story,
     });
   }
 
@@ -1564,6 +1675,7 @@ export default class GameScene extends Phaser.Scene {
       const best = a.best === null ? '' : `  РЕКОРД ${formatTenths(a.best)}`;
       return `КОМАНДА ${a.current + 1}/${a.teams}${best}`;
     }
+    if (this._story) return `СЮЖЕТ · ЖИЗНИ ${this._story.lives}`;
     if (this._mode !== 'battle') return 'КООП';
     const b = this._battle;
     if (!b) return 'БИТВА';

@@ -1,0 +1,32 @@
+# The crawler and the Apollo rocket — .OB classes 44 and 35-43.
+# See docs/re/objects/crawler.md "The crawler: building the rocket".
+0x111fb  f  ob_class_44_crawler            ; CRAWL.SPR: pad (frame 13), crawler on a block, lift (8), crane arm (9/10) + hand (11/12), tower (14, 7x15, 16); payload word 7 lowest bit = parts already stacked
+0x1195e  f  ob_class_43_rocket_bit         ; APOLLO.SPR part 0 (0x1195e..0x11993 enter with eax = 0..8 for classes 43..35); counts into rocket_bits_left
+0x11962  f  ob_class_42_rocket_bit         ; part 1
+0x11969  f  ob_class_41_rocket_bit         ; part 2
+0x11970  f  ob_class_40_rocket_bit         ; part 3
+0x11977  f  ob_class_39_rocket_bit         ; part 4
+0x1197e  f  ob_class_38_rocket_bit         ; part 5
+0x11985  f  ob_class_37_rocket_bit         ; part 6
+0x1198c  f  ob_class_36_rocket_bit         ; part 7
+0x11993  f  ob_class_35_rocket_bit         ; part 8
+0x114da  f  crawler_hand_tick              ; the hand sits on the arm's position
+0x114ed  f  crawler_tick                   ; stacks the pre-built parts once, runs state +0x60 (table 0x936f6), frame = +0x62 + (x & 3)
+0x11539  f  crawler_prestack               ; parts 0..n-1 straight onto the pad at height table 0x9369e, each off rocket_bits_left
+0x11596  f  crawler_wait                   ; state 0: event list 0x936e6 — an APOLLO part touching it → 0x11803
+0x11683  f  crawler_to_part                ; state 1: creeps 0.15 px/tick to part x + 14, then lifts (+0x58 = 0) → state 2
+0x115ae  f  crawler_to_pad                 ; state 2: lift up, drives 0.78 px/tick to pad x + 14, sends the arm down to -10 → state 3
+0x1162a  f  crawler_hand_over              ; state 3: arm has gripped → part hangs from the arm, arm target = stack height; lift down → state 4
+0x115f2  f  crawler_home                   ; state 4: lift down, drives back to its home x (+0x5c) → state 0
+0x11803  f  crawler_take_part              ; outcome: part on the ground (+0x40 & 0x10) and its index == next (+0x66) → riding the crawler
+0x1184d  f  part_on_crawler                ; the part rides the lift: x = crawler x - 14, y from the lift
+0x116c9  f  crane_arm_tick                 ; flag 1 lower / 4 carry to height; arrival puts the part down, --rocket_bits_left, 0 → level option 0x800
+0x118a4  f  part_in_hand                   ; hangs 8 px under the arm; arm flag 0x10 → static on the stack
+0x118d4  f  crawler_lift_tick              ; lift y = crawler y + (+0x30 eased toward crawler +0x58)
+0x1190c  f  ease_toward                    ; value toward target: step ebx while farther than [esp], ecx when close; 1 on arrival
+0x11a1b  f  rocket_bit_tick                ; loose part: physics + friction; the next one wanted blinks
+0x11a43  f  rocket_bit_blink               ; 8 of every 32 frames drawn with the 0xa1c48 draw mode
+0x11a6c  f  rocket_bit_physics             ; sprite_physics + apply_friction
+0x935b8  d  rocket_bits_left               ; parts still to stack; 0 sets level option 0x800 (the subtype-2 bell)
+0xcd510  d  rocket_next_bit                ; index of the part the crawler wants next
+0x9369e  d  rocket_stack_heights           ; 9 x 16.16: 8, -8, -68, -141, -177, -253, -272, -318, -348

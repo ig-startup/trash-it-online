@@ -1,0 +1,18 @@
+# The coloured buttons, option 0x1000 and the demolition; the last unnamed .OB classes.
+# See docs/re/objects/buttons.md "The coloured buttons and the big demolition".
+0x17100  f  ob_class_28_red_button          ; REDBUT frame 0, revealed by option 0x100; word 7 1/2/4 → sets 0x400/0x1000/0x800
+0x17178  f  ob_class_29_green_button        ; frame 2, revealed by 0x400; word 7 1/2/4 → 0x200/0x1000/0x800
+0x171d4  f  ob_class_30_blue_button         ; frame 4, revealed by 0x200; word 7 1/2 → 0x800/0x1000
+0x1722b  f  button_create                   ; +0x56 the bit it sets, +0x44 frame; word 9 == 1 → hidden (0x17350), +0x54 the bit that reveals it
+0x172a9  f  button_tick                     ; hit from above (+0x40 & 0x80) → options |= +0x56, frame + 1, hop
+0x17350  f  button_hidden                   ; waits for its colour bit in the options, then appears with a pop
+0x1b089  f  option_1000_watch               ; once 0x1000 is set (and not 0x2000): set 0x2000, call the rules record's handler (0x287c68)
+0x1b0f6  f  demolition_start                ; 80-tick count at 0x28b964, the camera on a point 1900 px over the bottom for 800 ticks
+0x2043c  f  demolition_tick                 ; shakes at 8; at 0 option 0x40, a sound, demolish_all
+0x206c0  f  demolish_all                    ; remove_object_data on every destructible object
+0x204be  f  sequence_start                  ; CD track 10, an 80-tick step of the sequence at 0x9ff42 (1D)
+0x1b173  f  ob_class_24_cog                 ; FORK.SPR frames 12-15 spinning, a generic pickup (word 7 == 2: locked in a block); category 0x4000, event 7 — nothing reacts to it
+0x1b1f8  f  ob_class_25_bubble              ; BUBBLE.SPR locked in a block: the double-points bubble; no level places one
+0x173bf  f  ob_class_26_generic_thing       ; generic_thing_create with 12 words; no level places one
+0x1b121  f  ob_class_34_skip                ; reads nothing, skips 16 bytes (8S has one)
+0x134af  f  ob_class_45_bomb_git            ; bomb_git_create (docs/re/objects/gits.md)

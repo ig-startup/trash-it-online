@@ -24,12 +24,13 @@ world's index: S is screen 5 and L screen 4, A is 8 and T is 7.
 | 6-7 | the map-screen object drawn for it; 8, 9 its x, y |
 | 13 | film played when it is won (VA 0x12896) — `D\SMK\<name>.SMK`, names at VA 0x89180 |
 | 14 | stage, stored as the record's `+0x1bc` when won |
-| 16 | a gate's price — 840, 1400 in T, 600 in M; what it charges is not traced |
-| 17, 18 | no reader found |
+| 16 | a gate's toll in timmy points — 840, 1400 in T, 600 in M (`map-dialog.md`) |
+| 17, 18 | the level's timmies and king timmies: "timmy points available" = 2 × 17 + 20 × 18 (`map-dialog.md`) |
 
 Jack moves pixel by pixel along the 255-coloured paths (VA 0x1e1c1) and
 **cannot step over a point that is not trashed**: a level is a stop until
-it is won. Path nodes start trashed. A kind-3 exit that is trashed sends
+it is won. How he walks, faces and warps, and what fire does on each kind
+of node: `world-map.md`. Path nodes start trashed. A kind-3 exit that is trashed sends
 the front end to state 5 — next world, the map reset (VA 0x200e8), and
 the new world's password shown. The first six worlds branch, so some
 levels can be walked past once a neighbour is won; A, T and M are
@@ -37,7 +38,7 @@ straight lines. `front.py graph` prints each map as the level pairs its
 paths join.
 
 A won level can be replayed only while the timmy points it paid out are
-still in hand, and a level of a stage below the last one won cannot be
+still in hand — and replaying it gives them back (`map-dialog.md`), and a level of a stage below the last one won cannot be
 entered at all (VA 0x1de35) — so going past a world's midpoint shuts its
 first half.
 
@@ -70,7 +71,7 @@ hammers its own way — the ten v1s, the ten v2s, the ten v3s, then the
 specials — each record carrying a name and the word the shop adds back
 when a hammer is traded in (VA 0x1b92a), 0 to 3945 for the
 thirty, 12000 to 30000 for the specials. The specials' names are blank
-in the table.
+in the table. The shop itself: `hammer-shop.md`.
 
 **Arcade** (VA 0x8d6f0, rows `section, number, hammer, picture`): the
 fifteen K levels with their mission lines (above, under "Objectives").

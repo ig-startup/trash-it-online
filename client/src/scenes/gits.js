@@ -29,6 +29,10 @@ import { COL, floorUnder } from './blockKinds';
  * shakes itself (0x3172b) and walks on. Hit once more — or caught by a
  * blast a second time, or turned about too often — it dies: it floats up
  * out of the level, swaying, and cannot be taken (0x3193e, 0x32164).
+ * A falling block over a timmy (git_tick 0x30069, probe_crusher 0x60a00)
+ * turns a rise into a fall in the air, or adds half its speed; on the
+ * ground it squashes it with the block (timmy_crushed 0x31bd8) — pressed
+ * more than 20 px, or the block gone, it dies the same way.
  *
  * The bonus git (.OB class 33) walks with them: from the start, or out of
  * a shell (the bell's sprite) once its block dies. The overhead blow sends
@@ -86,6 +90,10 @@ const SHAKEN = [20, 21, 22, 23, 22, 21]; // slot 9
 const ANGEL = [24, 25];                 // slot 10, every 4 ticks
 const GROUND_DRAG = 8000 / 65536;       // |vx| over 9999 loses 8000 a tick
 const RISE = 0x900 / 65536;             // the dead one's lift, a tick
+/** Squashed more than this, it dies (timmy_crushed: +0x52 < -0x14). */
+const CRUSH_LIMIT = 20;
+/** Thrown up dying out of the squash: -(0x38000 + rand >> 13). */
+const CRUSH_DIE_VY = -0x38000 / 65536;
 const BONUS_STRUCK = 17;                // BON's frame while it flies (slot 0x19)
 const BONUS_POP = -6;                   // out of its shell (0x1b2a9)
 const BONUS_HOP = -4;                   // struck (0x3333c)
@@ -112,6 +120,10 @@ export default class Gits {
    * @param {() => void} world.shake
    * @param {() => any[]} world.jacks  the Jacks the gits can touch
    * @param {(x: number, y: number) => void} world.bombBlast
+   * @param {(x: number, y: number, worth: number) => void} [world.got] GOT
+   * @param {(left: number, right: number, top: number, feet: number) =>
+   *   ({id: number, bottom: number, vy: number}|null)} [world.crusher] a
+   *   falling block over that box (collapse.js `over`)
    * @param {(kind: number, count: number, x: number, y: number, left: boolean) => void} world.prize
    */
   constructor(scene, level, world) {
@@ -120,6 +132,11 @@ export default class Gits {
     this._acc = 0;
     this.all = [];
     this.collected = 0;
+    /**
+     * Each player's own count (player struct +0x68 timmies, +0x70 kings):
+     * F.EXE takes player 1's into the story (print_level_counters 0x10a62).
+     */
+    this.collectedBy = new Map();
     (level.timmies || []).forEach((t) => {
       const kind = t.king ? 'king' : 'timmy';
       const g = this._make(kind, t.x, t.y, t.flags || 0);
@@ -263,9 +280,17 @@ export default class Gits {
       for (const g of [...this.all]) {
         if (!g.sprite.active) { this._drop(g); continue; }
         if (g.state === 'hoovered') {
-          if (this._suck(g, nozzleOf(g))) { taken += 1; this._drop(g); g.sprite.destroy(); }
+          if (this._suck(g, nozzleOf(g))) {
+            // "+1", "+2", "+20" where it went in (spawn_got_popup 0x11a92)
+            if (this._w.got) this._w.got(g.sprite.x, g.sprite.y, g.worth);
+            taken += g.worth;
+            this.collectedBy.set(g.into, (this.collectedBy.get(g.into) || 0) + g.worth);
+            this._drop(g);
+            g.sprite.destroy();
+          }
           continue;
         }
+        if (this._crushCheck(g)) continue;
         if (g.state === 'locked') {
           if (g.block !== null && !this._w.blockAlive(g.block)) {
             if (g.shell) this._free(g, 0, BONUS_POP);
@@ -277,6 +302,11 @@ export default class Gits {
         if (g.sprite.getData('beamed')) continue;
         if (g.handle && (g.handle.carried || g.handle.flying)) {
           g.wasLoose = true;
+          continue;
+        }
+        if (g.state === 'crushed') {
+          this._crushedStep(g);
+          g.t += 1;
           continue;
         }
         if (g.wasLoose) {
@@ -292,6 +322,10 @@ export default class Gits {
           && g.state !== 'struck' && g.state !== 'dying'
           && hoovers.find((h) => h.box.contains(g.x, g.y - 6));
         if (by) {
+          // what it scores (git_hoovered 0x322c5: 1; one knocked flat or
+          // shaking it off, git_hoovered_8/_9 0x31b6e: 2, a king 20)
+          const knocked = g.state === 'knocked' || g.state === 'shaken';
+          g.worth = knocked ? (g.kind === 'king' ? 20 : 2) : 1;
           g.state = 'hoovered';
           g.into = by.who;
           g.nozzle = by.nozzle;
@@ -312,9 +346,73 @@ export default class Gits {
       g.sprite.setFlipX(g.left);
       if (g.shell) return;
       applyPropFrame(g.sprite, g.frames[Math.min(g.frame, g.frames.length - 1)]);
+      // the squash (+0x50 wider, +0x52 lower), drawn as a stretch
+      if (g.kind === 'timmy' || g.kind === 'king') {
+        const w = g.sprite.width;
+        const h = g.sprite.height;
+        g.sprite.setScale((w + (g.squashW || 0)) / w, Math.max(1, h + (g.squashH || 0)) / h);
+      }
     });
     this.collected += taken;
     return taken;
+  }
+
+  /**
+   * git_tick (0x30069): a TIMMY, KTIMMY or TOMMY sprite not already under
+   * one looks for a falling block over it. In the air it turns a rise into
+   * a fall or takes half the block's speed; standing — or locked to its
+   * block — it is caught (timmy_crushed 0x31bd8). @returns {boolean} caught
+   */
+  _crushCheck(g) {
+    if (!this._w.crusher || (g.kind !== 'timmy' && g.kind !== 'king')) return false;
+    // what is squashed eases back, a pixel a tick (git_tick; the game
+    // eases only what is below 0 — the clone the width too)
+    const ease = (v) => (v < 0 ? Math.min(0, v + 1) : Math.max(0, v - 1));
+    if (g.squashH) g.squashH = ease(g.squashH);
+    if (g.squashW) g.squashW = ease(g.squashW);
+    if (['hoovered', 'dying', 'crushed'].includes(g.state)) return false;
+    const h = g.sprite.height;
+    const c = this._w.crusher(g.x - HALF_W, g.x + HALF_W, g.y - h, g.y);
+    if (!c) return false;
+    const air = g.state === 'fall' || g.state === 'hop'
+      || ((g.state === 'knocked' || g.state === 'shaken') && g.air);
+    if (air) {
+      g.vy = g.vy < 0 ? -g.vy : g.vy + c.vy / 2;
+      return false;
+    }
+    if (g.state === 'locked') g.block = null;
+    g.state = 'crushed';
+    g.t = 0;
+    g.vx = 0;
+    g.vy = 0;
+    g.crush = { id: c.id, contact: c.bottom };
+    // nothing may carry, strike or hoover it now (+0xc &= 0xfdfa)
+    g.hooverable = false;
+    if (g.handle) g.handle.noPick = true;
+    return true;
+  }
+
+  /**
+   * timmy_crushed (0x31bd8): pressed as far as the block has come down
+   * since it touched — its height down by that, its width up by half; the
+   * block gone or another one, the floor gone, or pressed more than 20 px,
+   * and it dies, thrown up at -3.5 px/tick.
+   */
+  _crushedStep(g) {
+    const h = g.sprite.height;
+    const c = this._w.crusher(g.x - HALF_W, g.x + HALF_W, g.y - h - CRUSH_LIMIT, g.y);
+    let dead = !c || c.id !== g.crush.id;
+    if (!dead) {
+      const pressed = g.crush.contact - c.bottom;
+      g.squashH = pressed;
+      g.squashW = -(pressed >> 1);
+      if (pressed < -CRUSH_LIMIT) dead = true;
+    }
+    if (this._floor(g.x, g.y - 1, g.y + 1) === null) dead = true;
+    if (!dead) return;
+    this._enter(g, 'dying');
+    g.vx = 0;
+    g.vy = CRUSH_DIE_VY - Math.random() * (8 / 65536);
   }
 
   /**

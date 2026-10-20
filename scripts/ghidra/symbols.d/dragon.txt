@@ -1,0 +1,19 @@
+# The dragon show: the scripted sequence at 0x9ff42 that 1D's button and
+# the mystical dragon hammer start. See docs/re/levels/dragon-show.md.
+0x9ff42  d  dragon_steps                   ; 16 routines, one per step; sequence_tick runs [0x28b95c] each tick
+0x28b958 d  dragon_cam_point               ; the camera_targets entry the show moves (x +0xc, y +0xe)
+0x28b95c d  sequence_step
+0x28b960 d  sequence_timer                 ; ticks left in the step; at 0 the step advances (0 = the step advances itself)
+0x1fecf  f  dragon_lightning               ; step 5: spawn_vm (a bolt, 250 ticks); 285-tick wait
+0x1fef9  f  dragon_face                    ; step 1: two priority camera points (centre bottom, 400 up), the demon face 400 px, the palette dimmed to 100; 400-tick wait
+0x2000c  f  dragon_face_closer             ; step 3: the face again at 500 px, the palette to 70; 140-tick wait
+0x200b4  f  dragon_cam_left                ; step 7: the moving camera point 1000 px left
+0x200c7  f  dragon_pan_start               ; step 8: 370 ticks of dragon_pan_rise
+0x200da  f  dragon_cam_nudge               ; dead code — no call and no pointer to it anywhere in G.EXE: the moving camera point 1 px left
+0x200e4  f  dragon_pan_rise                ; step 9: the point 4 px right a tick, red pulsing; at 70 left: red screen, the point back to centre bottom and rising 12 px a tick
+0x20189  f  dragon_blast                   ; step 10: flash, shake 60, damage_bottom_row(-1), a 50 × 900 dust column; 55-tick wait
+0x2022e  f  dragon_rise_on                 ; step 11: the point up 7 px a tick, 0x28bf7e down 6
+0x2024c  f  dragon_palette_back            ; step 12: palette targets back to 128; 280 ticks of dragon_settle
+0x20293  f  dragon_settle                  ; step 13: 0x28bf7e back up by 2 a tick, the point with it; 0 at the last tick
+0x202d1  f  dragon_end                     ; step 14: step and timer 0 — the table's 0th entry is a ret, so the show idles
+0x1b0ad  f  sequence_handler_unused        ; dead code — no call, no pointer: an option-0x1000 handler that would run 80 ticks with a camera point 900 px over the level's bottom

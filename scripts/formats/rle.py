@@ -37,8 +37,10 @@ outside its run always, and *inside* the run only when bit 2 is set.
 EMPTY_ROW = 8
 
 
-def decode_rows(data, max_rows=None):
-    """data: the scanline area of a shape/frame.
+def decode_rows(data, max_rows=None, wide=False):
+    """data: the scanline area of a shape/frame. `wide`: the record size
+    and the skip are u16 (frames wider than a byte can measure — the front end's
+    320-pixel screen parts, e.g. FSPR/HAMSHP_E.SPR 89 and 90).
 
     Returns a list of rows `(skip, pixels, color_key)`, or None if an
     unknown row type is met (i.e. this isn't scanline data).
@@ -48,16 +50,25 @@ def decode_rows(data, max_rows=None):
     while p + 2 <= len(data) and (max_rows is None or len(rows) < max_rows):
         t = data[p]
         size = data[p + 1]
-        if size < 2:
+        head = 2
+        if wide:
+            if p + 3 > len(data):
+                break
+            size = data[p + 1] | data[p + 2] << 8
+            head = 3
+        if size < head:
             break
         if t == EMPTY_ROW:
             rows.append((0, b"", False))
         elif t <= 7:
-            off = p + 2
+            off = p + head
             skip = 0
             if t & 1:
                 skip = data[off]
                 off += 1
+                if wide:
+                    skip |= data[off] << 8
+                    off += 1
             rows.append((skip, data[off:p + size], bool(t & 4)))
         else:
             return None

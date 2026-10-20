@@ -1,0 +1,13 @@
+# The bonus screens, C and D (numbers 12, 13 of the first six worlds) — see docs/re/levels/bonus-round.md.
+# The round's state is in globals: 0xcd4e8 hp a notch (0 once burst), 0xcd50c notches, 0xcd4f0 left of
+# this notch, 0x933e0 force owed, 0x933de notches taken, 0x933dc meter segments shown, 0xcd4f4 cooldown,
+# 0xcd4fa next quarter, 0xcd4fe pieces, 0xcd500..0xcd506 the hit box. Table 0x93594: a pointer per world
+# to two 16-byte rows (C, D): u32 hp, s16 notches, s16 hit sound, s16 pieces, s16 sprite file, s16 ?.
+0x10c1f  f  bonus_round_setup              ; from load_level for numbers 12..28: the object (0x933e4) at the level's centre and bottom, the hit box; then — on past 0x10d76, where Ghidra cut it — the two parts (0x93438, frames 5 and 4, hidden), a camera point, and a meter segment per notch (0x9341c, frame 6, hidden, +0x4e its index) at x + 0x70, 12 px apart going up; "done"
+0x10e4a  f  bonus_object_tick              ; owed force off the notches, a frame a quarter, the burst, 300 ticks to the end
+0x110b7  f  bonus_object_hit               ; a blow in the box: force x player +0x92 owed, cooldown off
+0x1110f  f  bonus_meter_fill               ; a segment shows when the fill count reaches its index
+0x1114a  f  bonus_meter_segment            ; frame 7 once the notches taken reach it
+0x11160  f  bonus_piece_fly                ; a part or piece: gravity 0x900, gone after +0x4a ticks
+0x111a0  f  bonus_part_tick                ; the two parts break off at the object's fourth frame
+0x10d76  f  bonus_round_setup_tail         ; not a routine of its own: bonus_round_setup runs on into it (edx = 6) and Ghidra cuts there — the two parts (0x93438, frames 5 and 4), a camera point, the meter segments

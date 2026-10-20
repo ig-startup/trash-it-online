@@ -32,3 +32,11 @@ There is no run-length compression at all — which is why every RLE
 scheme tried in the first pass failed. The format instead scales at
 draw time: the blitter walks the rows with a 16.16 fixed-point step, so
 one shape is drawn at any size.
+
+**Wide rows.** A frame wider than a byte can measure keeps the same
+records with the size, and the skip, as **u16**: type, size lo, size hi,
+[skip lo, skip hi], run — `FSPR/HAMSHP_E.SPR` frames 89 and 90 (320
+wide), `ILSBAT.SPR` 75. The front end's other wide frames are raw `w * h`
+(`formats/spr.md`), `HSHAMS.SPR`'s padded to 256 a row. `rle.decode_rows(
+wide=True)`, tried first by `spr.parse` for frames over 253 wide.
+

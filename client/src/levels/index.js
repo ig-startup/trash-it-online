@@ -18,9 +18,12 @@ export const LEVEL_ORDER = levelOrder.order || [];
 
 export const DEFAULT_LEVEL_ID = LEVEL_ORDER[0] || 'level_01';
 
+/** The story's bonus screens (C, D): played off the world map, never in the order. */
+export const BONUS_LEVELS = levelOrder.bonus || [];
+
 /** A known level id, or the default one. */
 export function levelIdOr(id) {
-  return BUNDLED[id] || LEVEL_ORDER.includes(id) ? id : DEFAULT_LEVEL_ID;
+  return BUNDLED[id] || LEVEL_ORDER.includes(id) || BONUS_LEVELS.includes(id) ? id : DEFAULT_LEVEL_ID;
 }
 
 /** @returns {string} where a served level's data is */

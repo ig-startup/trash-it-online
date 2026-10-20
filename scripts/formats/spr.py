@@ -29,6 +29,10 @@ Each frame:
 Each .SPR has a matching .PAL loaded alongside it (e.g. JACKS.PAL for
 JACKS.SPR), so sprites are NOT drawn in the level's palette.
 
+A frame wider than a scanline can say (its length is a byte) is stored
+raw instead, `w * h` pixels row by row: the front end's 640 x 480
+screens, e.g. frame 5 of FSPR/JUNKMP.SPR, the junkyard's world map.
+
 Exception: TRASHIT/CHAR.SPR uses the same header but its frames are
 8x8 raw uncompressed pixels (72 bytes each = 8 header + 64 pixels) —
 it is the text font, not a sprite sheet.
@@ -50,8 +54,23 @@ def parse(buf):
         p = table + o
         w, h, ox, oy = struct.unpack_from("<4h", buf, p)
         end = table + offs[i + 1] if i + 1 < n else len(buf)
-        frames.append(dict(w=w, h=h, ox=ox, oy=oy, off=p,
-                           rows=decode_rows(buf[p + 8:end], max_rows=h)))
+        data = buf[p + 8:end]
+        rows = None
+        if w > 253:
+            # Too wide for a byte's length: scanlines whose size is a
+            # u16 (HAMSHP_E's 320-wide parts), else raw, w * h pixels —
+            # the front end's 640 x 480 screens.
+            rows = decode_rows(data, max_rows=h, wide=True)
+            if rows is None or len(rows) != h or any(len(px) + s > w for s, px, _ in rows):
+                rows = None
+                if len(data) >= w * h:
+                    # rows padded to a whole stride when the frame's data
+                    # divides evenly (HSHAMS: 254 wide, 256 a row)
+                    stride = len(data) // h if len(data) % h == 0 else w
+                    rows = [(0, data[y * stride:y * stride + w], False) for y in range(h)]
+        if rows is None:
+            rows = decode_rows(data, max_rows=h)
+        frames.append(dict(w=w, h=h, ox=ox, oy=oy, off=p, rows=rows))
     return frames
 
 

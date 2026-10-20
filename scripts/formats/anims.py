@@ -69,7 +69,7 @@ KNOWN = {
     6: 'hammer strike, sideways (37-54), blending back into the walk',
     7: 'hammer strike, overhead (55-70), blending back into the walk',
     8: 'reach into the hat and pull the hoover out — reverse',
-    9: 'reach into the hat and pull the hoover out',
+    9: 'the hoover back into the hat, the empty hand down (BUT1 alone, 0x25468)',
     10: 'reach into the hard hat (71-90)',
     11: 'reach into the hard hat — reverse',
     12: 'duck down into the hard hat',

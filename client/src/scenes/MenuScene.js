@@ -63,12 +63,14 @@ export default class MenuScene extends Phaser.Scene {
       color: '#aaaaaa',
     }).setOrigin(0.5);
 
-    this._btnCoop = this._makeButton(cx - 150, 195, 'КООП', () => this._setMode('coop'));
+    // The story (F.EXE game type 0): the world maps, together at one keyboard.
+    this._btnStory = this._makeButton(cx - 255, 195, 'СЮЖЕТ', () => this._setMode('story'));
+    this._btnCoop = this._makeButton(cx - 120, 195, 'КООП', () => this._setMode('coop'));
     // The original's battle: a set of levels, places by the order of the
     // rings, battle points (F.EXE's game type 1).
-    this._btnRace = this._makeButton(cx, 195, 'БИТВА', () => this._setMode('battle'));
+    this._btnRace = this._makeButton(cx + 5, 195, 'БИТВА', () => this._setMode('battle'));
     // The arcade (F.EXE game type 2): teams take turns at one K level.
-    this._btnArcade = this._makeButton(cx + 150, 195, 'АРКАДА', () => this._setMode('arcade'));
+    this._btnArcade = this._makeButton(cx + 140, 195, 'АРКАДА', () => this._setMode('arcade'));
     this._updateModeButtons();
 
     // ── At one keyboard ───────────────────────────────────────────────────────
@@ -119,6 +121,17 @@ export default class MenuScene extends Phaser.Scene {
     this._teamsText.on('pointerdown', () => {
       this._arcadeTeams = (this._arcadeTeams % 4) + 1;
       this._teamsText.setText(teamsLabel());
+    });
+    // The story starts on world J, or on the world a password names.
+    const passLabel = () => `Пароль: ${this._password ? this._password.toUpperCase() : '— (с начала)'}`;
+    this._passText = this.add.text(lx, 372, passLabel(), {
+      fontSize: '14px',
+      color: '#aaaaaa',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this._passText.on('pointerdown', () => {
+      const input = window.prompt('Пароль мира (пусто — с начала):', this._password || '');
+      if (input !== null) this._password = input.trim().toLowerCase();
+      this._passText.setText(passLabel());
     });
     this._updateSetLabel();
     this._makeButton(lx, 425, 'ИГРАТЬ', () => this._playLocal());
@@ -265,6 +278,7 @@ export default class MenuScene extends Phaser.Scene {
     if (this._setText) this._setText.setVisible(this._selectedMode === 'battle');
     if (this._rowText) this._rowText.setVisible(arcade);
     if (this._teamsText) this._teamsText.setVisible(arcade);
+    if (this._passText) this._passText.setVisible(this._selectedMode === 'story');
     // in the arcade the count is of the players in each team
     if (this._countLabel) this._countLabel.setText(arcade ? 'Игроков в команде:' : 'Игроков:');
   }
@@ -273,6 +287,11 @@ export default class MenuScene extends Phaser.Scene {
     const activeColor = '#aa44aa';
     const inactiveColor = '#444466';
 
+    if (this._btnStory) {
+      const isStory = this._selectedMode === 'story';
+      this._btnStory.setStyle({ backgroundColor: isStory ? activeColor : inactiveColor });
+      this._btnStory._bgColor = isStory ? activeColor : inactiveColor;
+    }
     if (this._btnCoop) {
       const isCoop = this._selectedMode === 'coop';
       this._btnCoop.setStyle({ backgroundColor: isCoop ? activeColor : inactiveColor });
@@ -323,6 +342,12 @@ export default class MenuScene extends Phaser.Scene {
       });
       return;
     }
+    if (this._selectedMode === 'story') {
+      // the map checks the password against its own list (VA 0x15d55)
+      this._cleanup();
+      this.scene.start('WorldMapScene', { players, password: this._password || null, arrived: true });
+      return;
+    }
     if (this._selectedMode === 'arcade') {
       // every team plays with the same players' keys, one team after another
       const arcade = new LocalArcade(this._arcadeRow, this._arcadeTeams);
@@ -341,8 +366,8 @@ export default class MenuScene extends Phaser.Scene {
 
   _createRoom() {
     this._errorText.setText('');
-    if (this._selectedMode === 'arcade') {
-      this._errorText.setText('Аркада пока только за одним компьютером');
+    if (this._selectedMode === 'arcade' || this._selectedMode === 'story') {
+      this._errorText.setText(`${this._selectedMode === 'story' ? 'Сюжет' : 'Аркада'} пока только за одним компьютером`);
       return;
     }
     const sm = SocketManager.getInstance();

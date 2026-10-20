@@ -13,6 +13,8 @@ already works here; the body still shows the names of that run.
     python3 scripts/ghidra/fn.py frontier [N]        what to read next: unnamed functions
                                                      called from named ones, most callers first
                                                      (game code only; --lib for the libraries)
+    python3 scripts/ghidra/fn.py progress            how much of the game code is named by hand,
+                                                     by count and by lines, per 16 KB of address
 
 The decompilation is read from $TRASHIT_GHWORK (default ~/ghwork/g),
 decomp_fields.c there; pass --raw for decomp.c.
@@ -170,14 +172,71 @@ def cmd_frontier(d, top=30, lib=False):
             ", ".join(d.name[c] for c in sorted(cs)[:4]) + (" …" if len(cs) > 4 else "")))
 
 
+def hand_named():
+    """Addresses named in symbols.txt and symbols.d/ — by a person reading
+    the routine, not generated from strings or callers (symbols_lib.txt)."""
+    files = [os.path.join(HERE, "symbols.txt")]
+    d = os.path.join(HERE, "symbols.d")
+    files += sorted(os.path.join(d, f) for f in os.listdir(d) if f.endswith(".txt"))
+    out = set()
+    for f in files:
+        for line in open(f, encoding="utf-8"):
+            m = re.match(r"0x([0-9a-fA-F]+)\s+f\s", line)
+            if m:
+                out.add(int(m.group(1), 16))
+    return out
+
+
+#: Ghidra's marks of bytes that are not code. A "function" carrying one and
+#: called by nothing is data cut up as code — the table the blitters use
+#: from 0x3967b to 0x5c000 is most of them — and is left out of the count.
+NOT_CODE = ("bad instruction", "overlaps instruction")
+
+
+#: The blitters' step table (scale_step_table); everything Ghidra cut out of it.
+DATA_RANGES = ((0x3967b, 0x5c000),)
+
+
+def is_data(d, a):
+    if any(lo <= a < hi for lo, hi in DATA_RANGES):
+        return True
+    body = d.bodies[a][1]
+    return any(m in body for m in NOT_CODE) and not d.callers(a)
+
+
+def cmd_progress(d):
+    named = hand_named()
+    game = [a for a in d.bodies if a < LIBRARY_LO]
+    data = [a for a in game if is_data(d, a) and a not in named]
+    code = [a for a in game if a not in data]
+    size = {a: d.bodies[a][1].count("\n") for a in code}
+    done = [a for a in code if a in named]
+    total = sum(size.values())
+    print("game code: %d routines (%d lines); %d data blocks Ghidra took for code left out"
+          % (len(code), total, len(data)))
+    print("named by hand: %d (%.0f%%), %d lines (%.1f%%)\n" % (
+        len(done), 100.0 * len(done) / len(code),
+        sum(size[a] for a in done), 100.0 * sum(size[a] for a in done) / total))
+    step = 0x4000
+    for lo in range(min(code) & ~(step - 1), LIBRARY_LO, step):
+        part = [a for a in code if lo <= a < lo + step]
+        if not part:
+            continue
+        left = [a for a in part if a not in named]
+        print("0x%05x  %3d of %3d unnamed, %5d of %5d lines" % (
+            lo, len(left), len(part), sum(size[a] for a in left), sum(size[a] for a in part)))
+
+
 def main(argv):
     raw, lib = "--raw" in argv, "--lib" in argv
     argv = [x for x in argv if x not in ("--raw", "--lib")]
-    if not argv or argv[0] not in ("show", "brief", "where", "grep", "frontier"):
+    if not argv or argv[0] not in ("show", "brief", "where", "grep", "frontier", "progress"):
         sys.exit(__doc__)
     d = Decomp(raw)
     cmd = argv[0]
-    if cmd == "frontier":
+    if cmd == "progress":
+        cmd_progress(d)
+    elif cmd == "frontier":
         cmd_frontier(d, int(argv[1]) if len(argv) > 1 else 30, lib)
     elif len(argv) < 2:
         sys.exit(__doc__)

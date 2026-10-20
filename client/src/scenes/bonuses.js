@@ -199,6 +199,9 @@ export default class Bonuses {
         }
       }
       if (touches(p.sprite)) {
+        // a puff where it was (jack_touch_clock 0x12096,
+        // jack_touch_super_hoover 0x1b48c)
+        if (this._w.puff && p.kind !== 'bubble') this._w.puff(p.x, p.y, p.sprite.width, p.sprite.height);
         if (p.kind === 'clock') this._w.addTime(CLOCK_SECONDS);
         if (p.kind === 'hoover') this._w.superHoover(SUPER_HOOVER_TICKS);
         if (p.kind === 'bubble') this._w.doublePoints(DOUBLE_POINTS_TICKS);
@@ -232,6 +235,8 @@ export default class Bonuses {
         if (p.spark >= 16) p.twinkle.setVisible(false);
       }
       if (touches(p.sprite)) {
+        // a puff where it was (jack_touch_panel 0x1bacb)
+        if (this._w.puff) this._w.puff(p.x, p.y, p.sprite.width, p.sprite.height);
         p.sprite.destroy();
         p.twinkle.destroy();
         this.panels.splice(i, 1);

@@ -12,7 +12,9 @@ from there walks again. BUT2 jumps, BUT1 does what it does from standing.
 What makes it pushing is a search both states run while UP is held
 (0x284e5 / 0x28771): sprites whose category has **bit 1** (template
 `+0x10` set to 2 for the call, VA 0x2f0ab), up to the list at 0x3f1670,
-that his box overlaps (0x2ddd6) and that are coming at him — `vx <= 0`
+whose frame his push point touches — x ± 18, 17 px up, inside a 4 px
+strip at the frame's near side and between 30 and 3 px above its y
+(`push_point_at_edge` 0x2ddd6) — and that are coming at him — `vx <= 0`
 facing right, `vx > 0` facing left. The first is linked both ways (`jack[4]
 = obj`, `jack+0x41 |= 0x20`; `obj[4] = jack`, `obj+0x41 |= 0x40`); one
 another player holds is taken from him, and he gets a 3-tick wait

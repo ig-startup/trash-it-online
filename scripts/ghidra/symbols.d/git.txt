@@ -22,8 +22,8 @@
 0x322c5  f  git_hoovered                   ; the same from any other slot
 0x32b15  f  git_struck                     ; a spike or bomb hit by the hammer (or a spike dizzy): stops, swells, is gone with a puff and a shake
 0x32cfb  f  spike_bristle                  ; slot 19: stops, spines out a frame per 4 ticks, shivers 30-50, at 50 eight needles (0x12711), after 100 → spike_unbristle
-0x33154  f  git_beamed                     ; ? held under a UFO's beam
-0x332c9  f  git_beam_lift                  ; ? lifted by it
+0x33154  f  git_picked_by_ufo              ; a timmy the UFO has picked (ufo_go_abduct): animation 24, its events, falls and slides as usual while the UFO flies over it
+0x332c9  f  git_in_beam                    ; a timmy in the UFO's beam, once the UFO is over it: animation 28, still — ufo_beam_timmy lifts it; vy -5 while it is squashed (+0x52 < 0)
 0x2fbfd  f  git_marker_at                  ; the marker under a point: .COL word 2 of the block there (0x3f20c8)
 0x306de  f  git_think                      ; a new marker → its action list (0xa3dbb) picks one of 8; the bottom hop
 0x3000d  f  git_turn_at_wall
@@ -41,8 +41,10 @@
 0x32550  f  bomb_fuse                      ; slot 19: smoke, the fuse a frame per 4 ticks; past 7 → bomb_blow
 0x327c8  f  bomb_blow                      ; slot 20, flickering; at tick 30 two BLAMs, the shock (70 px), a shake, blow_at(x, y-15) with the level's force
 0x32f39  f  spike_unbristle                ; the spines back in a frame per 4 ticks, then it walks the way it faces
-0x3333c  f  git_3333c
-0x33559  f  git_33559
 0x33a1f  f  bomb_chase                     ; slot 27, after the Jack in +0x76: vx += dx/32, less vx/8, ±8; past 300/120 px gives up; still 21 ticks → bomb_fuse
 0x32413  f  timmy_blasted                  ; a blast's shock: pushed by 0x98c6c (vy whole, up if standing, ≥ -12; vx half); first → timmy_shaken, then timmy_dizzy_angel
 0xa3e38  d  timmy_knock_limit              ; 1: knocks a timmy takes (+0x68) before the next is its end
+0x31f52  f  git_brake_to_strike            ; slot 15 (marker 28, .OB flag bit 1 only): brakes 20000 a tick; a block cell ahead → git_strike_block, else walks on
+0x31d4b  f  git_strike_block               ; slot 14: every 4th tick counts; at 10 git_strikes_cell ahead with rules +0x40 (Tommy 0x5b) or +0x42 (the rest); past 16 walks on
+0x323b0  f  git_held_by_sucker             ; slot 18 (+0x42 bit 0x40, the sucker's 0x400020): follows its holder while +0x40 bit 0x20, then falls
+0x30049  f  git_turn_round                 ; +0x40 bit 4 (facing) toggled — a template's callback (0x93df8)

@@ -18,6 +18,7 @@ Of that record, the front end's side:
 | +0x1b8 | the node Jack stands on |
 | +0x1bc | the stage of the last trashed node (see `stage` below) |
 | +0x20a | timmy points earned on each node, u16 x 48 |
+| +0x26a | lives (panels) the level gave on each node, u16 x 48 |
 
 **The world map.** Nine worlds, one per level-select screen
 `FSPR/LVSPAT1..9.PAK`, in the order J H C S L I A T M — the same order as
@@ -158,12 +159,17 @@ class Front:
                 # the map-screen object drawn for it, and where
                 "icon": icon,
                 "x": w[8], "y": w[9],
+                # its draw depth, -1 for drawn in y order, and first frame
+                # (map_place_jack 0x1dbd9; docs/re/front/map-objects.md)
+                "depth": w[10], "frame": w[12],
                 "movie": w[13],
                 # copied to the record's +0x1bc when won (VA 0x20072)
                 "stage": w[14],
+                # a gate's toll in timmy points (the map's dialog 0x1eaf4)
                 "price": w[16],
-                # +0x22 and +0x24: no reader found in F.EXE
-                "unknown": (w[17], w[18]),
+                # the level's timmies and king timmies: the dialog offers
+                # 2 x timmies + 20 x kings "timmy points available"
+                "timmies": w[17], "kings": w[18],
             })
             va += NODE_SIZE
 

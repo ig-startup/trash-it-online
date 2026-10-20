@@ -16,6 +16,7 @@ the level it plays.
     python3 scripts/export_level.py            # the default batch
     python3 scripts/export_level.py 0A 0D 2H   # specific levels
     python3 scripts/export_level.py --all      # every shipped level
+    python3 scripts/export_level.py --bonus    # the story's twelve bonus screens
 
 Faithful parts: every object's position, size and artwork, the wall behind
 them, and each block's hit points and mass — `.OBT` fields 0 and 6, both
@@ -99,7 +100,7 @@ def pack(sizes, max_width=1024):
     return pos, width, y + shelf_h
 
 
-def build_atlas(shapes, palette, out_dir, image_name="shapes.png"):
+def build_atlas(shapes, palette, out_dir, image_name="shapes.png", data_name="shapes.json"):
     """shapes: {name: (width, height, bitmap)} -> writes png + Phaser atlas."""
     pos, aw, ah = pack([(n, s[0], s[1]) for n, s in shapes.items()])
     pixels = [(0, 0, 0, 0)] * (aw * ah)
@@ -122,7 +123,7 @@ def build_atlas(shapes, palette, out_dir, image_name="shapes.png"):
     atlas = {"frames": frames,
              "meta": {"image": image_name, "size": {"w": aw, "h": ah},
                       "scale": "1"}}
-    with open(os.path.join(out_dir, "shapes.json"), "w") as fh:
+    with open(os.path.join(out_dir, data_name), "w") as fh:
         json.dump(atlas, fh)
     return aw, ah
 
@@ -182,6 +183,53 @@ def ufo_params(payload):
         start = w[22]
     return {"start": start, "respawn": respawn, "max": most, "mix": mix,
             "land": land, "drop": drop, "abduct": abduct, "zap": zap}
+
+
+#: The bonus screens: number 12 (C) and 13 (D, a world's exit) of the
+#: first six worlds — one object on a 288 x 160 screen, round which G.EXE
+#: builds a round of its own (VA 0x10c1f; docs/re/levels/bonus-round.md).
+BONUS_WORLDS = "JHCSLI"
+#: G.EXE's table of them, a pointer per world to two 16-byte rows (C, D).
+BONUS_TABLE = 0x93594
+#: G.EXE's sprite file table (load_spr, VA 0x6a380): 102-byte records.
+SPRITE_NAMES = 0x9984c
+
+
+def is_bonus(name):
+    return len(name) == 2 and name[0] in "CD" and name[1] in BONUS_WORLDS
+
+
+def bonus_round(name, out_dir, prefix):
+    """
+    The row of table 0x93594 for a bonus screen, and its object's sheet as
+    one atlas: frames 0-3 the object wearing down, 4-5 two parts that fly
+    off at the last, 6-7 a segment of the meter full and empty, 8 on the
+    pieces it bursts into.
+    """
+    from disasm import Code
+    import spr
+    code = Code(os.path.join(ORIG, "G.EXE"))
+    world = BONUS_WORLDS.index(name[1])
+    row = code.read(code.u32(BONUS_TABLE + 4 * world) + 16 * "CD".index(name[0]), 16)
+    hp, count, _sound, pieces, sheet_id = struct.unpack_from("<I4h", row, 0)
+    sheet = code.read(SPRITE_NAMES + 102 * sheet_id, 16).split(b"\0")[0].decode()
+    stem = os.path.splitext(sheet)[0]
+    frames = spr.load(os.path.join(SPR, sheet))
+    palette = pal.decode(os.path.join(SPR, stem + ".PAL"))
+    shapes = {}
+    for i, f in enumerate(frames):
+        w, h, img = spr.frame_bitmap(f, transparent=None)
+        shapes[str(i)] = (w, h, (w, h, img))
+    build_atlas(shapes, palette, out_dir, image_name="bonus.png", data_name="bonus.json")
+    return {
+        "sheet": stem,
+        "atlas": {"image": "%s/bonus.png" % prefix, "data": "%s/bonus.json" % prefix},
+        # each frame's draw offset from the object's point (its feet)
+        "origins": [[f["ox"], f["oy"]] for f in frames],
+        "hp": hp,          # the force one notch takes (0xcd4e8)
+        "count": count,    # notches, and the meter's segments (0xcd50c)
+        "pieces": pieces,  # frames 8 .. pieces + 7 burst out (0xcd4fe)
+    }
 
 
 def export(name):
@@ -465,6 +513,24 @@ def export(name):
         "destructibles": destructibles,
         "bell": bell,
     }
+    # What the level allows with the hammer and the hoover, bits 0x01-0x20
+    # of its option word (ob.hand_options, VA 0x1ae49); left out when none.
+    hand = ob.hand_options(placed)
+    if hand:
+        data["handOptions"] = hand
+    if is_bonus(name):
+        # no bell: the round is won by wearing the object down; it stands
+        # mid-screen on the floor (level_half_width, level_bottom)
+        data["bell"] = None
+        x, y = lv["width"] // 2, (lv["tiles_h"] + HEADROOM // 8) * 8
+        data["bonusRound"] = {
+            "x": x, "y": y,
+            # where a blow reaches it (VA 0x110b7): 80 px either side, from
+            # 128 above the floor down to the game's y 128 — 0xcd500 is 0
+            # in a fresh G.EXE, and G.EXE starts afresh for every level
+            "box": {"left": x - 0x50, "right": x + 0x50,
+                    "top": y - 0x80, "bottom": 0x80 + HEADROOM},
+            **bonus_round(name, out_dir, prefix)}
     with open(os.path.join(OUT_LEVELS, "level_%s.json" % name), "w") as fh:
         json.dump(data, fh, separators=(",", ":"))
         fh.write("\n")
@@ -497,22 +563,24 @@ def play_order(ids):
                                      for i, lid in enumerate(ids))]
 
 
-def write_index(ids):
+def write_index(ids, bonus=()):
     """Write the play order.
 
     The order lives in shared/ because both sides need it: the client to
     know what comes next, the server to decide what to start.
     """
     with open(SHARED_ORDER, "w") as fh:
-        json.dump({"order": ids}, fh, indent=1)
+        # the bonus screens are played off the story's map only
+        json.dump({"order": ids, "bonus": list(bonus)}, fh, indent=1)
         fh.write("\n")
 
 
 def main(argv):
     if argv and argv[0] == "--all":
         # The T* and U* files are the worlds' side levels — numbers 29
-        # and 30 on the F.EXE maps, the only levels with a demo `.J` —
-        # and the only twelve without a bell; the clone leaves them out.
+        # and 30 on the F.EXE maps, the only story levels with a `.J`:
+        # G.EXE plays them back from it as a show that cannot be won
+        # (docs/re/front/side-levels.md); the clone leaves them out.
         every = sorted({os.path.splitext(f)[0] for f in os.listdir(LEVELS)
                         if f.upper().endswith(".WAM")})
         # Twelve more (CC, CH, … DS) hold a single object on a 288x160
@@ -522,6 +590,8 @@ def main(argv):
             wam = open(os.path.join(LEVELS, n + ".WAM"), "rb").read()
             return struct.unpack_from("<H", wam, 4)[0] >= MIN_OBJECTS
         names = [n for n in every if n[0] not in "TU" and playable(n)]
+    elif argv and argv[0] == "--bonus":
+        names = [c + w for w in BONUS_WORLDS for c in "CD"]
     else:
         names = argv or DEFAULT_BATCH
 
@@ -541,8 +611,10 @@ def main(argv):
             lid = f[:-5]
             if lid not in ids:
                 ids.append(lid)
-    seen = play_order(list(dict.fromkeys(ids)))
-    write_index(seen)
+    ids = list(dict.fromkeys(ids))
+    bonus = sorted(i for i in ids if is_bonus(i[len("level_"):]))
+    seen = play_order([i for i in ids if i not in bonus])
+    write_index(seen, bonus)
     print("%d levels in the play order -> %s" % (len(seen), SHARED_ORDER))
 
 

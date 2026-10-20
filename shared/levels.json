@@ -125,5 +125,19 @@
   "level_2D",
   "level_3D",
   "level_4D"
+ ],
+ "bonus": [
+  "level_CC",
+  "level_CH",
+  "level_CI",
+  "level_CJ",
+  "level_CL",
+  "level_CS",
+  "level_DC",
+  "level_DH",
+  "level_DI",
+  "level_DJ",
+  "level_DL",
+  "level_DS"
  ]
 }

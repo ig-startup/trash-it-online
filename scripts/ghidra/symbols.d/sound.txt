@@ -1,0 +1,41 @@
+# Sound bookkeeping outside the Miles library. Read in the sweep of 2026-10-14.
+0x15e27  f  looped_sound_add               ; one of 16 slots at 0xce0e4: entity, sound, voice pointer; counts per sound at 0xce8fc
+0x15ea0  f  looped_sounds_update           ; stops a slot's voice when its entity's flag 0x8000 goes, restarts it when it comes back
+0x15fc9  f  voice_start_if                 ; sound_voice_start when edx is non-zero
+0x16031  f  sound_start_varied             ; sound_voice_start, then a random step for the next pitch
+0x16066  f  sound_start_owned              ; a voice for entity edx, counted in 0xcea9c
+0x160ae  f  sound_start_owned_varied       ; as sound_start_owned, with a random step
+0x1625d  f  dig_driver_uninstall           ; when a digital driver is in
+0x16f62  f  dig_driver_uninstall_2         ; the same, a second copy
+0x16262  f  sound_bank_index               ; sample pointers from the bank's offset table
+0x167b3  f  sound_stop_all                 ; every playing voice
+0x167e5  f  voice_effects_update           ; per voice: vibrato (flag 8), pitch sweep (4), volume ramps — through AIL each tick
+0x16c23  f  ping_pong                      ; *ecx += *ebx, turning *ebx round at ax and dx
+0x16c80  f  voice_set_loop                 ; a looped sample's loop block (0x961fc/0x96208)
+0x16f84  f  ail_startup                    ; AIL_startup, drivers from "dosdrv"
+0x16fa1  f  ail_shutdown                   ; drivers out, AIL_shutdown
+0x17059  f  music_pause_resume             ; flags 0x96474: 2 stop, 4 resume the XMI sequence
+0x170b6  f  music_start                    ; option 0x400000 (a bonus round): CD track 6 (cd_play_track) instead; else the level's XMI sequence, looping
+#
+# The script interpreter's 21 op handlers (table 0x9641c, sound.py OPS); found from the table, not by Ghidra.
+0x1633f  f  sound_op_play                  ; op 0: 5 words; sample, rate (-1 = file rate), -, -
+0x163da  f  sound_op_stop_sample           ; op 1: 1 word
+0x163fa  f  sound_op_wait                  ; op 2: 2 words; ticks  (yield)
+0x16447  f  sound_op_rate                  ; op 3: 2 words; Hz
+0x164be  f  sound_op_lr                    ; op 4: 3 words; left, right  (pan weights)
+0x164f1  f  sound_op_pan_sweep             ; op 5: 6 words; phase, step(sign = direction), min, max, ticks
+0x1654f  f  sound_op_pitch_slide           ; op 6: 4 words; step Hz, steps, every n ticks
+0x16584  f  sound_op_vibrato               ; op 7: 3 words; depth Hz, period ticks
+0x165ab  f  sound_op_pitch_slide_off       ; op 8: 1 word
+0x165d4  f  sound_op_vibrato_off           ; op 9: 1 word
+0x165f9  f  sound_op_end                   ; op 10: 1 word; (yield, frees the voice)
+0x16646  f  sound_op_sound                 ; op 11: 2 words; start another sound id
+0x16661  f  sound_op_nop                   ; op 12 and 13: 1 word
+0x1666f  f  sound_op_skip                  ; op 14: 6 words; (five words ignored)
+0x16678  f  sound_op_lr_wobble             ; op 15: 7 words; Lmin, Lmax, Rmin, Rmax, Lstep, Rstep
+0x166be  f  sound_op_lr_wobble_off         ; op 16: 1 word
+0x166d7  f  sound_op_play_rand             ; op 17: 7 words; sample, rate, -, -, rate_mask, -  (rate + (random & mask))
+0x16779  f  sound_op_rate_jitter           ; op 18: 3 words; mask, every n ticks
+0x167a3  f  sound_op_rate_jitter_off       ; op 19: 1 word
+0x16416  f  sound_op_wait_rand             ; op 20: 3 words; ticks, mask  (yield; ticks + (random & mask))
+0x6d48f  f  cd_play_track                  ; plays Red Book CD track ax, if a CD was opened (0x595cd4): the one playing stopped, the track looked up (AIL_redbook_track_info) and played to its end — 5 double points, 6 a bonus round, 7 a level's end, 10 the 1D show

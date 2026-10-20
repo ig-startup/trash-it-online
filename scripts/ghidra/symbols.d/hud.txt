@@ -1,0 +1,64 @@
+# The panel (HUD): icons, numbers, its little scripts, the clock's BCD. Read in the sweep of 2026-10-14.
+0x195e5  f  hud_setup                      ; clears, then the panel lists by game type (0 story, 1 battle, 2 arcade) and options 0x100000 / 0x400000 / 0x40000000 (docs/re/front/hud.md)
+0x197c8  f  hud_objects_clear              ; 16 records at 0x28729c (stride 0x94)
+0x19910  f  panel_icons_clear              ; 10 records at 0x287044 (stride 0x1e)
+0x19931  f  panel_icon_add                 ; a free icon slot: owner, frame, flags, x - 18
+0x199cc  f  hud_number_draw                ; up to 8 digits (+0x1c…), skipping leading zeros; centred with flag 8
+0x19ad0  f  hud_objects_tick               ; each live record: its routine, its draw, its script (flag 4)
+0x19b53  f  hud_number_centre              ; half the digits' width to the left
+0x19c6f  f  bcd_sub_clock                  ; 8 packed digits minus, digit 6 counting in sixes (minutes:seconds)
+0x19cea  f  bcd_add_clock                  ; 8 packed digits plus, digit 6 in sixes
+0x19d61  f  bcd_add_clock_5                ; as bcd_add_clock, digit 5 in sixes
+0x19f4c  f  hud_shake                      ; random jitter of up to 15 px for +0x20 ticks; double points wobble
+0x1a199  f  hud_run_script                 ; give a record a script (+0x44) and start it
+0x1a1fb  f  hud_script_step                ; the script ops 0-19: set x, y, targets, speeds, wait, …
+0x1a4a7  f  hud_ease_axis                  ; accelerate toward a target, brake 4x as hard
+0x1a688  f  bell_finish_place              ; battle and arcade (options 0x30000000), a player rings: his place into level state +0x30, the palette tint for it (0x9818a, 6 bytes a place), a panel icon (PANEL 0x3c). In battle, with one player left in the level (0x3f209e, counted down by bell_touch_tick), the clock is cut to 1:00 if more is left, swelling (0x96fb8)
+0x1a950  f  sum_by_table                   ; greedy: for each (step, add) pair in 0x981ac, add while ax ≥ step
+0x1aaa8  f  pause_hud                      ; the pause panel script; 0x287c50 = 2 with option 0x10000000
+0x1ab54  f  hud_wobble_step                ; sucker_cup_offsets on a HUD record
+0x1ac0b  f  hud_flag_8000                  ; 0x287c50 |= 0x8000
+0x1ade8  f  players_bade_clear             ; player +0x13e = 0, all four
+0x1ae0a  f  players_bade_set               ; player +0x13e = 1, unless game 0x1d/0x1e
+0x1b12f  f  level_counters_reset           ; 0x287c58-66: UFOs, timmies, counts; 0x287c5e = 70
+#
+# The panel's ticks: reached only through the lists' `tick*` words, so they were
+# no functions to Ghidra (scripts/formats/hud.py dumps every list; docs/re/front/hud.md).
+0x19dce  f  hud_clock_tick                 ; the count-down clock: frozen while option 0x01000000 or 0x02000000; -1 s per 60 ticks; 0 → level state +0x26 = 3 (lost); < 0:20 flashes, ≤ 0:10 beeps (0x63); a clock taken (0x96fb8) swells it
+0x19edb  f  hud_stopwatch_tick             ; the arcade's: counts up a step per 7 ticks to 0x60000, frozen like the clock
+0x19f38  f  hud_rubble_icon_tick           ; PANEL 1: jitters while +0x20 (hud_shake); wobbles under double points (0x97798)
+0x1a9b0  f  rubble_extra_life_tick         ; the story panel's rubble number (0x287bec): past 10000 it flashes 64 ticks, then 10000 comes off it and off the record's score (+0x10), and the record's lives (+0x24) go up one — 32 panel sparks on Jack 1 (0x28bf1c), sounds 0x8d and 0x8c: a life for every 10000 of rubble
+0x1a7e8  f  hud_percent_tick               ; option 0x40000000: the % at 0x96fb4 ticked down toward what is left (0x3f208c - 0x410464, sum_by_table); slides in to x 55
+0x1aa5d  f  hud_percent_icon_tick          ; PANEL 46, the bomb and %: slides in to x 30; flashes 120 ticks when 0x96fba is 1
+0x1a84f  f  hud_target_tick                ; the arcade's target number: held 100 ticks, then the countdown (list 0x97374) and it shrinks into the corner
+0x1aa4f  f  hud_target_banner              ; PANEL 51 → script 0x980b4: drops in, waits, squeezes away
+0x1a986  f  hud_countdown_3                ; PANEL 47 → script 0x97d5c ("3", then 2 and 1 by `frame`)
+0x1a994  f  hud_countdown_2                ; PANEL 48 → script 0x97f20
+0x1a9a2  f  hud_countdown_go               ; PANEL 50 → script 0x98040: GO drops, the shake, `go` lets the players move (option 0x01000000 off)
+0x1a0de  f  hud_double_way0_word1          ; double points banner (one of three ways, random & 7 into 0x98148), way 0: DOUBLE → script 0x977b8
+0x1a10f  f  hud_double_way0_word2          ; RUBBLE → script 0x97844
+0x1a0f9  f  hud_double_way1_word1          ; way 1: script 0x978c4
+0x1a11a  f  hud_double_way1_word2          ; script 0x978e8
+0x1a104  f  hud_double_way2_word1          ; way 2: script 0x9790c
+0x1a125  f  hud_double_way2_word2          ; script 0x97984
+0x1a130  f  hud_super_hoover_banner        ; FORK 16 → script 0x979e4, flown across the screen
+0x1a13b  f  hud_banner_97acc               ; script 0x97acc (list at 0x9762c, not run by any code found)
+0x1a146  f  hud_banner_97b2c               ; script 0x97b2c (same list)
+0x1a151  f  hud_banner_97b8c               ; script 0x97b8c (same list)
+0x1a15c  f  hud_banner_97c04               ; script 0x97c04 (same list), with 0x287c48
+0x1aadc  f  pause_menu_tick                ; PANEL 52/53/54/53 by the pause state 0x287c50 (0 resume/quit level/quit game, 1 are you sure, 2 resume/quit game, 3 are you sure); bit 0x8000 removes it
+0x1ab36  f  pause_word_tick                ; PANEL 55, PAUSE, bobbing 0-12 px down and back a step a tick (table 0x96fe6, hud_wobble_step)
+0x1ab5c  f  demo_sign_tick                 ; DEMO.SPR, wobbling — game 0x14, a demo playing
+0x1ab60  f  pause_jack_tick                ; PANEL 12 + (word 0x3187c4 & 3), a word never written (0 in the image): Jack's face, always; drawn 128 px too big, 6 less a tick to 1; x eases 1/8 to 140, there it blinks (hidden 12 ticks of 32)
+0x1ac13  f  pause_cursor_tick              ; PANEL 56-58, the arrow; the keyboard's arrows (0x317ca4 → 0x587ba4) move it through 0x9821c's rows, Enter picks, a sound each; a button picks: resume, or state 0x11/0x10 and "are you sure", yeah ends the pause and the level in 25 ticks (0xa2f16)
+0x1c5fe  f  forklift_rev_needle            ; REV.SPR: 0x982f0 eased two a tick toward 0x982f2
+0x2cc9f  f  pause_tick                     ; the tick while paused: the HUD lists, 0xa2f10 +1, 0x287c50 bit 0x8000 ends it (0xb5ba8 = 1)
+0x287c50 d  pause_state                    ; 0-3 the pause menu shown (pause_cursor_tick); bit 0x8000 the pause over
+0x9821c  d  pause_last_row                 ; s16 x4, the last row of each pause menu: 2 1 1 1
+0x981ec  d  pause_arrow_y                  ; fix x3 a menu, the arrow's y under each row: 0 14 29 / 14 26 / 4 22 / 14 26
+0xa2f16  d  level_end_countdown            ; ticks until logic_frame ends the level: 25 after "yeah", 300 after a bonus object burst
+0xb5ba8  d  pause_over                     ; pause_game loops until it is set
+0x96fe6  d  pause_bob_table                ; s16, 0 1 1 2 2 3 4 5 6 8 9 10 12 10 … 0, then 0x4d3 (go round) — PAUSE's y
+0x1954f  f  hud_task                       ; the level task start_game adds first: hud_objects_tick, then hud_numbers_tick
+0x19554  f  hud_numbers_tick               ; the ten number records at 0x287044 (panel_icon_add): each live one drawn, unless paused (option 0x2000000)
+0x1a56e  f  double_points_tick             ; the double points task: 0x287c52 (1920) counted down; past 0 option 0x80 off and its own slot freed (0x287d80)

@@ -1,5 +1,5 @@
 # Things that spawn other things — named by what they set on last_spawned.
-0x205ab  f  spawn_blow_puff                ; ? at a blow's point, frame 7, size from the force (ebx >> 18, at most 64); every blow-into-block path calls it
+0x205ab  f  spawn_blow_puff                ; a blow into a block (every such path calls it) of force at most 600000 (0x927c0): PANEL.SPR frame 7 at the point, + 0-3 px at random, sized force >> 18 (at most 64), 4 ticks — a stronger blow makes none (the other way in, 0x9fe4c > 0, never holds: it starts at 0 and only blow_puff_tick lowers it)
 0x12238  f  bon_spawn_piece                ; a child at the parent's position and +0x2c, given vx/vy, running bon_tick_1232c
 0x122b2  f  spawn_piece_12377              ; as bon_spawn_piece, frame 0x12, running state_12377
 0x11c6e  f  spawn_at_frame_centre          ; a template centred on this sprite's frame rect, plus (dx, bx)

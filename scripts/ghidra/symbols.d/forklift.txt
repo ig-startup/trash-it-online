@@ -1,0 +1,19 @@
+# The forklift — .OB class 23. See docs/re/objects/forklift.md "The forklift".
+0x1bbc3  f  ob_class_23_forklift           ; FORK.SPR: body (8) + wheels (0, 4) + mast (10) + forks (11), an engine sound
+0x1c319  f  forklift_rev_limit             ; +0x60: 8500, or 14500 when the argument is 1
+0x1c09b  f  forklift_tick                  ; physics; drop > 8 px → +0x86 0x20/0x40; gearbox; jolt frame 9 for 6 ticks
+0x1c331  f  forklift_gearbox               ; control word → vx: gears +0x70 (0-4), ratio 0x98474, push 0x98488, rpm +0x64
+0x1c553  f  forklift_panel_gear            ; the driver's panel shows FORK frame 18 + gear
+0x1c5d0  f  forklift_physics               ; sprite_physics
+0x1c5eb  f  player_set_15a                 ; player +0x15a = edx, entity +0x42 |= 0x20
+0x1bd26  f  forklift_part_follow           ; a child sits on its parent
+0x1bd41  f  forklift_wheel_tick            ; frame = base + (x / 2) & 3, mirrored when facing left
+0x1bd87  f  forklift_forks_tick            ; search mask 0x1000 → 0x1c002; carry, raise, lower, let go
+0x1bfca  f  forks_let_go                   ; restores the load's layer and category
+0x1c002  f  forks_take                     ; outcome: a thing on the forks is held (+0x58), gravity cancelled
+0x1c19f  f  jack_touch_forklift            ; Jack's outcome 6: into the seat (hotspot 0x9842a) → state 0x2b7e4
+0x1c266  f  jack_leave_forklift            ; the forklift loses its driver
+0x2b7e4  f  jack_driving                   ; slot 77; BUT2 pressed gets out
+0x2b86b  f  jack_drive_controls            ; keys → forklift +0x86, forks up/down, sits Jack in the seat; thrown off on a drop
+0x21220  f  input_but1_pressed             ; BUT1 pressed (keyboard), 0x80 (pad)
+0x2125c  f  input_but1_held                ; BUT1 held (keyboard), 0x40 (pad)

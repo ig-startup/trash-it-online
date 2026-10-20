@@ -69,6 +69,7 @@ const FRICTION = perS2(2000);      // every tick, keys or not (VA 0x22d31)
 const AT_REST = perS(399);         // below this the shared step stops him
 const SKID_BRAKE = perS2(5000);    // the skid brakes on its own (VA 0x2266d)
 const SKID_STOP = perS(10000);     // …and hands over to standing below this
+const PUT_AWAY_BRAKE = perS2(4000); // putting the hoover away slides less (VA 0x25468)
 const WINDUP_NUDGE = perS(0x8000); // a tap of a direction while winding up
 /**
  * The roll (VA 0x29072, 0x2930c, 0x29589). A run counts its ticks in
@@ -122,6 +123,9 @@ const range = (pose, from, to) => {
 const SHEET_STRIP_DRAW = [...range('hatReach', 0, 10), ['hatReach', 10], ...range('hooverOut', 9, 0)];
 const SHEET_STRIP_STOW = [...range('hooverOut', 0, 9), ['hatReach', 10], ['hatReach', 10],
   ...range('hatReach', 9, 0)];
+// Slot 9: the hoover back into the hat (113-122) and the empty hand down
+// from it (81-90) — BUT1 without UP (0x25468).
+const SHEET_STRIP_PUT_AWAY = [...range('hooverOut', 0, 9), ...range('hatReach', 10, 19)];
 // Slots 11 and 10: the hammer out of the hat (sheet 90-81, 81, 80-71) and
 // back in (71-90). Their hammer lists carry the show / hide flags.
 const HAMMER_STRIP_DRAW = [...range('hatReach', 19, 10), ['hatReach', 10], ...range('hatReach', 9, 0)];
@@ -184,6 +188,13 @@ const STATES = {
     // …and the strip brings the hammer back out of the hat (its list sets
     // the show flag), so he ends up holding it.
     slot: 71, strip: SHEET_STRIP_STOW, ms: 35, next: 'hammerStand', locks: true,
+  },
+  // BUT1 alone puts it away and leaves his hands empty: 0x25468, slot 9, a
+  // frame every two ticks, then standing (0x22892). He slides to a stop
+  // meanwhile, 4000 off his speed a tick.
+  hooverPutAway: {
+    slot: 9, strip: SHEET_STRIP_PUT_AWAY, ms: 2 * TICK_MS, next: 'stand', locks: true,
+    brakes: PUT_AWAY_BRAKE,
   },
 
   // Carrying. 0x267e3 / 0x26971 bend down and search while Down is held
@@ -298,6 +309,35 @@ const CRUSH = {
   wobbleH: -0x20000 / 65536,
 };
 
+/**
+ * The level's option word, its hammer and hoover bits (0x98224, set from
+ * the rules record — docs/re/levels/level-options.md). Only 8K forbids the
+ * hoover in the story; every bonus round starts with the hammer out, keeps
+ * the hoover in the hat, and 3T (a show) forbids both.
+ */
+const HAND = {
+  noHammer: 0x01,    // BUT1 never takes the hammer out (jack_stand 0x22892, jack_run 0x22275)
+  keepHammer: 0x02,  // BUT1 with it out does nothing (jack_stand_hammer 0x23499, jack_walk 0x236b9)
+  noHoover: 0x04,    // UP+BUT1 never takes the hoover out
+  keepHoover: 0x08,  // BUT1 with it out does nothing (jack_hoover_held 0x24e55, jack_hoover_walk 0x250d9)
+  startHammer: 0x10, // load_level 0x1074b: every Jack draws the hammer, unless noHammer
+  startHoover: 0x20, // … or the hoover, unless noHoover
+};
+
+/**
+ * BUT2 in the hard hat (0x24727 → 0x26539): the hat hops, up at 2 px/tick
+ * and, with an arrow held, across at 0x1f000 — px/tick.
+ */
+const HAT_HOP = { vy: -2, vx: 0x1f000 / 65536 };
+
+/**
+ * Down with the hoover out (0x28035 → 0x28129): a copy of it (state
+ * 0x617dc) leaves his hands with his speed and 2 px/tick up, falls at
+ * 0x4800 a tick through everything, loses 2000 a tick across, and is gone
+ * once off the screen. px/tick, px/tick².
+ */
+const HOOVER_TOSS = { vy: -2, gravity: 0x4800 / 65536, friction: 2000 / 65536, rest: 9999 / 65536 };
+
 /** States in which the hoover is out and sucking. */
 const HOOVER_STATES = new Set(['hooverIdle', 'hooverWalk']);
 
@@ -401,7 +441,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
    * @param {string} color  hex color, e.g. '#ff4444' — the overalls colour
    * @param {string} playerId
    * @param {boolean} isLocal
-   * @param {{hammer?: number}} [opts] which of the 37 hammers he swings
+   * @param {{hammer?: number, hand?: number}} [opts] which of the 37 hammers he
+   *   swings; the level's hammer and hoover bits (HAND)
    */
   constructor(scene, x, y, color, playerId, isLocal = true, opts = {}) {
     ensureHitboxTexture(scene);
@@ -414,6 +455,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.isLocal = isLocal;
     /** His hammer's record (shared/hammers.json): its blow and its look. */
     this.hammerStats = hammerAt(opts.hammer ?? FIRST_HAMMER);
+    /** The level's hammer and hoover rules, bits of HAND. */
+    this._hand = opts.hand || 0;
 
     /** Current state — a key of STATES, named after the game's own. */
     this.state = 'stand';
@@ -440,6 +483,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._hurtVy = 0;          // vy while hurt and airborne, for the bounce
     this._hurtAir = false;     // …and whether he has left the floor since
     this._hurtTicks = 0;
+    this._tossed = [];         // hoovers thrown away, falling off the screen
 
     /** What he holds overhead — an opaque handle the scene owns — or null. */
     this.carried = null;
@@ -705,16 +749,22 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const ms = Math.min(delta, MAX_STEP_MS);
     const dt = ms / 1000;
     const across = cursors.left.isDown || cursors.right.isDown;
+    // UP / DOWN as the input word has them (4, 8): an aimed hammer reads
+    // them when its blow lands (VA 0x1fcd3).
+    this.heldAim = (cursors.up.isDown ? 4 : 0) | (cursors.down.isDown ? 8 : 0);
+    // Down and nothing else — the game's `held == 8` (VA 0x2356f, 0x24f1a)
+    const downOnly = cursors.down.isDown && !across && !cursors.up.isDown && !but2;
 
     this._advanceAnim(now);
     const spec = STATES[this.state] || STATES.stand;
     const ticks = dt * ORIGINAL_HZ;
     this._invuln = Math.max(0, this._invuln - ticks);
     this._noEvents = Math.max(0, this._noEvents - ticks);
+    if (this._tossed.length) this._tossTick(ticks);
 
     // ── Hurt: flying, or the hat bouncing ─────────────────────────────────
     if (spec.hurt) {
-      this._hurtTick(body, dt, now, onGround);
+      this._hurtTick(cursors, body, dt, now, onGround);
       return;
     }
 
@@ -738,7 +788,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     // ── States that own the player until their animation is done ──────────
     if (spec.locks) {
-      body.setVelocityX(spec.brakes ? this._brake(body.velocity.x, dt) : 0);
+      // The game's `pressed` lasts one tick; an Up from before the duck
+      // (UP + BUT1 for the hoover) must not bring him straight back out.
+      if (this.state === 'hatIn') Phaser.Input.Keyboard.JustDown(cursors.up);
+      const rate = spec.brakes === true ? SKID_BRAKE : spec.brakes;
+      body.setVelocityX(spec.brakes ? this._brake(body.velocity.x, dt, rate) : 0);
       return;
     }
 
@@ -787,17 +841,34 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this._enter('hatOut', now);
         return;
       }
+      if (but2Pressed) {
+        this._hatHop(cursors, body, now);
+        return;
+      }
       // still (0x24727, slot 22) or on the move (0x2498a, slot 23)
       const moved = this._steer(cursors, body, dt, PROFILES.slow);
       this._enter(moved ? 'hatWalk' : 'hat', now);
       return;
     }
 
-    // ── The hoover: BUT1 puts it away (0x2ab7a, 0x25468) ──────────────────
+    // ── The hoover: BUT1 puts it away (0x24e55, 0x250d9) ──────────────────
+    // Alone, into the hat with nothing in hand (0x25468); with UP, swapped
+    // for the hammer (0x2ab7a) — not where there is none.
     if (HOOVER_STATES.has(this.state)) {
-      if (but1) {
+      const swap = cursors.up.isDown;
+      if (but1 && !(this._hand & HAND.keepHoover) && !(swap && (this._hand & HAND.noHammer))) {
+        if (swap) body.setVelocityX(0);
+        this._enter(swap ? 'hooverStow' : 'hooverPutAway', now);
+        return;
+      }
+      // Down alone: the hoover is thrown up and away, and he ducks into
+      // the hat (0x28035); a fresh one comes out of it next time. Not
+      // where the level keeps it in hand.
+      if (downOnly && !(this._hand & HAND.keepHoover)) {
+        Phaser.Input.Keyboard.JustDown(cursors.down);  // spent: not a duck again once out
+        this._tossHoover(body);
         body.setVelocityX(0);
-        this._enter('hooverStow', now);
+        this._enter('hatIn', now);
         return;
       }
       const moved = this._steer(cursors, body, dt, PROFILES.slow);
@@ -806,9 +877,14 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
 
     // ── BUT1: the hammer in and out of the hat; with UP, the hoover ───────
-    if (but1 && onGround) {
+    // The level may forbid either, or keep the hammer in hand once out.
+    const hoover = cursors.up.isDown;
+    const allowed = this._armed
+      ? !(this._hand & HAND.keepHammer) && !(hoover && (this._hand & HAND.noHoover))
+      : !(this._hand & (hoover ? HAND.noHoover : HAND.noHammer));
+    if (but1 && onGround && allowed) {
       body.setVelocityX(0);
-      if (cursors.up.isDown) this._enter('hooverDraw', now);
+      if (hoover) this._enter('hooverDraw', now);
       else this._enter(this._armed ? 'hammerStow' : 'hammerDraw', now);
       return;
     }
@@ -822,6 +898,14 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this._chargeStep = 0;
         this._enter(across ? 'windupOver' : 'windupSide', now);
         this.emit('hammer_swing');
+        return;
+      }
+      // Down alone: straight into the hat, the hammer with him (0x27ff7) —
+      // not where the level keeps it in hand.
+      if (downOnly && !(this._hand & HAND.keepHammer)) {
+        Phaser.Input.Keyboard.JustDown(cursors.down);  // spent: not a duck again once out
+        body.setVelocityX(0);
+        this._enter('hatIn', now);
         return;
       }
       const moved = this._steer(cursors, body, dt, PROFILES.slow);
@@ -1116,10 +1200,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
           k.ticks = 0;
           this._enter('flattened', now);
         } else {
-          body.setVelocity(0, CRUSH.popHat * ORIGINAL_HZ);
-          body.setGravityY(-this.scene.physics.world.gravity.y / 2);
-          Object.assign(k, { w: 0, h: 0, vw: CRUSH.wobbleW, vh: CRUSH.wobbleH, ticks: 0 });
-          this._enter('hatPop', now);
+          this._popHat(body, now);
         }
         return;
       }
@@ -1415,6 +1496,59 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     else this._enter('fall', this.scene.time.now);
   }
 
+  /**
+   * BUT2 in the hat (VA 0x2486d): with room about him (0x60c25) the hat
+   * hops, across too if an arrow is held; without, it pops out as from
+   * under a block (0x2a199).
+   */
+  _hatHop(cursors, body, now) {
+    const room = !this.headroom || this.headroom(this.x, body.top - 1, body.top);
+    if (!room) {
+      this._popHat(body, now);
+      return;
+    }
+    if (cursors.right.isDown) body.setVelocityX(HAT_HOP.vx * ORIGINAL_HZ);
+    else if (cursors.left.isDown) body.setVelocityX(-HAT_HOP.vx * ORIGINAL_HZ);
+    body.y -= 0.5;
+    body.setVelocityY(HAT_HOP.vy * ORIGINAL_HZ);
+    this._enter('hatJump', now);
+  }
+
+  /** Out of the hat at -4, half gravity, width and height wobbling (0x2a199). */
+  _popHat(body, now) {
+    body.setVelocity(0, CRUSH.popHat * ORIGINAL_HZ);
+    body.setGravityY(-this.scene.physics.world.gravity.y / 2);
+    this._crush = { ...(this._crush || {}), w: 0, h: 0, vw: CRUSH.wobbleW, vh: CRUSH.wobbleH, ticks: 0 };
+    this._enter('hatPop', now);
+  }
+
+  /** The hoover in his hands leaves them as a sprite of its own (0x28129). */
+  _tossHoover(body) {
+    if (!this.vac || !this.vac.visible) return;
+    const img = this.scene.add.image(this.vac.x, this.vac.y, this.vac.texture.key)
+      .setScale(JACK_SCALE).setFlipX(this.vac.flipX).setDepth(this.vac.depth);
+    img.setOrigin(this.vac.originX, this.vac.originY);
+    this._tossed.push({ img, vx: body.velocity.x / ORIGINAL_HZ, vy: HOOVER_TOSS.vy });
+  }
+
+  /** Thrown hoovers fall through everything until they leave the screen (0x617dc). */
+  _tossTick(ticks) {
+    const view = this.scene.cameras.main.worldView;
+    this._tossed = this._tossed.filter((t) => {
+      t.vy += HOOVER_TOSS.gravity * ticks;
+      t.img.x += t.vx * ticks;
+      t.img.y += t.vy * ticks;
+      t.vx = Math.abs(t.vx) > HOOVER_TOSS.rest
+        ? t.vx - Math.sign(t.vx) * HOOVER_TOSS.friction * ticks : 0;
+      const b = t.img.getBounds();
+      if (b.top > view.bottom || b.right < view.left || b.left > view.right) {
+        t.img.destroy();
+        return false;
+      }
+      return true;
+    });
+  }
+
   /** Whether anything may touch him now (player +0x15a, and what holds him). */
   _canBeHit() {
     if (this._noEvents > 0) return false;
@@ -1445,16 +1579,22 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
   /**
    * One tick flying hurt, or of the hat bouncing (0x2b152 / 0x26539):
-   * friction 2000 a tick across; landing at 1.5 px/tick or more bounces
+   * friction 2000 a tick across, the hat steered by the arrows as well; landing at 1.5 px/tick or more bounces
    * him back up — at an eighth of the speed, the hat at a quarter — and
    * slower lands him: on his feet, or in the hat.
    */
-  _hurtTick(body, dt, now, onGround) {
+  _hurtTick(cursors, body, dt, now, onGround) {
     const ticks = dt * ORIGINAL_HZ;
     this._hurtTicks += ticks;
-    let vx = body.velocity.x / ORIGINAL_HZ;
-    vx = Math.abs(vx) > 399 / 65536 ? vx - Math.sign(vx) * (2000 / 65536) * ticks : 0;
-    body.setVelocityX(vx * ORIGINAL_HZ);
+    if (this.state === 'hatJump') {
+      // The hat is steered in the air with the arrows (0x26539), then the
+      // same friction.
+      this._steer(cursors, body, dt, PROFILES.slow);
+    } else {
+      let vx = body.velocity.x / ORIGINAL_HZ;
+      vx = Math.abs(vx) > 399 / 65536 ? vx - Math.sign(vx) * (2000 / 65536) * ticks : 0;
+      body.setVelocityX(vx * ORIGINAL_HZ);
+    }
     if (!onGround) {
       // the collision zeroes vy on landing, so keep the speed it came down at
       this._hurtAir = true;
@@ -1529,6 +1669,16 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   }
 
   /** True while the hammer is out of the hat and in his hands. */
+  /**
+   * The level's start: with its rules, every Jack draws the hammer, or the
+   * hoover, as he appears (load_level 0x1074b → 0x22fa5 / 0x24bb6) — only
+   * at the level's load; nothing else in G.EXE reads these two bits.
+   */
+  drawAtStart(now) {
+    if ((this._hand & HAND.startHammer) && !(this._hand & HAND.noHammer)) this._enter('hammerDraw', now);
+    else if ((this._hand & HAND.startHoover) && !(this._hand & HAND.noHoover)) this._enter('hooverDraw', now);
+  }
+
   get _armed() {
     return this._hammerOut;
   }
@@ -1564,9 +1714,9 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   }
 
   /** The braking a windup, a strike and the skid share: ∓5000 a tick. */
-  _brake(vx, dt) {
+  _brake(vx, dt, rate = SKID_BRAKE) {
     if (Math.abs(vx) < SKID_STOP) return 0;
-    return vx - Math.sign(vx) * SKID_BRAKE * dt;
+    return vx - Math.sign(vx) * rate * dt;
   }
 
   /**
@@ -1799,6 +1949,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this.vac.destroy();
       this.vac = null;
     }
+    (this._tossed || []).forEach((t) => t.img.destroy());
+    this._tossed = [];
     if (this.hammer) {
       this.hammer.destroy();
       this.hammer = null;

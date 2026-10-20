@@ -115,8 +115,9 @@ VA 0x23b88.) Two things this overturns:
 
 - **Record `+0x40` is the hammer's maximum force, not (only) a price.** It
   is the top of the ramp. The joke hammers at 4294967295 are not "unbuyable",
-  they flatten anything — which fits them being the silly ones. Whether the
-  shop also reads it as a price is not settled; the *blow* certainly does.
+  they flatten anything — which fits them being the silly ones. The shop
+  does not read it: F.EXE prices a hammer from its own item record (`+4`,
+  [hammer-shop](../front/hammer-shop.md)).
 - **`+0x3c` is the minimum**, the floor of the ramp (8 for a sledge v1,
   100 for most late hammers).
 
@@ -159,7 +160,13 @@ a direction walks it, 0x250d9 (slot 29); and the same keys again run
 The hammer type (record `+0x48` low u16, wielder `+0x88`) then shapes it
 at VA 0x1fcd3: types 1 and 4 halve the force, and every type also sets
 how many blocks one blow may strike (1..3; type 4 picks 2 or 3 at random).
-Type 0 depends on two flag bits passed in, not read further. The
+Type 0 is **aimed**: `jack_strike` (0x23d71) passes the input word held
+as the blow lands, and with UP (4) the blow strikes one block at full
+force, with DOWN (8) two at full force, with neither three at half. The
+type-0 hammers are the specials — the apocalypse hammers, the bfh, the
+dragon, the future v2 and v3 and the rest of the 16 (`shared/hammers.json`
+`aimed`). Clone: `hammerForce` / `hammerStrikes` take the keys
+(`Player.heldAim`). The
 upper u16 of that same u32 (53 for a sledge v1, 51 for a warhammer) lands
 in the wielder's `+0x8a`, which VA 0x1f83d uses as the blow's horizontal
 reach in front of Jack — so reach is per-hammer too. Block hit points run
@@ -184,9 +191,22 @@ it bursts into twelve pieces and is gone), a hanging sign, `DIS.SPR`
 landed UFO, which goes to VA 0x14935 (`ufo_hit`) with sound 0x84 — see The UFO.
 The hammer-lit kind of dynamite reads it too (see Dynamite).
 
-Not yet read: how the wielder's +0x74/+0x78 ever differ from the record
-once a hammer is upgraded, and what the strike state's other exits do
-(VA 0x23dbc goes straight back into the windup if the key is still down).
+The wielder's `+0x74`/`+0x78` (player struct, not his sprite) never
+differ from the record: `initialise_a_players_hammer` (0x216c0) copies
+them from record `+0x3c`/`+0x40` at each level's load and nothing else
+writes them — a hammer bought is another record, copied at the next level.
+
+**The strike state's exits** (`jack_strike` 0x23cef), each tick:
+- the animation run out: on with the hammer, walking (0x236b9) if
+  `|vx| > 10000`, else standing (0x23499);
+- on a new frame, BUT2 pressed (0x21084) while the hammer's frame is at
+  most 53 and lower than last tick's (`+0x5c`) — the swing coming back
+  up — straight into the windup again (0x23a27): a quick second blow;
+- meanwhile he slides, `vx` eased 5000 a tick and zeroed under 10000,
+  walls stopping him (0x60393 / 0x60496);
+- no floor under him: from standing a 2 px/tick hop (`vy` −2) as he
+  leaves it, else the fall (0x25813); at the level's bottom, the common
+  tail (0x27767).
 
 `scripts/formats/ccs.py` reproduces all three floods over the real level
 files, which is how the above was checked rather than argued: across

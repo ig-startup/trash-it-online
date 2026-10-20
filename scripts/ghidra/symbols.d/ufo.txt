@@ -4,7 +4,7 @@
 # and +0x6e..+0x74 their countdowns, +0x78 timmies stolen.
 0x1315c  f  ufo_set_params                 ; preset from the 16-byte table at 0x93b58, then every non-zero .OB field overrides it
 0x137dd  f  ufo_pick_roam_point            ; the level's centre ± random, kept 80 px above the bottom
-0x138b7  f  cell_solid_at                  ; ? the live tile under a point has a collision kind, or the point is below the level
+0x138b7  f  cell_solid_at                  ; 1 if the point (ax, dx) is at or below the level's bottom, or the live tile there has a collision kind; else 0
 0x138f3  f  ufo_aim_land_near_jack         ; ~100 px above a random Jack, pulled toward him until the point is clear
 0x139d1  f  ufo_aim_above_jack             ; 150 px above a random Jack, ± a random step
 0x13a48  f  ufo_speed_band                 ; |vx| in 1 px/tick steps from 1.5 → 0, 1, 2, …
@@ -14,7 +14,7 @@
 0x142f5  f  find_free_timmy                ; the first TIMMY.SPR in the sprite list that nothing holds, carries or links
 0x14326  f  random_jack                    ; players[random].jack
 0x14897  f  ufo_spark                      ; a child at an offset, flung with a random kick — while hit and while dying
-0x14b8c  f  ufo_wreck                      ; ? the two pieces it breaks into
+0x14b8c  f  ufo_wreck                      ; the UFO blown up: nine pieces from its point, 3 px over it — frames 29 and 30 twice each, then 25-28 and 25 (by the loop count), each thrown up at 3 + random_magnitude, sideways random_signed
 0x14935  f  ufo_hit                        ; hit from above while landed: stolen count halves (rounding up), one timmy dropped every 32 ticks, then ufo_dying
 0x14a11  f  ufo_dying                      ; shakes 120 ticks, then two blasts, the blocks round it, a flash, and it is gone
 0x14da4  f  ufo_hit_sub_14da4              ; only called from ufo_hit
@@ -28,7 +28,7 @@
 0x14354  f  ufo_go_abduct                  ; action 3 (period +0x68): to a free timmy
 0x144b9  f  ufo_beam_timmy                 ; 120 px above it, a beam piece every 8 ticks; lifts it after 30; kills it at 10 px and counts it; lets go if Jack grabs it
 0x14427  f  ufo_go_zap_jack                ; action 4 (period +0x6c): to a random Jack, unless he is busy (flags 0x40220403)
-0x1462c  f  ufo_zap_jack                   ; 15 ticks over him, beam every 4; within 10 px sets his +0x43 bit 0x10 and his player's +0x15e = 8 (?)
+0x1462c  f  ufo_zap_jack                   ; 15 ticks over him (120 px up), a bolt piece every 4; at tick 15, unless he is busy (flags & 0x54220403), within 10 px across: his +0x43 bit 0x10 (jack_zapped runs next frame) and his player's +0x15e = 8, the timmies he will spill
 0x14759  f  ufo_beam_piece_a               ; follows its UFO (partner), stretching with age
 0x147d2  f  ufo_beam_piece_b
 0x14e5f  f  ufo_debris                     ; falls under gravity, frames 0x19-0x1c

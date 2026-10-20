@@ -1,0 +1,15 @@
+# Level start and finish, outside the .OB classes. Read in the sweep of 2026-10-14.
+0x10000  f  trap_int3                      ; int 3: a breakpoint left at the start of the code
+0x10010  f  screen_checker_clear           ; clears every other pixel of a 320x200 buffer — the pause screen's dimming
+0x104a8  f  finish_shatter_run             ; level_finish: 1000 frames of the shattered screen falling away
+0x10518  f  finish_shatter_setup           ; the screen as pieces: from the live tile map, 7 levels of quartering
+0x1055c  f  shatter_quarter                ; recursive: a piece, then its four quarters, to depth 7
+0x105fb  f  shatter_add_piece              ; one piece: its tile's colour, a spot from table 0xb5eac (+48, +24), vx and vy random within ±2 px
+0x10712  f  load_two_files                 ; load_file twice
+0x120ee  f  spawn_pad_display              ; with a GrIP pad (device ≥ 5) and option 0x2000: ten JOY.SPR buttons
+0x12179  f  spawn_pad_button               ; a JOY button at x 160, frame 2n
+0x121ee  f  joy_button_tick                ; lit while its bit is in the pad's input (0x28b9a0)
+0x133cb  f  timmy_shell_wait               ; waits for its block to go, then a timmy with +0x76, counted in 0x287c64
+0x1344f  f  spike_shell_wait               ; the same for a spike git, counted in 0x287c60
+0x13079  f  ob_class_31_ufo                ; reads the UFO control words (lowest_bit each), ufo_set_params, starts them
+0x1327e  f  ob_class_32_spike_git          ; spike_git_create

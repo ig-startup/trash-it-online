@@ -63,8 +63,15 @@ sprite its template points at, and 64 templates cover the whole cast:
 | 15 | `DYNA.SPR` — dynamite |
 | 17, 32 | `TIMMY.SPR` |
 | 22 | `SUCKER.SPR` |
-| 23 | `FORK.SPR` |
-| 44 | `CRAWL.SPR` |
+| 23 | `FORK.SPR` — the [forklift](../objects/forklift.md) |
+| 24 | `FORK.SPR` frames 12–15 — a spinning cog in a block, inert ([buttons](../objects/buttons.md)) |
+| 25 | `BUBBLE.SPR` — the double-points bubble in a block (no level) |
+| 26 | a generic thing, 12 words (no level) |
+| 28, 29, 30 | `REDBUT.SPR` — red, green, blue [buttons](../objects/buttons.md) |
+| 34 | nothing — skips 16 bytes |
+| 35–43 | `APOLLO.SPR` — rocket pieces 8…0 ([crawler](../objects/crawler.md)) |
+| 44 | `CRAWL.SPR` — the crawler-transporter |
+| 45 | `TIMMY.SPR` — the bomb git ([gits](../objects/gits.md)) |
 | 46 | `PANEL.SPR` |
 
 `VAC.SPR` — the hoover — has a template too (VA 0xa3444), which confirms
@@ -103,12 +110,12 @@ The constructor (VA 0x33d1d) copies payload +16 into entity +0x56, +18
 into +0x54 and +20 × 60 into the timer at +0x4a; every subtype but 1
 clears the entity's flag 8, which hides it and keeps it from being
 touched. When the condition comes true the bell gets subtype 1's
-routine, its flag back, a kick of -4 px/tick upward and a hit
-(`queue_hit`) — it pops into view.
+routine, its flag back, a kick of -4 px/tick upward and the camera takes it
+in for 180 ticks (`camera_track`, see [camera](../logic/camera.md)) — it pops into view.
 
 | subtype | lets go when | levels |
 |---|---|---|
-| 2 | level option 0x800 is set — by the last timmy bin filling (VA 0x2f7ea) or the last of a crawling kind going (VA 0x116c9) — or the timer runs out | 6: 0L 2D 5L 8K 9L TL; timers 32767 s and 9999 s, so never |
+| 2 | level option 0x800 is set — by the last timmy bin filling (VA 0x2f7ea) or the last rocket piece stacked on the pad (VA 0x116c9, see the crawler) — or the timer runs out | 6: 0L 2D 5L 8K 9L TL; timers 32767 s and 9999 s, so never |
 | 4 | some player's counter at +0x28b9d8 reaches +16 | none |
 | 8 | `destroyed_percent` ≥ +18 (VA 0x340af), with a sound | 39, at 28 to 100% |
 | 16 | the block under it dies | none |
