@@ -60,8 +60,9 @@ into 0x26539 (slot 43, the same state a hit in the hat bounces through).
 There the arrows steer it as on the ground (`top_speed`, `accel`, `rate`)
 with 2000 of friction a tick; landing under 1.5 px/tick puts him back in
 the hat, faster bounces it at a quarter. Boxed in on every side, the hat
-pops out as from under a block (`jack_knocked_out` 0x2a199, slot 69), and
-after 150 ticks he flies to the flag — the way out of a trap.
+pops as from under a block (`jack_hat_pop` 0x2a199, slot 69): a wobble of
+width and height, half gravity, and back into the hat as it lands — no
+hop, and no way out (`falling-block.md`).
 
 With the hoover (0x24e55): LEFT/RIGHT walk with it (0x250d9); UP + BUT1
 swaps it for the hammer (0x2ab7a, slot 71, ends in 0x23499 — not while

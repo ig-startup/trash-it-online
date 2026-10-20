@@ -138,9 +138,7 @@ Class 2 (FLAG.SPR, in every level) is not decoration either: it is the
 player's **flag**, where he comes back to. Its constructor (VA 0x1f499;
 0x1f4fe… for players 2-4) stores `x, y - 10` per player at VA 0x28b928 and
 a bobbing flag entity per player at 0x28b948 (templates 0xa34ec…, one
-colour each). When Jack is knocked out (state 0x2a199, slot 69: thrown up
-with a random sideways kick), after 150 ticks he goes to state 0x2a2fe
-(slot 64) and flies to his flag on a damped spring — `v += (flag - pos) >>
-6`, then `v -= v >> 3`, capped at 16 px/tick — and once he is within
-1/64 px of it and slower than 1/16 px/tick he is set down on it (VA 0x2a4a8) and stands again. The
-flags are usually just off the map too, next to the starts.
+colour each). A flattened Jack (`jack_flattened`, VA 0x29f7a) flies home to
+it after 150 ticks (`jack_fly_to_flag`, VA 0x2a2fe) — see "Flattened, and
+home to the flag" in `jack/falling-block.md`. The flags are usually just
+off the map too, next to the starts.

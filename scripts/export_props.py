@@ -31,6 +31,7 @@ import pal
 import spr
 import _png
 from anims import hammer_lists, hoover_lists
+from export_jack_frames import VARIANTS, ORIGINAL_VARIANT, recolour
 
 ORIG = os.path.join(REPO, "Trash-it-original")
 OUT_PNG = os.path.join(REPO, "client", "public", "sprites", "props")
@@ -143,6 +144,29 @@ def main(level_name="0A"):
             }
             names.append(name)
         manifest["anims"][prop] = names
+
+    # The flags (FLAG.SPR 0-7, waving): one per player, in his colour. The
+    # game recolours them with Jack's own remap (template +0x18 = 0x8000 |
+    # player, VA 0xa34ec…); the clone recolours Jack by overalls hue, so the
+    # flag gets the same treatment to match him.
+    flag_frames = spr.load(os.path.join(ORIG, "SPR", "FLAG.SPR"))
+    for variant, colour in VARIANTS.items():
+        vpal = palette if variant == ORIGINAL_VARIANT else recolour(palette, colour)
+        names = []
+        for idx in range(8):
+            f = flag_frames[idx]
+            w, h, img = spr.frame_bitmap(f, transparent=None)
+            rgba = [(0, 0, 0, 0) if v is None else vpal[v] + (255,)
+                    for row in img for v in row]
+            name = "flag_%s_%02d" % (variant, idx)
+            _png.write_rgba(os.path.join(OUT_PNG, name + ".png"), w, h, rgba)
+            manifest["frames"][name] = {
+                "file": "%s/%s.png" % (PREFIX, name),
+                "w": w, "h": h, "ax": -f["ox"], "ay": -f["oy"],
+                "src": "FLAG.SPR:%d" % idx,
+            }
+            names.append(name)
+        manifest["anims"]["flag_" + variant] = names
 
     lists = hammer_lists(os.path.join(ORIG, "G.EXE"), raw=True)
     manifest["hammerBySlot"] = {str(k): v for k, v in sorted(lists.items())}

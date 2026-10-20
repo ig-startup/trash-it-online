@@ -216,13 +216,14 @@ const STATES = {
 
   // A falling block on him (VA 0x21aef). Pinned under it: 0x29c92 (slot
   // 62, the standing frame, squashed) or, in the hard hat, 0x29e16 (slot
-  // 68, the hat). Then flattened, 0x29f7a (slot 65), and the tumble back
-  // up, 0x2a2fe (slot 64) — or out of the hat with a wobble, 0x2a199.
+  // 68, the hat). Then flattened, 0x29f7a (slot 65), down like a leaf to
+  // the level's bottom, and home to his flag, 0x2a2fe (slot 64) — or out
+  // of the hat with a wobble, 0x2a199.
   pinned: { slot: 62, anim: 'idle', ms: Infinity, hold: true, crushed: true },
   pinnedHat: { slot: 68, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, crushed: true },
   flattened: { slot: 65, anim: 'flat', ms: Infinity, hold: true, crushed: true },
   hatPop: { slot: 69, anim: 'helmetMove', frames: [0], ms: Infinity, hold: true, crushed: true },
-  tumble: { slot: 64, anim: 'tumble', ms: 3 * TICK_MS, next: 'stand', locks: true, brakes: true },
+  flyHome: { slot: 64, anim: 'tumble', ms: 3 * TICK_MS, loop: true, crushed: true },
   // Down with the arrow after a run of 50 ticks (0x22275 → VA 0x2265c):
   // 0x29072, slot 55, over his hands; 0x2930c, slot 56, cartwheeling on
   // while the arrow is held; 0x29589, slot 57, the somersault BUT2 turns
@@ -302,9 +303,14 @@ const CRUSH = {
   popOut: -6,          // px/tick, without the hat
   popHat: -4,          // px/tick, in it
   flatTicks: 150,
+  flatGravity: 0x4800 / 65536,
   flap: 0x3000 / 65536,
   flapFriction: 0x1500 / 65536,
   flatFriction: 4000 / 65536,
+  /** Home to the flag (VA 0x2a2fe): v += d / 64, v -= v / 8, |v| ≤ 16. */
+  homeMax: 16,
+  homeStill: 0x1000 / 65536,
+  homeNear: 0x400 / 65536,
   wobbleW: 0x28000 / 65536,
   wobbleH: -0x20000 / 65536,
 };
@@ -1195,11 +1201,16 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this._squashY = 1;
         body.setAllowGravity(true);
         if (this.state === 'pinned') {
-          // Out at -6 and flattened, flung a random way (rand >> 15).
-          const fling = Math.random() * 2;
-          body.setVelocity((Math.random() < 0.5 ? -1 : 1) * fling * ORIGINAL_HZ,
-            (CRUSH.popOut + Math.random() * 2) * ORIGINAL_HZ);
-          k.ticks = 0;
+          // Out at -6 and flattened, flung a random way (rand >> 15). From
+          // here he is moved by hand: nothing stops him (VA 0x29f7a).
+          body.setVelocity(0, 0);
+          body.setAllowGravity(false);
+          body.checkCollision.none = true;
+          Object.assign(k, {
+            ticks: 0, acc: 0, down: false, home: false,
+            vx: (Math.random() < 0.5 ? -1 : 1) * Math.random() * 2,
+            vy: CRUSH.popOut + Math.random() * 2,
+          });
           this._enter('flattened', now);
         } else {
           this._popHat(body, now);
@@ -1230,31 +1241,96 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       return;
     }
 
-    // Flattened: through the air with friction, then flapping on the floor.
-    if (!onGround) {
-      const vx = body.velocity.x / ORIGINAL_HZ;
-      const slowed = Math.abs(vx) > 9999 / 65536 ? vx - Math.sign(vx) * CRUSH.flatFriction * ticks : 0;
-      body.setVelocityX(slowed * ORIGINAL_HZ);
-      return;
+    // Flattened, then home: by whole ticks, as the game steps them.
+    k.acc += ticks;
+    while (k.acc >= 1) {
+      k.acc -= 1;
+      if (this.state === 'flattened') this._flatStep(k, now);
+      else if (this._homeStep(k, now)) return;
     }
-    const phase = Math.floor(k.ticks) & 0x1f;
-    const back = Math.floor(k.ticks) & 0x20;
-    const ahead = this._facingLeft ? -1 : 1;
-    let vx = body.velocity.x / ORIGINAL_HZ;
-    if (phase < 0x14) vx += (back ? -ahead : ahead) * CRUSH.flap * ticks;
-    vx = Math.abs(vx) > 9999 / 65536 ? vx - Math.sign(vx) * CRUSH.flapFriction * ticks : 0;
-    body.setVelocityX(vx * ORIGINAL_HZ);
-    const frame = (phase < 0x10) === !back ? 1 : 2;
-    if (this._animFrame !== frame) {
-      this._animFrame = frame;
-      this._showFrame(STATES.flattened);
+  }
+
+  /**
+   * One tick flattened (jack_flattened, VA 0x29f7a). Flung up, he slows
+   * under gravity; from the top of it he comes down like a leaf, through
+   * whatever is below — no probe at all — swaying ±0x3000 a tick in turns
+   * of 32, and dropping half his sideways speed, until he lies on the
+   * level's bottom. 150 ticks from the top he goes home.
+   * See docs/re/jack/falling-block.md "Flattened, and home to the flag".
+   */
+  _flatStep(k, now) {
+    let { x, y } = this;
+    k.ticks += 1;
+    const slow = (v, by) => (Math.abs(v) > 9999 / 65536 ? v - Math.sign(v) * by : 0);
+    if (!k.down) {
+      if (k.vy < 0) {
+        x += k.vx;
+        k.vy += CRUSH.flatGravity;
+        y += k.vy;
+        k.vx = slow(k.vx, CRUSH.flatFriction);
+        if (k.vy >= 0) k.ticks = 1;
+        this._flatFrame(0);
+      } else {
+        const phase = k.ticks & 0x1f;
+        const back = k.ticks & 0x20;
+        if (phase < 0x14) k.vx += back ? -CRUSH.flap : CRUSH.flap;
+        x += k.vx;
+        k.vx = slow(k.vx, CRUSH.flapFriction);
+        y += Math.abs(k.vx) / 2;
+        // Frames 1 and 2 by the half of the swing, 0 between (VA 0x2a0c3).
+        const one = this._facingLeft ? 2 : 1;
+        const two = 3 - one;
+        if (phase < 0x10) this._flatFrame(back ? two : one);
+        else if (phase < 0x1a) this._flatFrame(0);
+        else this._flatFrame(back ? one : two);
+        if (this.levelBottom !== undefined && y >= this.levelBottom) {
+          y = this.levelBottom;
+          k.down = true;
+          this._flatFrame(0);
+        }
+      }
     }
+    this.body.reset(x, y);
     if (k.ticks > CRUSH.flatTicks) {
-      body.checkCollision.up = true;
-      this._crush = null;
-      body.setVelocityY(JUMP * 0.6);
-      this._enter('tumble', now);
+      k.vx = 0;
+      k.vy = 0;
+      this._enter('flyHome', now);
     }
+  }
+
+  _flatFrame(frame) {
+    if (this._animFrame === frame) return;
+    this._animFrame = frame;
+    this._showFrame(STATES.flattened);
+  }
+
+  /**
+   * One tick home to the flag (jack_fly_to_flag, VA 0x2a2fe): a damped
+   * spring, 16 px/tick at most. Still and there, he is set on it and falls
+   * from it as from a jump (slot 29, VA 0x256e9). No flag: he stays put.
+   * Returns true once he is down.
+   */
+  _homeStep(k, now) {
+    const flag = this.flag || { x: this.x, y: this.y };
+    const clamp = (v) => Math.max(-CRUSH.homeMax, Math.min(CRUSH.homeMax, v));
+    k.vx += (flag.x - this.x) / 64;
+    k.vy += (flag.y - this.y) / 64;
+    k.vx = clamp(k.vx - k.vx / 8);
+    k.vy = clamp(k.vy - k.vy / 8);
+    const x = this.x + k.vx;
+    const y = this.y + k.vy;
+    if (Math.abs(k.vx) < CRUSH.homeStill && Math.abs(k.vy) < CRUSH.homeStill
+      && Math.abs(flag.x - x) < CRUSH.homeNear && Math.abs(flag.y - y) < CRUSH.homeNear) {
+      this.body.reset(flag.x, flag.y);
+      this.body.checkCollision.none = false;
+      this.body.checkCollision.up = true;
+      this.body.setAllowGravity(true);
+      this._crush = null;
+      this._enter('fall', now);
+      return true;
+    }
+    this.body.reset(x, y);
+    return false;
   }
 
   /** Onto the ladder: no gravity, and the probes instead of collisions. */

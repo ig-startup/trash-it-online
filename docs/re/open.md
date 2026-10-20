@@ -6,7 +6,7 @@ name is a guess (no `?` is left in the symbol files) and no note is marked
 
 Closed in the last pass (2026-10-20): every guessed name checked against
 its code — a life for every 10000 of rubble ([level-record](front/level-record.md)),
-the hat's way out of a trap and the ground pound ([keyboard](jack/keyboard.md)),
+the hat's BUT2 when boxed in and the ground pound ([keyboard](jack/keyboard.md)),
 the CD audio tracks ([sound](formats/sound.md)), the level's task list,
 the push point, the UFO's wreck and bolt ([ufo](objects/ufo.md)), the
 dead debug menus; the pause, its menu on the arrows and Enter, and what

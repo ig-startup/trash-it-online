@@ -196,9 +196,9 @@
 0x2b3ac  f  jack_ground_pound              ; slot 74: in the air, DOWN held + BUT2 pressed (input_down_and_jump, from entity_step and jack_air_roll) — he drops at 0x12000 a tick, four times the usual pull, steering as in the air; landing he runs on (|vx| > 10000) or stands, tips a seesaw under him, shakes the screen 10 ticks, flings two pixels (effect_pair) and strikes from above (jack_stomp_hits); past 358 px of fall, the hard landing
 0x29c92  f  jack_pinned                    ; under a block, squashed
 0x29e16  f  jack_pinned_in_hat             ; the same in the hat
-0x29f7a  f  jack_flattened                 ; slot 65, the pancake
-0x2a199  f  jack_knocked_out               ; slot 69, thrown up; after 150 ticks → fly to flag
-0x2a2fe  f  jack_fly_to_flag               ; slot 64, damped spring to the flag
+0x29f7a  f  jack_flattened                 ; slot 65, the pancake: flung up, then down like a leaf through everything to the level bottom; 150 ticks → fly to flag
+0x2a199  f  jack_hat_pop                   ; slot 69, out of the hat with a wobble of width and height, half gravity, back into the hat (0x24727) on landing
+0x2a2fe  f  jack_fly_to_flag               ; slot 64, damped spring to the flag, then jack_stand_hub2 (falling)
 
 # ── hammers and blows ─────────────────────────────────────────────────────
 0x1f83d  f  hammer_blow                    ; strike → blow box

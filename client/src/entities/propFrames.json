@@ -2951,6 +2951,262 @@
       "ax": 15,
       "ay": 15,
       "src": "BLOI.SPR:6"
+    },
+    "flag_red_00": {
+      "file": "sprites/props/flag_red_00.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:0"
+    },
+    "flag_red_01": {
+      "file": "sprites/props/flag_red_01.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:1"
+    },
+    "flag_red_02": {
+      "file": "sprites/props/flag_red_02.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:2"
+    },
+    "flag_red_03": {
+      "file": "sprites/props/flag_red_03.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:3"
+    },
+    "flag_red_04": {
+      "file": "sprites/props/flag_red_04.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:4"
+    },
+    "flag_red_05": {
+      "file": "sprites/props/flag_red_05.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:5"
+    },
+    "flag_red_06": {
+      "file": "sprites/props/flag_red_06.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:6"
+    },
+    "flag_red_07": {
+      "file": "sprites/props/flag_red_07.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:7"
+    },
+    "flag_blue_00": {
+      "file": "sprites/props/flag_blue_00.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:0"
+    },
+    "flag_blue_01": {
+      "file": "sprites/props/flag_blue_01.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:1"
+    },
+    "flag_blue_02": {
+      "file": "sprites/props/flag_blue_02.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:2"
+    },
+    "flag_blue_03": {
+      "file": "sprites/props/flag_blue_03.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:3"
+    },
+    "flag_blue_04": {
+      "file": "sprites/props/flag_blue_04.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:4"
+    },
+    "flag_blue_05": {
+      "file": "sprites/props/flag_blue_05.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:5"
+    },
+    "flag_blue_06": {
+      "file": "sprites/props/flag_blue_06.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:6"
+    },
+    "flag_blue_07": {
+      "file": "sprites/props/flag_blue_07.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:7"
+    },
+    "flag_green_00": {
+      "file": "sprites/props/flag_green_00.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:0"
+    },
+    "flag_green_01": {
+      "file": "sprites/props/flag_green_01.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:1"
+    },
+    "flag_green_02": {
+      "file": "sprites/props/flag_green_02.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:2"
+    },
+    "flag_green_03": {
+      "file": "sprites/props/flag_green_03.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:3"
+    },
+    "flag_green_04": {
+      "file": "sprites/props/flag_green_04.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:4"
+    },
+    "flag_green_05": {
+      "file": "sprites/props/flag_green_05.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:5"
+    },
+    "flag_green_06": {
+      "file": "sprites/props/flag_green_06.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:6"
+    },
+    "flag_green_07": {
+      "file": "sprites/props/flag_green_07.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:7"
+    },
+    "flag_orange_00": {
+      "file": "sprites/props/flag_orange_00.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:0"
+    },
+    "flag_orange_01": {
+      "file": "sprites/props/flag_orange_01.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:1"
+    },
+    "flag_orange_02": {
+      "file": "sprites/props/flag_orange_02.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:2"
+    },
+    "flag_orange_03": {
+      "file": "sprites/props/flag_orange_03.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:3"
+    },
+    "flag_orange_04": {
+      "file": "sprites/props/flag_orange_04.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:4"
+    },
+    "flag_orange_05": {
+      "file": "sprites/props/flag_orange_05.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:5"
+    },
+    "flag_orange_06": {
+      "file": "sprites/props/flag_orange_06.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:6"
+    },
+    "flag_orange_07": {
+      "file": "sprites/props/flag_orange_07.png",
+      "w": 22,
+      "h": 34,
+      "ax": 10,
+      "ay": 33,
+      "src": "FLAG.SPR:7"
     }
   },
   "anims": {
@@ -3384,6 +3640,46 @@
       "bloi_04",
       "bloi_05",
       "bloi_06"
+    ],
+    "flag_red": [
+      "flag_red_00",
+      "flag_red_01",
+      "flag_red_02",
+      "flag_red_03",
+      "flag_red_04",
+      "flag_red_05",
+      "flag_red_06",
+      "flag_red_07"
+    ],
+    "flag_blue": [
+      "flag_blue_00",
+      "flag_blue_01",
+      "flag_blue_02",
+      "flag_blue_03",
+      "flag_blue_04",
+      "flag_blue_05",
+      "flag_blue_06",
+      "flag_blue_07"
+    ],
+    "flag_green": [
+      "flag_green_00",
+      "flag_green_01",
+      "flag_green_02",
+      "flag_green_03",
+      "flag_green_04",
+      "flag_green_05",
+      "flag_green_06",
+      "flag_green_07"
+    ],
+    "flag_orange": [
+      "flag_orange_00",
+      "flag_orange_01",
+      "flag_orange_02",
+      "flag_orange_03",
+      "flag_orange_04",
+      "flag_orange_05",
+      "flag_orange_06",
+      "flag_orange_07"
     ]
   },
   "hammerBySlot": {

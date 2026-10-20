@@ -79,7 +79,7 @@
 0x1f517  f  ob_class_10_start_2
 0x1f51e  f  ob_class_11_start_3
 0x1f525  f  ob_class_12_start_4
-0x1f5aa  f  flag_wave                      ; frames 0-7, bobbing by table 0x997c0
+0x1f5aa  f  flag_tick                      ; FLAG.SPR 0-7, a frame every 2 ticks; y = the flag's y + the bob table 0x997c0
 0x1f698  f  flag_unfurl                    ; after 30 ticks, frames down to 0, then flag_wave
 0x1f6d1  f  owner_players_flag             ; flag entity of the owner's player
 0x1f6d4  f  players_flag                   ; flag entity of this player
@@ -172,3 +172,4 @@
 0x1775b  f  generic_thing_dispatch         ; table 0x96b94 by +0x6a
 0x17790  f  generic_thing_brake            ; vx -= vx / 4
 0x1c5a0  f  touch_super_hoover_fork        ; sound 0x99, forklift_rev_limit, the super-hoover banner (0x97608), the thing gone (template 0x98310)
+0x997c0  d  flag_bob                       ; 16 × i16: 0 1 2 4 6 8 9 10 10 9 8 6 4 2 1 0
