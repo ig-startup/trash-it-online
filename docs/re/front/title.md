@@ -28,7 +28,7 @@ from above one after another, each 3 ticks after the last, fall at
 ≈4.9 px/tick² and bounce on their row until they settle; the word under
 the cursor is drawn as a silhouette in colour 254. A choice sends them
 all off to the right at 40 px/tick, rising, with a random tilt, the
-first one shaking the camera; when it is gone past x 20 the handler acts.
+first one shaking the camera (x 7 px growing to 8, y 2 to 4); when it is gone past x 20 the handler acts.
 
 | menu | items | each does |
 |---|---|---|
@@ -41,9 +41,16 @@ The words are frames of `FWTEXT_E.SPR` (slot 1; 0-2 the start menu's,
 own frame origin. The debug strings do not always match: the start
 menu's are blank, and the options' read "pad config", "audio config" —
 the other way round from the words and from what the items do.
-Choosing in the start menu starts `title_start_transition` (0x13069): a camera
-shake, the next picture, 90 ticks, a fade out and the CD stopped, then
-the game type runs. (Two more lists sit at 0x8dc94: "1 player" /
+Choosing in the start menu ends differently: the title figure swings
+(script 0x85d90), and at the hit (`eaa1` sets 0x184766 = 2)
+`title_start_transition` (0x13069) **breaks the screen**: a vertical camera shake
+(amplitude 25 px growing by 1 to 26, then dying away), the objects cleared, a new picture,
+and `title_shards_spawn` (0x1326a) throws the pieces — one per 16-byte
+entry of 0x85f0c (x, y, kind, velocity), frame kind × 8 + a random 0..7
+of `SHARDS.SPR`, blended through `SHARDS.STP` (`load_blend_table`, loaded
+by `title_init`). 90 ticks later it fades out, the CD stops, and the
+game type runs. In the other two menus the hit sends the words flying
+instead. (Two more lists sit at 0x8dc94: "1 player" /
 "2 players", unused here.)
 
 **The attract mode.** The title menu sets a 30-second idle timeout; when

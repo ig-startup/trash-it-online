@@ -23,7 +23,7 @@ A tick routine is two calls: `frame_end` (0x1a88a, the tick counter
    amplitude, the sign by the tick's parity; on odd ticks the amplitude
    grows by its step, turns back past the maximum and stops at 0.
    `camera_shake_start` (0x20588): x amplitude AX, step BX, maximum
-   [esp]; y from CX, DX, [esp+4];
+   DX; y amplitude CX, maximum [esp+4], step [esp+8];
 3. `random`, `objects_tick` (0x24d4b): first the objects queued for
    removal (bit 4 of +0x90) go back to the free list, then the queued
    new ones (`obj_spawn`) join; then each live object not hidden (+0x90

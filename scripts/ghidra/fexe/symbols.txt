@@ -129,7 +129,7 @@
 0x1c8bf  f  obj_create_picture             ; slot AX, depth CX, x DX, y BX, frame [esp+4]; the slot's colours (0x8e62c + 0x58 slot: first, last, palette) into the screen palette
 0x2420b  f  palette_set_range              ; colours DX..BX from EAX (3 bytes each) into the palette 0x2149a8; fade done flag off
 0x2054b  f  camera_reset                   ; camera x, y (0xc613c, 0xc6140) and the shake to 0
-0x20588  f  camera_shake_start             ; x: AX amplitude, BX step, [esp] max; y: the same from CX, DX, [esp+4]
+0x20588  f  camera_shake_start             ; x: AX amplitude, BX step, DX maximum; y: CX amplitude, [esp+4] maximum, [esp+8] step
 0x205ba  f  camera_shake_tick              ; camera = ± random(amplitude), sign by tick parity; amplitude += step on odd ticks, back down past max, off at 0
 0x2083e  f  screen_timeout_set             ; AX seconds (x 60 ticks) of no input, then EDX is called; -1 none
 0x20869  f  screen_timeout_tick            ; any key of the last player restarts it; at 0 the callback once, returns 1
@@ -385,3 +385,21 @@
 0x1256b  f  rnc_m2_length                  ; method 2's match length
 0x1259f  f  rnc_m2_offset                  ; method 2's match offset
 0x547c0  f  strncmp
+#
+# The password grid, the team names, the score reels.
+0x15e3c  f  password_screen_init           ; PASWRD_E.DAT
+0x15fa9  f  password_cursor_tick           ; a 6-wide grid: a-z and signs in 0..29, two buttons at 31 and 34 below; held 20 ticks repeats; frame = the cell
+0x161d5  f  password_word_draw             ; the typed word (20 at most) in glyphs, '!' and '*' too, spaces 7 px; the cursor blinking
+0x17a38  f  team_name_fire                 ; a letter (a-z, *, !, space) onto the team's name, 14 at most; 29 rubs one out; 31 another team (0xd631e = 2), 34 start (3)
+0x17b74  f  team_name_cursor_tick          ; the same grid as the password's
+0x17ddd  f  team_name_draw                 ; the name in glyphs, wrapped at x 120
+0x183ff  f  level_score_wait               ; level_score_screen, then its ticks until done
+0x18439  f  score_reels_init               ; 20 digit objects: two numbers of ten
+0x18586  f  score_reels_tick               ; each digit spins (frame / 23) until it shows its number, a sound each, a louder one every fifth; a button stops them all at once
+0x1326a  f  title_shards_spawn             ; the picture breaks: a piece per 16-byte entry of 0x85f0c (x, y, kind, -, vx, vy 16.16) until -1; frame kind x 8 + random 0..7, 40 x 40
+0x14837  f  battle_points_draw             ; each playing player's points, "%d" in digit frames
+0x101f6  f  keys_swap_duplicate            ; a key already given to another of the six swaps places with it
+0x10379  f  keys_redefine_end              ; the prompt removed, the cursor back
+0x1a678  f  language_screen_init           ; LANGSL_E.DAT
+0x1695a  f  save_message_draw              ; the line for save state 0xd629a (1 failed, 3 saved, 10 ...), redrawn when it changes
+0x171be  f  is_name_char                   ; a-z A-Z 0-9 ! space . , -
