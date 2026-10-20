@@ -96,14 +96,22 @@ Which means the locking behaviour described above is real but not what
 most levels do.
 
 **What subtype 1 does — the behaviour 90 of the 135 levels use — is
-simply "touch it and the level is over".** Its per-frame routine
-(VA 0x34114) runs the usual collision helper, and when the bell comes up
-touched it sets `+0x162` on the player who did it and hands off to the
-code that puts the level state at 2. No percentage, no block, no gate.
+ring when struck from above.** Its per-frame routine (`bell_touch_tick`,
+VA 0x34114) runs the shared physics, and acts only when the sprite's
+flags (`+0x40`) carry both 0x10 (standing on something) and 0x80 — "hit
+from above", which the hammer's overhead strike sets on the sprites in
+its box (as it does on the hammer-lit dynamite, `objects/dynamite.md`)
+and the ground pound sets on the BELL sheet among others
+(`jack_stomp_hits` 0x2b315). Touching it, or a sideways blow, does
+nothing. The hitter (`+8`, the hammer or Jack) is traced to his player,
+who gets `+0x162`; each ring plays sound 0x5a, and the last player to
+ring — the counter at 0x3f209e down to 0 — sound 0x43 and level state 2.
+No percentage, no block, no gate. (These notes said "touch it" until
+2026-10-20 — the 0x80 bit was read as a collision flag.)
 
-So a clone that ends the level when a player reaches the bell is right
-for 90 levels, and the elaborate locking variant is the exception that
-no level actually ships.
+So a clone that ends the level when a player strikes the bell from
+above is right for 90 levels, and the elaborate locking variant is the
+exception that no level actually ships.
 
 **The other subtypes hold the bell back** (`ob.py`, `BELL_SUBTYPE_*`).
 The constructor (VA 0x33d1d) copies payload +16 into entity +0x56, +18

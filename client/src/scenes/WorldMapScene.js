@@ -634,6 +634,9 @@ export default class WorldMapScene extends Phaser.Scene {
 
   _nodeText(id) {
     const n = this._story.nodeAt(id);
+    // A toll gate has no sprite in F.EXE (node template 0): nothing on the
+    // picture says Jack is at one, so the clone's caption does.
+    if (n && n.kind === 'gate' && !this._story.isTrashed(id)) return `ВОРОТА: ${n.price} ТИММИ — ОГОНЬ`;
     if (!n || n.number < 0) return '';
     if (n.kind === 'exit') return this._story.isTrashed(id) ? 'ВЫХОД — ОГОНЬ: ДАЛЬШЕ' : 'ВЫХОД';
     const name = n.level ? n.level.replace('level_', '') : '';
