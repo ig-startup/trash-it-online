@@ -68,3 +68,23 @@ and mode 13h reprogrammed with misc-output `0xe3` (VA 0x61fd1), the 320x240
 exists (divisor 0x9b5c at VA 0x60ccd, handler 0x685e3) but nothing calls
 its installer directly. So: 60 ticks a second on a machine that keeps up,
 with a catch-up step of 13 ms (≈77 Hz) when it does not.
+
+## Jack's box: x ± 4 — **Confirmed**
+
+What stops Jack is a box far narrower than he looks: **4 px either side
+of his x, 42 px up from his feet** (VA 0xa0260, `{4, 42}`; the table
+around it holds the other boxes — `{4, 30}` the ladder probe, `{8, 16}` a
+small one). His states pass it in `esi`/`edx` to all the probes, 39 call
+sites in all:
+- `probe_wall_right` (VA 0x60393) reads the columns from `x + 4 + 1` to
+  `x + vx + 4`, rows `y - 42` to `y`, all snapped to 8-px cells; a kind-1
+  cell stops him at its left edge minus 1. `probe_wall_left` mirrors it.
+- `probe_floor` (VA 0x60833) reads the row under his feet,
+  `(y + 1) & ~7`, from `(x - 4) & ~7` to `(x + 4) & ~7`. So he stands on
+  a ledge until his middle is 4 px past it, and slips past corners that a
+  body as wide as his sprite would catch on.
+
+The clone's touch box (what hurts him, the bell, what he picks up) stays
+the sprite's 24 px; only the physics body is 8 wide
+(`client/src/entities/jackMetrics.js` `BODY_WIDTH`). The original's own
+touch boxes are the event boxes and frame rects, not this one.

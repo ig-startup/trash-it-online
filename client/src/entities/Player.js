@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  ensureJackTextures, applyJackFrame, PLAYER_WIDTH, FULL_HEIGHT,
+  ensureJackTextures, applyJackFrame, PLAYER_WIDTH, BODY_WIDTH, FULL_HEIGHT,
 } from './drawJack';
 import {
   PROP_ANIMS, PROP_FRAME_INFO, HAMMER_BY_SLOT, HOOVER_BY_SLOT, hasProps,
@@ -520,13 +520,15 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.body.setSize(PLAYER_WIDTH, FULL_HEIGHT);
+    // The sprite is his touch box (PLAYER_WIDTH); the body, what walls and
+    // floors stop, is the original's x ± 4, centred under him.
+    this.body.setSize(BODY_WIDTH, FULL_HEIGHT, false);
     // The game clamps falling at 24 px/frame (0x180000 in 16.16).
     this.body.setMaxVelocityY(TERMINAL);
     if (scene.physics.world.gravity.y !== GRAVITY) {
       scene.physics.world.gravity.y = GRAVITY;
     }
-    this.body.setOffset(0, 0);
+    this.body.setOffset((PLAYER_WIDTH - BODY_WIDTH) / 2, 0);
     this.setOrigin(0.5, 1); // feet at y
     this.setVisible(false); // the body is a hit box; `art` is what you see
 
@@ -1915,8 +1917,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
   _fitBody(key) {
     const h = this._inHatBox() ? Math.min(FULL_HEIGHT, this._frameHeight(key)) : FULL_HEIGHT;
     if (this.body.height === h) return;
-    this.body.setSize(PLAYER_WIDTH, h, false);
-    this.body.setOffset(0, FULL_HEIGHT - h);
+    this.body.setSize(BODY_WIDTH, h, false);
+    this.body.setOffset((PLAYER_WIDTH - BODY_WIDTH) / 2, FULL_HEIGHT - h);
   }
 
   /** The states whose wall box is the frame's (they call VA 0x2def3). */
