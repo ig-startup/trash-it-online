@@ -57,8 +57,8 @@ one pointer per language from 0x87208) still has the card's lines: "this
 memory card is not formatted, do you wish to format it?", "overwrite this
 game? yes ~ no", "vacant block is less than required, do you wish to delete
 a block?", "delete a memory card slot". The last two belong to
-`save_card_full?` 0x1720d — the question, then a list of the six names
-(`save_delete_list_init?` 0x16fb4, `_names?` 0x170c6, `_tick?` 0x1732a,
+`save_card_full` 0x1720d — the question, then a list of the six names
+(`save_delete_list_init` 0x16fb4, `_names` 0x170c6, `_tick` 0x1732a,
 `gsdelete.spr` in `GAMSAV_E.DAT`), the pick handed to a delete that is an
 empty stub (0x190a2). `save_screen_tick` calls it when `game_save` answers
 4, which nothing returns — and the yes/no flag 0xd629e is forced to 1

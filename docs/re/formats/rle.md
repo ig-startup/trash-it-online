@@ -5,6 +5,19 @@ share one pixel encoding**, and one blitter in `G.EXE` draws both
 (VA 0x38be8, plus variants at 0x34ed8 / 0x35c9c / 0x3680c / 0x3737c /
 0x37f94 that differ only in how they write pixels).
 
+The variants, read 20.10.2026 against the machine code: `blit_rle_blend`
+0x34ed8 (dst = blend[src * 256 + dst]), `blit_rle_mirror` 0x3680c (right
+to left — `dec edi` — so the frame faces the other way: mode 0 with
+entity `+0x40` bit 4), `blit_rle_remap` 0x37f94 and
+`blit_rle_remap_mirror` 0x3737c (each pixel through the entity's remap
+table, its mode `+0x20`), and `blit_rle_heat` 0x35c9c — draw mode −1:
+it reads no pixel of the frame at all, each pixel the shape covers takes
+the **screen's** pixel two to its right, a shimmer (`HEAT`, dead in the
+game — `scn.md`). There is no vertical flip; the old names `_flip_x/_y/_xy`
+and `_v2.._v5` were guesses. F.EXE has the same set (`blit_scaled`
+0x29e10 its `blit_rle`; the heat one reached only from an unreferenced
+`obj_draw_heat` 0x26235).
+
 Pixels are stored as scanlines, top to bottom:
 
 | offset | size | field |

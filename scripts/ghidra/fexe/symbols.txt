@@ -123,9 +123,10 @@
 0x265ec  f  blit_mid                       ; frames 151..255 px
 0x26800  f  blit_mid_remap
 0x269e8  f  blit_large                     ; frames 256 px and over
-0x52e94  f  blit_zoom?                     ; reached from 0x26235 (not cut out as a function): the frame scaled by EDX about the point 0x516a18, 0x516a1c
-0x27a34  f  blit_zoom_b?                   ; the same kind, reached from 0x25fb3, steps back through the source
-0x285a4  f  blit_zoom_remap?               ; the same kind through a table, reached from 0x26227
+0x52e94  f  blit_rle_heat                  ; as G's: mode -1, the screen 2 px to the right through the shape; only obj_draw_heat calls it
+0x26235  f  obj_draw_heat                  ; (not cut out, unreferenced) draw_objects skips mode -1, so the heat haze is never drawn
+0x27a34  f  blit_rle_mirror                ; as G's: mirrored; obj_draw_plain's when +0x92 & 0x88
+0x285a4  f  blit_rle_remap_mirror          ; as G's; obj_draw_remap's, mirrored
 0x2a8a3  d  scale_step_table               ; as G's: 151 row pointers, then [source size] → row of 16.16 steps (source / drawn size), to 0x503f7; Ghidra took it for 23 functions
 0x50eda  f  stretch_row_256_to_320         ; four pixels to five: a 256-wide row onto a 320-wide one (sixteen calls in a row from ~0x24524)
 0x2382b  f  obj_queue_depth                ; puts the object (edx) on depth list ax: 500 lists of 0x89c bytes from 0x2653c0, the count at +0x898
@@ -275,10 +276,10 @@
 0x18fd4  f  savegame_read                  ; SAVEGAME, 0x2000 bytes: 1 read, 2 short, 3 none
 0x19034  f  savegame_write
 0x19958  f  savegame_ready                 ; always 1
-0x1720d  f  save_card_full?                ; console leftover, unreachable (game_save never answers 4): "vacant block is less than required, delete a block?", then the delete list
-0x16fb4  f  save_delete_list_init?         ; the screen cleared, two pointers (templates 0x35, 0x36) and "delete a memory card slot"
-0x170c6  f  save_delete_list_names?        ; each slot's name 12 px apart, a non-name character shown as '?'
-0x1732a  f  save_delete_list_tick?         ; UP / DOWN round the slots, the pointers either side of the name
+0x1720d  f  save_card_full                 ; console leftover, unreachable (game_save never answers 4): "vacant block is less than required, delete a block?", then the delete list
+0x16fb4  f  save_delete_list_init          ; the screen cleared, two pointers (templates 0x35, 0x36) and "delete a memory card slot"
+0x170c6  f  save_delete_list_names         ; each slot's name 12 px apart, a non-name character shown as '?'
+0x1732a  f  save_delete_list_tick          ; UP / DOWN round the slots, the pointers either side of the name
 #
 # Shared with G.EXE: the same code, matched body to body against G's names (difflib >= 0.9 on the
 # normalised decompilation, read side by side).

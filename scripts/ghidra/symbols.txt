@@ -40,10 +40,10 @@
 0x18acc  f  scn_texture_mapper             ; affine scanline mapper, 80×4 pixels a row
 0x38be8  f  blit_rle                       ; the one scanline blitter for .SPR and .G2 (opaque)
 0x34ed8  f  blit_rle_blend                 ; variant: dst = blend[src*256 + dst]; clips to 320×200
-0x35c9c  f  blit_rle_v2                    ; variant, writes pixels differently
-0x3680c  f  blit_rle_v3                    ; variant, writes pixels differently
-0x3737c  f  blit_rle_v4                    ; variant, writes pixels differently
-0x37f94  f  blit_rle_v5                    ; variant, writes pixels differently
+0x35c9c  f  blit_rle_heat                  ; draw mode -1 (HEAT): no pixel of the frame is drawn — each one the shape covers takes the screen's pixel 2 to its right ([edi + 2])
+0x3680c  f  blit_rle_mirror                ; right to left from the clipped right edge (dec edi): the frame mirrored
+0x3737c  f  blit_rle_remap_mirror          ; mirrored, each pixel through the remap table
+0x37f94  f  blit_rle_remap                 ; each pixel through the remap table (the entity's mode +0x20)
 
 # ── input ─────────────────────────────────────────────────────────────────
 0x6b79b  f  assign_input_devices           ; device (+0x2a) and control mode (+0x166) per player
@@ -468,7 +468,7 @@
 0x6ad80  f  draw_entity_scaled             ; an entity flagged +0x43 bit 8: its frame (+0xd0) at its screen point (+0xcc, +0xce), scaled 320 / (camera width - its depth +0x2e) — perspective
 0x6ae1e  f  draw_entity_blend              ; a scaled sprite in mode -2 (template +0x18 bits 0xa000): added light
 0x6aebc  f  draw_entity_resized            ; an entity flagged +0x43 bit 0x80: its frame at its screen point, stretched by +0x50 / +0x52 px
-0x6b400  f  draw_sprite_layers             ; the draw lists 63 down to 19 (0x328 bytes each from 0x3e17a4: up to 201 entities, the count at +0x324), each drawn last-queued first and emptied — before objects_tick, so behind the level's blocks. Per visible entity (+0x40 bit 8): +0x42 bit 0x80 by depth, +0x43 bit 8 scaled (mode -2 added light), +0x43 bit 0x80 resized, else by its mode +0x20: 0 plain or mirrored, -1 mirrored both ways, -2 blended, others remapped
+0x6b400  f  draw_sprite_layers             ; the draw lists 63 down to 19 (0x328 bytes each from 0x3e17a4: up to 201 entities, the count at +0x324), each drawn last-queued first and emptied — before objects_tick, so behind the level's blocks. Per visible entity (+0x40 bit 8): +0x42 bit 0x80 by depth, +0x43 bit 8 scaled (mode -2 added light), +0x43 bit 0x80 resized, else by its mode +0x20: 0 plain or mirrored (+0x40 bit 4), -1 heat haze, -2 blended, others remapped or remapped mirrored
 0x6b533  f  draw_sprite_layers_2           ; the draw lists 18 down to 0, as draw_sprite_layers — after the blocks and the effects, so in front of them
 0x6caf0  f  entity_alloc                   ; from the free list at 0x594d04
 0x2eda0  f  spawn_setup                    ; fills last_spawned from the template at 0x3f2064 (sheet, frame, routine) and queues it for entities_settle: a new one (entity_alloc) on 0x3f1a1c, flags 9 — it gets its collider at the next settle; with the 201 all taken, the first unused one (find_free_entity) is taken over instead, on 0x3f16f4, flags 0x40000008

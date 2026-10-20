@@ -87,10 +87,10 @@
 0x6a204  f  keyboard_install               ; the old int 9 vector kept, ours in
 0x6a240  f  keyboard_remove
 0x6a26a  f  sprite_sheets_forget_2
-0x6a6a2  f  draw_entity_flip_y             ; draw_entity_scaled variants by mirroring and blend: set up the blitter's corners
-0x6a7ab  f  draw_entity_plain
-0x6a8cf  f  draw_entity_flip_x
-0x6a9ef  f  draw_entity_flip_xy
+0x6a6a2  f  draw_entity_mirrored           ; draw_sprite_layers' unscaled draws: set up the blitter's corners — mode 0 with +0x40 bit 4 (blit_rle_mirror)
+0x6a7ab  f  draw_entity_remap              ; a remap mode, not mirrored (blit_rle_remap)
+0x6a8cf  f  draw_entity_remap_mirrored     ; a remap mode, +0x40 bit 4 (blit_rle_remap_mirror)
+0x6a9ef  f  draw_entity_heat               ; mode -1 (blit_rle_heat)
 0x6aafb  f  draw_entity_blend_2
 0x6ac07  f  draw_entity_depth              ; a scene sprite scaled by 0x50000000 / (z − camera z), shift +0x4a
 0x6acd1  f  draw_entity_depth_saved        ; the same, saving the screen under it first (save_screen_rect)
