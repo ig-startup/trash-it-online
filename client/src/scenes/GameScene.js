@@ -25,6 +25,7 @@ import Gits from './gits';
 import Bonuses from './bonuses';
 import Popups from './popups';
 import Bell from './bell';
+import { playSfx, SFX, BLOW_BY_MATERIAL, LAND_BY_MATERIAL } from '../audio/sfx';
 import BonusRound, { preloadBonusRound } from './bonusRound';
 import TimmyBins from './timmyBins';
 import Flags from './flags';
@@ -301,6 +302,7 @@ export default class GameScene extends Phaser.Scene {
         tw: Math.max(1, Math.round(d.width / this._tile)),
         th: Math.max(1, Math.round(d.height / this._tile)),
         mass: d.mass || 1,
+        mat: d.mat || 0,
       };
       this._destructibleMap.set(d.id, entry);
       this._stampCells(entry);
@@ -562,7 +564,7 @@ export default class GameScene extends Phaser.Scene {
           this._timmyText.setText(`ТИММИ ${this._gits.collected}`);
           if (this._bellBins > 0) {
             this._bellBins -= 1;
-            if (this._bellBins === 0) this._releaseBell();
+            if (this._bellBins === 0) this._releaseBell(SFX.BELL_FREED_BINS);
             this._showBins();
           }
         },
@@ -872,12 +874,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // ── The bell ──────────────────────────────────────────────────────────
-    // Blocks take the blow once, on the frame it lands (the player's
-    // `hammer_impact`, wired in create). The bell only needs a touch — by
-    // Jack or by his hammer, which bell_touch_tick (VA 0x34114) traces back
-    // to the same Jack.
-    this._checkHammerBell();
-
+    // It is rung by a blow from above, not by a touch: see _ringBell.
     this._bell.update(delta);
     if (this._bonusRound && !this._over) this._bonusRound.update(delta);
     this._tickDynamite(time);
@@ -1215,6 +1212,8 @@ export default class GameScene extends Phaser.Scene {
         if (left <= 0) break;
         const hit = blocks.find((e) => e.rect.active && e.rect.getBounds().contains(c.x, c.y));
         if (!hit) continue;
+        // each struck cell sounds of its block's material, a tick apart (VA 0x1fb6e)
+        playSfx(BLOW_BY_MATERIAL[hit.mat] || BLOW_BY_MATERIAL[0], { delay: left & 7 });
         this._applyForce(hit, force, 0, { tally: new Map(), visits: 0, mask: stats.mask });
         left -= 1;
       }
@@ -1227,6 +1226,7 @@ export default class GameScene extends Phaser.Scene {
     // Only the overhead blow reaches sprites, and of the dynamite only the
     // kind a hammer lights listens for it.
     if (!overhead) return;
+    this._ringBell(reach, pl);
     if (this._cannons) this._cannons.hit(reach);
     if (this._suckers) this._suckers.hit(reach);
     if (this._ufos) this._ufos.hit(reach);
@@ -1237,6 +1237,7 @@ export default class GameScene extends Phaser.Scene {
       if (d.lit || d.litBy !== 'hammer' || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(reach, d.sprite.getBounds())) {
         d.lit = this.time.now + FUSE_MS;
+        playSfx(SFX.DYNA_STRUCK);   // dyna_hammer_state
       }
     });
   }
@@ -1273,6 +1274,7 @@ export default class GameScene extends Phaser.Scene {
       const box = d.sprite.getBounds();
       if (bodies.some((b) => Phaser.Geom.Intersects.RectangleToRectangle(b, box))) {
         d.lit = time + FUSE_MS;
+        playSfx(SFX.DYNA_LIT);      // dyna_touched_outcome
       }
     });
     for (let i = this._dynamite.length - 1; i >= 0; i -= 1) {
@@ -1304,6 +1306,7 @@ export default class GameScene extends Phaser.Scene {
       force = BLAST_FORCE, mask = BLAST_RUBBLE_MASK, spreadX = BLAST_SPREAD, spreadY = BLAST_SPREAD,
       shockAt = { x, y },
     } = opts;
+    playSfx(SFX.DYNA_BOOM);       // dyna_explode
     if (hasProps(this)) {
       const boom = this.add.image(x, y, PROP_ANIMS.blast[0]).setDepth(6);
       applyPropFrame(boom, PROP_ANIMS.blast[0]);
@@ -1399,7 +1402,8 @@ export default class GameScene extends Phaser.Scene {
     if (this._collapse) this._collapse.touch();   // any hit sets the dirty flag
 
     if (entry.hp <= 0) {
-      this._rubble.add(entry.rect, blow.mask || HAMMER_RUBBLE_MASK);
+      this._rubble.add(entry.rect, blow.mask || HAMMER_RUBBLE_MASK, entry.mat);
+      blow.cells = (blow.cells || 0) + (entry.width >> 3) * (entry.height >> 3);
       this._forgetBlock(entry);
     } else if (entry.rect.setFillStyle) {
       entry.rect.setFillStyle(WORLD_COLORS.rubbleDark); // plain rectangle
@@ -1407,7 +1411,11 @@ export default class GameScene extends Phaser.Scene {
       entry.rect.setTint(0x996655); // real block: darken the artwork
     }
 
-    if (depth === 0) this._reportBlow(blow);
+    if (depth === 0) {
+      // a blow that brought down more than 20 cells crashes (VA 0x1fc47)
+      if (blow.cells > 20) playSfx(SFX.BLOCKS_DOWN);
+      this._reportBlow(blow);
+    }
   }
 
   /**
@@ -1492,6 +1500,9 @@ export default class GameScene extends Phaser.Scene {
    * and shakes the screen by how hard it was.
    */
   _landed(hit, hitter, force) {
+    // what it came down on sounds of its material (group_landed, table 0x9ff14)
+    const on = hit || hitter;
+    if (on) playSfx(LAND_BY_MATERIAL[on.mat] || LAND_BY_MATERIAL[0], { delay: Math.floor(Math.random() * 4) });
     if (force > 0) {
       // `hit` is null when it came down on the floor
       if (hit) this._applyForce(hit, force, 0, undefined, { down: true, up: false });
@@ -1544,8 +1555,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /** The bell pops into view: kicked up, and down it comes (VA 0x340af). */
-  _releaseBell() {
+  _releaseBell(sound = SFX.BELL_FREED_PCT) {
     this._bell.release();
+    playSfx(sound);   // bell_wait_percent 0x8f, bell_wait_option_800 0x82
     this._flashBonus('КОЛОКОЛЬЧИК!');
   }
 
@@ -1575,14 +1587,24 @@ export default class GameScene extends Phaser.Scene {
     return out;
   }
 
-  _checkHammerBell() {
-    if (!this._bell || this._bell.hidden) return;
-    const bellBounds = this._bell.getBounds();
-    // The bell is the goal, so touching it anywhere counts — and every
-    // player rings it, each for himself.
-    this._liveJacks().forEach((j) => {
-      if (!Phaser.Geom.Intersects.RectangleToRectangle(j.player.getBounds(), bellBounds)) return;
+  /**
+   * An overhead blow's reach against the bell. bell_touch_tick (VA 0x34114)
+   * rings only on the sprite's "hit from above" flag (+0x40 bit 0x80), which
+   * the overhead strike sets (and the ground pound, not in the clone), and
+   * only while the bell stands on something (bit 0x10) — touching it, or a
+   * sideways blow, does nothing. The hitter (+8) is traced back to his Jack.
+   * Every player rings it, each for himself.
+   * @param {Phaser.Geom.Rectangle} reach
+   * @param {Player} pl
+   */
+  _ringBell(reach, pl) {
+    if (!this._bell || this._bell.hidden || !this._bell.grounded || this._over) return;
+    if (!Phaser.Geom.Intersects.RectangleToRectangle(reach, this._bell.getBounds())) return;
+    [this._liveJacks().find((k) => k.player === pl)].forEach((j) => {
+      if (!j) return;
       this._bell.ring();
+      // every ring, and the last one — the level over — its own (VA 0x34255, 0x342a4)
+      playSfx(this._liveJacks().length > 1 ? SFX.BELL_RUNG : SFX.BELL_LAST);
       this._rung.push(j);
       // Whoever rings is out of the level (Jack and hammer flagged done,
       // VA 0x34114); the level ends when everyone has rung.
@@ -1943,7 +1965,7 @@ export default class GameScene extends Phaser.Scene {
     sm.on(EVENTS.OBJECT_DESTROYED, ({ objectId } = {}) => {
       const entry = this._destructibleMap.get(objectId);
       if (entry && entry.rect.active) {
-        this._rubble.add(entry.rect, HAMMER_RUBBLE_MASK);
+        this._rubble.add(entry.rect, HAMMER_RUBBLE_MASK, entry.mat);
         this._forgetBlock(entry);
       }
     });
