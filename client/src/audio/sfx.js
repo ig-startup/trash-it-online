@@ -270,6 +270,8 @@ export const SFX = {
   UFO: 0x84,
   UFO_BEAM: 0x86,
   UFO_ZAP: 0x87,
+  PANEL_A: 0x8d,          // jack_touch_panel, rubble_extra_life_tick
+  PANEL_B: 0x8c,
   CLOCK_LAST: 0x63,       // hud_clock_tick
   PAUSE_MOVE: 0x01,
   PAUSE_PICK: 0x30,
