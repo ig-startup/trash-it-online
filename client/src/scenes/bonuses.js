@@ -59,7 +59,7 @@ export default class Bonuses {
    * @param {(seconds: number) => void} world.addTime
    * @param {(ticks: number) => void} world.superHoover
    * @param {(ticks: number) => void} world.doublePoints
-   * @param {() => void} world.secret
+   * @param {(jack: any) => void} world.secret  a panel taken, by that Jack
    * @param {() => void} world.shake
    */
   constructor(scene, level, world) {
@@ -173,10 +173,12 @@ export default class Bonuses {
   _tick() {
     const boxes = this._w.jacks()
       .filter((j) => j && j.active && j.body && j.body.enable)
-      .map((j) => j.getBounds());
+      .map((j) => ({ jack: j, box: j.getBounds() }));
+    /** The Jack touching `s`, if one is. */
     const touches = (s) => {
       const b = s.getBounds();
-      return boxes.some((box) => Phaser.Geom.Intersects.RectangleToRectangle(box, b));
+      const hit = boxes.find(({ box }) => Phaser.Geom.Intersects.RectangleToRectangle(box, b));
+      return hit ? hit.jack : null;
     };
 
     for (let i = this.prizes.length - 1; i >= 0; i -= 1) {
@@ -234,13 +236,14 @@ export default class Bonuses {
         p.spark += 1;
         if (p.spark >= 16) p.twinkle.setVisible(false);
       }
-      if (touches(p.sprite)) {
-        // a puff where it was (jack_touch_panel 0x1bacb)
+      const by = touches(p.sprite);
+      if (by) {
+        // a puff where it was, sparks round him (jack_touch_panel 0x1bacb)
         if (this._w.puff) this._w.puff(p.x, p.y, p.sprite.width, p.sprite.height);
         p.sprite.destroy();
         p.twinkle.destroy();
         this.panels.splice(i, 1);
-        this._w.secret();
+        this._w.secret(by);
       }
     }
   }

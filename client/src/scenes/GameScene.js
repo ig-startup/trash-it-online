@@ -611,8 +611,12 @@ export default class GameScene extends Phaser.Scene {
         },
         superHoover: (ticks) => { this._superHoover = ticks; },
         doublePoints: (ticks) => { this._doublePoints = ticks; },
-        secret: () => {
+        secret: (jack) => {
+          // jack_touch_panel 0x1bacb: 32 sparks round him, sounds 0x8d, 0x8c
           this._secrets += 1;
+          if (this._popups) this._popups.sparks(jack);
+          playSfx(SFX.PANEL_A);
+          playSfx(SFX.PANEL_B);
           this.cameras.main.shake(120, 0.004);
           this._flashBonus('СЕКРЕТ!');
         },
@@ -750,7 +754,15 @@ export default class GameScene extends Phaser.Scene {
 
     /** Rubble hoovered up, as the game counts it: area / 16 a piece. */
     this._rubbleTaken = 0;
-    this._rubbleText = this._hud(this.add.text(784, panelTop + 40, `МУСОР ${this._rubbleTaken}`, {
+    /**
+     * The panel's rubble number (0x287bec): the same additions, less 10000
+     * for each life it has paid (rubble_extra_life_tick, see _lifeTick).
+     * G.EXE is run afresh for each level, so it starts at 0.
+     */
+    this._panelRubble = 0;
+    this._lifeFlash = 0;
+    this._lifeAcc = 0;
+    this._rubbleText = this._hud(this.add.text(784, panelTop + 40, `МУСОР ${this._panelRubble}`, {
       fontSize: '16px',
       fill: '#ffcc33',
       stroke: '#000000',
@@ -870,8 +882,10 @@ export default class GameScene extends Phaser.Scene {
     if (taken && this._doublePoints > 0) taken *= 2;
     if (taken) {
       this._rubbleTaken += taken;
-      this._rubbleText.setText(`МУСОР ${this._rubbleTaken}`);
+      this._panelRubble += taken;
+      this._rubbleText.setText(`МУСОР ${this._panelRubble}`);
     }
+    for (this._lifeAcc += ticks; this._lifeAcc >= 1; this._lifeAcc -= 1) this._lifeTick();
 
     // ── The bell ──────────────────────────────────────────────────────────
     // It is rung by a blow from above, not by a touch: see _ringBell.
@@ -1689,6 +1703,36 @@ export default class GameScene extends Phaser.Scene {
       if (state === QUIT_LEVEL && this._story) this._backToMap('quit');
       else this.scene.start('MenuScene');
     });
+  }
+
+  /**
+   * A life for 10000 of rubble (rubble_extra_life_tick 0x1a9b0, list
+   * 0x97284 — the story's panel only, so not in a bonus round; see
+   * docs/re/front/level-record.md). Past 10000 the number flashes 64
+   * ticks; then 10000 comes off it and off the story's score, the lives
+   * go up one, 32 panel sparks fly round Jack 1, sounds 0x8d and 0x8c.
+   * The rubble the level hands on at its end is not reduced.
+   */
+  _lifeTick() {
+    if (!this._story || this._bonusRound) return;
+    if (this._lifeFlash === 0) {
+      if (this._panelRubble > 10000) this._lifeFlash = 64;
+      return;
+    }
+    this._lifeFlash -= 1;
+    this._rubbleText.setVisible(this._lifeFlash === 0 || (this._lifeFlash & 4) === 0);
+    if (this._lifeFlash !== 1) return;
+    this._panelRubble -= 10000;
+    this._rubbleText.setText(`МУСОР ${this._panelRubble}`);
+    this._story.score -= 10000;
+    this._story.lives += 1;
+    this._modeLabelText.setText(this._modeLabel());
+    this._modeText.setText(`${this._modeLabel()} | ${this._roomCode}`);
+    const first = this._jacks[0] && this._jacks[0].player;
+    if (this._popups && first) this._popups.sparks(first);
+    playSfx(SFX.PANEL_A);
+    playSfx(SFX.PANEL_B);
+    this._flashBonus('+1 ЖИЗНЬ');
   }
 
   /** The story goes on on the world map, the level won or lost. */

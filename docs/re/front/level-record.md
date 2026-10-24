@@ -73,4 +73,15 @@ record's score (`+0x10`, a plain 10000), the record's lives (`+0x24`) go
 up by one, 32 panel sparks fly off Jack 1 and sounds 0x8d and 0x8c play.
 It can come round again in the same level. The rubble the level reports
 at its end (`+0x0c`, from 0x287bf0) is not reduced, so in all a life costs
-10000 of score. Only the story's panel carries this tick.
+10000 of score. Only the story's panel carries this tick. Nothing in
+G.EXE clears 0x287bec — it starts at 0 because G.EXE is run afresh for
+each level (F.EXE exits to start it, `frame.md`), so the 10000 must be
+hoovered within one level. "Past" is strictly more: `0x10000 <` in BCD.
+The flash counts 64 down; the life comes on the tick it reaches 1. The
+sparks are `spawn_panel_spark`'s (the panel taken throws the same 32 at
+the Jack who took it): each starts at a random 16-bit point and eases
+onto Jack 1's feet plus a 64-step sine of 73 px (table 0x98b96,
+`orbit_wobble` 0x1d252), x a quarter of the way a tick, y an eighth,
+twinkling through PANEL.SPR 21-36 with sound 0x88 each time its x step
+comes round; after 50-177 ticks it flies off sideways (`spark_fly`).
+Clone: `GameScene._lifeTick`, sparks in `popups.js`.
