@@ -5,7 +5,7 @@ own assets and rules, read out of its binaries, in Phaser 3 + Node.
 
 ## Starting a session
 
-Read this file and the wiki's `текущие приоритеты.md` (path in `WIKI.md`) —
+Read this file and the wiki's `status.md` and `backlog.md` (path in `WIKI.md`) —
 nothing else up front. Everything below is read when the task needs it.
 
 ## Where things are
@@ -56,7 +56,7 @@ npm run lint
 
 ## Ending a session
 
-Notes in `docs/re/` + `re_index.py`, then the wiki: a session log in
-`sessions/`, `текущие приоритеты.md` (open items only — what got closed goes
-into the session log), the "last session" line in `index.md`.
+Notes in `docs/re/` + `re_index.py`, then the wiki: a one-line entry in
+`changelog.md`, statuses in `backlog.md`, `status.md` if the state changed.
+No session logs.
 Commit messages: `feat:|fix:|docs:` + a plain-English sentence.
