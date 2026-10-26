@@ -59,6 +59,7 @@ export default class Bonuses {
    * @param {(seconds: number) => void} world.addTime
    * @param {(ticks: number) => void} world.superHoover
    * @param {(ticks: number) => void} world.doublePoints
+   * @param {(sprite: any) => void} [world.shown]  a prize for the camera to take in
    * @param {(jack: any) => void} world.secret  a panel taken, by that Jack
    * @param {() => void} world.shake
    */
@@ -99,7 +100,9 @@ export default class Bonuses {
     if (kind === 0) {
       this.prizes.push({ kind: 'clock', sprite: this._image('clok', 0, x, y), x, y, vx: 0, vy: 0, t: 0 });
     } else if (kind === 2) {
-      this.prizes.push({ kind: 'hoover', sprite: this._image('bvac', 0, x, y - 20), x, y: y - 20, vx: 0, vy: HOOVER_VY, t: 0 });
+      const sprite = this._image('bvac', 0, x, y - 20);
+      this.prizes.push({ kind: 'hoover', sprite, x, y: y - 20, vx: 0, vy: HOOVER_VY, t: 0 });
+      if (this._w.shown) this._w.shown(sprite);   // spawn_super_hoover, VA 0x1b447
     } else if (kind === 3) {
       const bubble = this._image('bubble', 0, x, y).setBlendMode(Phaser.BlendModes.ADD);
       this.prizes.push({ kind: 'bubble', sprite: bubble, x, y, vx: 0, vy: 0, t: 0 });

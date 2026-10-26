@@ -3,8 +3,14 @@
 The camera does not follow Jack: it frames a **list of targets**, and
 anything can join that list for a while — a bell that pops out, a hidden
 button that appears, a launched see-saw load, a fixed point a script
-places. The clone's camera (`client/src/scenes/GameScene.js`,
-`_updateCamera`) frames the Jacks only; the list is what it lacks.
+places. The clone keeps the list in `client/src/scenes/GameScene.js`
+(`_camTrack`, `_camPoint`, `_updateCamera`): the Jacks, plus a hidden
+button, the bell freed and rung, an armed sucker, the super hoover, a
+see-saw's load, a cannon's shot and the demolition's point. Not yet: the
+sledge v3 slam, the apocalypse, MOOLA, the dragon show, Jack in the hat,
+the bonus round. A cannon's shot is tracked only when the cannon's
+`+0x41` has bit 0x80 (`launch_at_45`); what that bit means is not read,
+so the clone tracks every shot.
 
 ## The list
 

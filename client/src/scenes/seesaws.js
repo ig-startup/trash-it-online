@@ -87,6 +87,7 @@ export default class Seesaws {
         h.anchored = false;
         applyPropFrame(h.sprite, PROP_ANIMS.lead[0]);
         this._loose.throw(h, h.sprite.x, h.sprite.y - LAUNCH_LIFT, 0, -speed);
+        if (hooks.launched) hooks.launched(h);
       }
     }
     s.down = end;
