@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PROP_ANIMS, applyPropFrame } from '../entities/props';
 import { floorUnder } from './blockKinds';
+import { playSfx, stopSfx, SFX } from '../audio/sfx';
 
 /**
  * UFOs — `.OB` class 31 (constructor VA 0x13079, BON/UFO.SPR). See "The
@@ -116,6 +117,7 @@ export default class Ufos {
       if (!HITTABLE.has(u.state)) return;
       if (!Phaser.Geom.Intersects.RectangleToRectangle(reach, u.sprite.getBounds())) return;
       this._go(u, 'hit');
+      playSfx(SFX.UFO_HIT);   // ufo_descend / _landed / _take_off, flag 0x80
     });
   }
 
@@ -145,8 +147,25 @@ export default class Ufos {
     for (const u of [...this.all]) {
       this[`_${u.state}`](u);
       u.t += 1;
+      this._hum(u);
     }
     this._tickBits();
+  }
+
+  /**
+   * The engine (start_ufo's looped_sound_add, VA 0x137b6): it hums while
+   * the UFO is in view, stopped when it leaves and started again when it
+   * comes back (looped_sounds_update 0x15ea0). The game also caps how many
+   * hums restart at once (0xce8fc); the clone does not.
+   */
+  _hum(u) {
+    const on = u.sprite.active && this._seen(u);
+    if (on && !(u.hum && u.hum.busy && u.hum.id === SFX.UFO_HUM)) u.hum = playSfx(SFX.UFO_HUM);
+    else if (!on && u.hum) { stopSfx(u.hum, SFX.UFO_HUM); u.hum = null; }
+  }
+
+  _seen(u) {
+    return this._scene.cameras.main.worldView.contains(u.x, u.y);
   }
 
   _go(u, state) {
@@ -356,7 +375,10 @@ export default class Ufos {
       u.y = t.y - HOVER;
       t.setData('beamed', true);
     }
-    if (u.t % 8 === 0) this._bit(F.RING, u.x, u.y + HOVER, 0, 0, { rise: u, life: 60 });
+    if (u.t % 8 === 0) {
+      this._bit(F.RING, u.x, u.y + HOVER, 0, 0, { rise: u, life: 60 });
+      if (u.t > BEAM_LIFT_AFTER && this._seen(u)) playSfx(SFX.UFO_BEAM);
+    }
     if (!t.active || this._w.loose.isBusy(t)) {
       if (t.active) { t.setScale(1); t.setData('beamed', false); }
       u.timmy = null;
@@ -406,7 +428,10 @@ export default class Ufos {
       u.x = jack.x;
       u.y = jack.y - HOVER;
     }
-    if (u.t % 4 === 0) this._bit(F.BOLT, u.x, u.y + 10 + (HOVER - 10) / 2, 0, 0, { life: 4, stretch: (HOVER - 10) / 32 });
+    if (u.t % 4 === 0) {
+      this._bit(F.BOLT, u.x, u.y + 10 + (HOVER - 10) / 2, 0, 0, { life: 4, stretch: (HOVER - 10) / 32 });
+      if (this._seen(u)) playSfx(SFX.UFO_ZAP);
+    }
     if (u.t === ZAP_AT) {
       if (jack.state === 'caught') { this._go(u, 'roam'); return; }
       if (Math.abs(u.x - jack.x) < ZAP_REACH) {
@@ -449,12 +474,14 @@ export default class Ufos {
     if (u.t % 4 === 0) this._spark(u);
     u.sprite.x = u.x + (u.t % 2 ? 2 : -2);
     if (u.t > DIE_AFTER) {
+      playSfx(SFX.UFO_BLOWN);   // ufo_dying, with the shake
       this._w.explode(u.x, u.y);
       for (let i = 0; i < 6; i += 1) {
         this._bit(F.DEBRIS_LO + (i % 6), u.x, u.y - 8, spread(3), -1 - Math.random() * 3,
           { gravity: true, life: 120 });
       }
       u.sprite.destroy();
+      this._hum(u);
       this.all.splice(this.all.indexOf(u), 1);
     }
   }
@@ -477,6 +504,7 @@ export default class Ufos {
     const frame = F.DEBRIS_LO + Math.floor(Math.random() * (F.DEBRIS_HI - F.DEBRIS_LO + 1));
     this._bit(frame, u.x + spread(16), u.y - 8, spread(2), -1 - Math.random() * 2,
       { gravity: true, life: 45 });
+    if (this._seen(u)) playSfx(SFX.UFO_SPARK);
   }
 
   // ── pieces ───────────────────────────────────────────────────────────────
@@ -524,7 +552,7 @@ export default class Ufos {
   }
 
   destroy() {
-    this.all.forEach((u) => u.sprite.destroy());
+    this.all.forEach((u) => { u.sprite.destroy(); stopSfx(u.hum, SFX.UFO_HUM); });
     this._bits.forEach((b) => b.s.destroy());
     this.all = [];
     this._bits = [];

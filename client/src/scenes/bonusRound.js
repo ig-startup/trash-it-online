@@ -1,3 +1,5 @@
+import { playSfx, SFX } from '../audio/sfx';
+
 /**
  * The bonus screens — a world's C, and its exit's D: one big object
  * mid-screen to be hammered down before the clock runs out (G.EXE VA
@@ -143,6 +145,7 @@ export default class BonusRound {
             if (this._main.frameNo < STAGES - 1) {
               this._place(this._main, this._main.frameNo + 1);
               this._scene.cameras.main.shake(200, 0.008);
+              playSfx(SFX.BONUS_CRACK);   // bonus_object_tick, a frame on
             }
           }
           this._cool = COOLDOWN;
@@ -188,6 +191,10 @@ export default class BonusRound {
     this._notch = spec.count;
     this._hp = 0;
     this._scene.cameras.main.shake(400, 0.015);
+    // bonus_object_tick (VA 0x10fb5-0x10fc9): two cracks and the long rumble
+    playSfx(SFX.BONUS_CRACK);
+    playSfx(SFX.BONUS_CRACK);
+    playSfx(SFX.BONUS_RUMBLE);
     for (let f = spec.pieces + FIRST_PIECE - 1; f >= FIRST_PIECE; f -= 1) {
       const img = this._sprite(f, spec.x, spec.y);
       this._flying.push({

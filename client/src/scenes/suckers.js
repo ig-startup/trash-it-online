@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { PROP_ANIMS, applyPropFrame } from '../entities/props';
+import { playSfx, SFX } from '../audio/sfx';
 
 /**
  * Suckers — `.OB` class 22 (constructor VA 0x18fba, template 0x96de0). See
@@ -81,6 +82,8 @@ export default class Suckers {
       s.count = ARMED;
       s.wait = ARMED_STEP;
       s.table = null;
+      playSfx(SFX.SUCKER_CATCH);   // sucker_base_state, the hit flag
+      playSfx(SFX.SUCKER_ARMED);
       if (armed) armed(s);
     });
   }
@@ -96,6 +99,7 @@ export default class Suckers {
     if (!s) return null;
     s.table = SINK;
     s.t = 0;
+    playSfx(SFX.SUCKER_CATCH);     // sucker_catch_outcome
     return s;
   }
 
@@ -150,6 +154,7 @@ export default class Suckers {
     if (down && !s.wasDown && s.state === 'idle') {
       s.table = WOBBLE;
       s.t = 0;
+      playSfx(SFX.SUCKER_WOBBLE);
     }
     s.wasDown = down;
 
@@ -190,9 +195,11 @@ export default class Suckers {
       s.rider = null;
       s.state = 'throwing';
       s.table = SPRING;
+      playSfx(SFX.SUCKER_THROW);
     } else {
       s.state = 'hopping';
       s.table = HOP;
+      playSfx(SFX.SUCKER_HOP);
     }
     s.t = 0;
   }

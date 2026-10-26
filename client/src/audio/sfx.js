@@ -105,6 +105,11 @@ export function playSfx(id, opts = {}) {
   return v;
 }
 
+/** sound_stop_all (0x167b3): every voice — level_finish, the level's end. */
+export function stopAllSfx() {
+  voices.forEach((v) => { if (v.busy) free(v); });
+}
+
 /** Stops a voice `playSfx` returned, if it is still that sound. */
 export function stopSfx(v, id) {
   if (v && v.busy && (id === undefined || v.id === id)) free(v);
@@ -241,8 +246,9 @@ export const SFX = {
   FLATTENED: 0x6e,        // jack_flattened
   FLY_HOME: 0x98,         // jack_fly_to_flag
   HAT_HOP: 0x52,          // jack_in_hat, the hop
-  HAT_IN: 0x11,           // jack_in_hat
-  HAT_OUT: 0x3e,          // jack_out_of_hat
+  HAT_UP: 0x11,           // jack_in_hat: Up, coming out
+  HAT_SCRAPE: 0x56,       // jack_in_hat_moving, frames 7 and 11
+  HAT_BONK: 0x3e,         // jack_out_of_hat: his head met something, back in
   HARD_LANDING: 0x57,     // jack_hard_landing
   STUNG: 0x0b,            // jack_touch_spike, jack_flung_by
   DEPOSIT: 0x6d,          // jack_stand: timmies dropped at his flag
@@ -257,22 +263,48 @@ export const SFX = {
   TELLY_PAD: 0x36,        // telly_pad_state, opening and closing
   TELLY_SEND: 0x37,       // telly_send
   GOT: 0x64,              // spawn_got_popup
-  GIT_STEP: 0x19,         // git_tick
+  GIT_KNOCKED: 0x19,      // git_tick: a timmy knocked by the hammer
   GIT_STRUCK: 0x6a,       // git_struck_puff, bomb_blow
-  HOOVER_DRAW: 0x16,      // hoover_tick
-  HOOVER_AWAY: 0x17,
-  HOOVER_SUCK: 0x18,      // hoover_suck_box
+  SPIKE_MUTTER: 0x44,     // git_tick: a spike in view, every 16 ticks
+  SPIKE_BRISTLE: 0x50,    // spike_tick
+  HOOVER_ON: 0x16,        // hoover_tick: the motor, until put away
+  HOOVER_OFF: 0x17,       // hoover_tick, spawn_dropped_hoover: winding down
+  HOOVER_SUCK: 0x18,      // hoover_suck_box: a piece caught
   SEESAW_TIP: 0x4f,
   SEESAW_LAUNCH: 0x4e,
-  SUCKER_CATCH: 0x49,
-  SUCKER_WOBBLE: 0x4d,
-  CANNON_FIRE: 0x13,
-  UFO: 0x84,
-  UFO_BEAM: 0x86,
-  UFO_ZAP: 0x87,
+  SUCKER_CATCH: 0x49,     // sucker_base_state struck, sucker_catch_outcome
+  SUCKER_ARMED: 0x4a,     // sucker_base_state struck
+  SUCKER_THROW: 0x4b,     // sucker_armed: time up, the rider thrown
+  SUCKER_HOP: 0x4c,       // sucker_armed: time up, empty
+  SUCKER_WOBBLE: 0x4d,    // sucker_base_state: landing
+  CANNON_FIRE: 0x13,      // cannon_fire
+  CANNON_WHEEL: 0x3f,     // cannon_wheel_state
+  BALL_IN_BOWL: 0x2f,     // ball_into_bowl_outcome
+  BALL_LANDS: 0x3c,       // cannonball_flying
+  FUSE_FIZZ: 0x31,        // cannon_fuse_wait
+  FUSE_LIT: 0x30,
+  UFO_HUM: 0x48,          // start_ufo, looped while in view
+  UFO_HIT: 0x84,          // ufo_descend, ufo_landed, ufo_take_off: struck
+  UFO_SPARK: 0x85,        // ufo_spark
+  UFO_BEAM: 0x86,         // ufo_beam_timmy, a ring after 30 ticks
+  UFO_ZAP: 0x87,          // ufo_zap_jack, a bolt
+  UFO_BLOWN: 0x29,        // ufo_dying
+  BONUS_CRACK: 0x29,      // bonus_object_tick: a frame on, and the burst
+  BONUS_RUMBLE: 0x27,     // bonus_object_tick: the burst
   PANEL_A: 0x8d,          // jack_touch_panel, rubble_extra_life_tick
   PANEL_B: 0x8c,
   CLOCK_LAST: 0x63,       // hud_clock_tick
+  CLOCK_TURN: 0x3a,       // clock_tick
+  CLOCK_BURST: 0x3b,      // clock_hit
+  CLOCK_TAKEN: 0x93,      // jack_touch_clock
+  BUBBLE_HOP: 0x76,       // bubble_tick
+  DISPENSER_BALL: 0x3e,   // dispenser_fire
+  BONUS_STRUCK: 0x75,     // bonus_struck
+  BONUS_BURST: 0x3e,      // bonus_swell
+  SUPER_HOOVER_A: 0x94,   // super_hoover_on, the four together
+  SUPER_HOOVER_B: 0x95,
+  SUPER_HOOVER_C: 0x96,
+  SUPER_HOOVER_D: 0x97,
   PAUSE_MOVE: 0x01,
   PAUSE_PICK: 0x30,
 };

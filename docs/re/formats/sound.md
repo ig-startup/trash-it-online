@@ -51,9 +51,39 @@ percentage / the bins; dynamite 0x58 struck, 0x38 lit by a touch, 0x59
 the blast; a teleporter pad opening or closing in view 0x36, sending 0x37;
 the GOT popup 0x64.
 
+The hat, read again: ducking in (from standing, a skid, the hammer or
+the hoover) is 0x10, coming out on Up 0x11 (`jack_in_hat`), and 0x3e only
+when his head meets something on the way out and he drops back in
+(`jack_out_of_hat`); on the move in it, 0x56 on frames 7 and 11. A timmy
+knocked by the hammer 0x19 (`git_tick`); a spike in view mutters 0x44
+every 16 ticks, one spike a tick, and bristles 0x50 (`spike_tick` — sprite
+0x54, the git whose animations run at half speed, is the spike); a spike
+or bomb gone, its BLAM, 0x6a. A bonus git struck 0x75, bursting 0x3e. The
+UFO hums 0x48 while in view (`looped_sound_add`, stopped and restarted by
+`looped_sounds_update` as it leaves and re-enters the view), 0x84 struck,
+0x85 a spark, 0x86 a beam ring after 30 ticks, 0x87 a bolt, 0x29 blown
+up. The sucker: 0x4d the landing wobble, 0x49 + 0x4a armed, 0x49 a catch,
+0x4b the throw, 0x4c the empty hop. The seesaw 0x4f tipped, 0x4e its rider
+launched. The cannon: 0x2f a ball into the bowl, 0x31 + 0x30 the spark
+starting along the fuse, 0x13 the shot, 0x3f its wheel each 32 px, 0x3c a
+cannonball landing. The hoover's motor 0x16 from its list's show to its
+hide, then 0x17; 0x18 a piece caught. The clock: 0x3a each turn, 0x3b
+burst by the hammer, 0x93 taken; the HUD clock 0x63 each of the last ten
+seconds. The bubble 0x76 at each hop, the dispenser 0x3e a ball, the super
+hoover 0x94-0x97 at once. The pause menu 1 a row, 0x30 a pick.
+`play_sound_at` (bubble, forklift, cannons) also pans by the source's
+place in the view and fades as the view widens; the clone plays them
+centred, at full volume.
+
 **Voices**: 15 (the sample handles `ail_startup` gets); a sound takes a
 free one, else the next round the ring whose priority is no higher (never
 0x7fff), else it is not played (`sound_voice_alloc` 0x1618f). A `play`
 replaces the voice's sample, at volume 100; scripts step once a logic
-tick (`sound_tick` 0x162c7). The clone: `client/src/audio/sfx.js`, data
-from `scripts/export_sounds.py`; the pan ops are not played.
+tick (`sound_tick` 0x162c7). `level_finish` stops them all
+(`sound_stop_all` 0x167b3). The clone: `client/src/audio/sfx.js`, data
+from `scripts/export_sounds.py`; the pan ops are not played. Not played
+yet, for want of the thing in the clone: the hard landing 0x57, the ground
+pound 0x69, the stomp 0x70, skid dust 0x51, the bell's glow 0x41/0x42,
+the sign 0x3d, the HUD target 0x90, a group landing's 0x1b, the forklift
+0x14 and its super hoover 0x99. The bonus round's object: 0x29 each frame it
+cracks on, 0x29 twice and 0x27 when it bursts.

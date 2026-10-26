@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { playSfx, LAND_BY_MATERIAL } from '../audio/sfx';
+import { playSfx, SFX, LAND_BY_MATERIAL } from '../audio/sfx';
 
 /**
  * What a destroyed block becomes, and the hoover that clears it.
@@ -102,6 +102,7 @@ export default class Rubble {
           if (by) {
             p.sucked = true;
             p.into = by.who;
+            playSfx(SFX.HOOVER_SUCK);   // hoover_suck_box
           }
         }
         if (p.sucked) {

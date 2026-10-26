@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PROP_ANIMS, PROP_FRAME_INFO } from '../entities/props';
 import { COL } from './blockKinds';
+import { playSfx, SFX } from '../audio/sfx';
 
 /**
  * Cannons — `.OB` class 6 (constructor VA 0x5f69a). See "The cannon" in
@@ -140,6 +141,7 @@ export default class Cannons {
     c.phase = 'rock';
     c.ball = h;
     c.t = 0;
+    playSfx(SFX.BALL_IN_BOWL);   // ball_into_bowl_outcome
     return true;
   }
 
@@ -191,6 +193,11 @@ export default class Cannons {
       if (this._wall(ahead, c.y + BOTTOM - HEIGHT / 2)) c.vx *= WALL_BOUNCE;
       else c.x = x;
     }
+    // The wheel clicks once each time its x passes into the first 4 px of
+    // 32 (cannon_wheel_state, VA 0x5f911)
+    const click = (Math.floor(c.x) & 31) < 4;
+    if (click && !c.clicked) playSfx(SFX.CANNON_WHEEL);
+    c.clicked = click;
     // Rolled off what it stood on?
     if (c.grounded && !this._floor(c.x, c.y + BOTTOM, c.y + BOTTOM + 1)) c.grounded = false;
     if (!c.grounded) this._fall(c);
@@ -224,6 +231,11 @@ export default class Cannons {
       }
     } else if (c.phase === 'fuse') {
       c.t -= 1;
+      if (c.t <= 0 && c.step === 0) {
+        // the spark's wait over, it runs (cannon_fuse_wait, VA 0x5fdc7)
+        playSfx(SFX.FUSE_FIZZ);
+        playSfx(SFX.FUSE_LIT);
+      }
       if (c.t <= 0) {
         c.t = c.wheels ? 5 : 10;
         c.step += 1;
@@ -254,6 +266,7 @@ export default class Cannons {
     const dir = c.left ? -1 : 1;
     const v = SHOT[c.wheels ? 3 : 4];
     h.sprite.setVisible(true);
+    playSfx(SFX.CANNON_FIRE);   // cannon_fire, heard from the camera (not panned here)
     this._fire(h, c.x + dir * MUZZLE.x, c.y + MUZZLE.y, dir * v, -v, c);
     if (c.wheels) {
       c.vx = -dir * v / 2;

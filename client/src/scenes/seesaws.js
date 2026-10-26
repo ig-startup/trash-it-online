@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { PROP_ANIMS, applyPropFrame } from '../entities/props';
+import { playSfx, SFX } from '../audio/sfx';
 
 /**
  * Seesaws and the 20-ton weights — `.OB` classes 0 (VA 0x1eb0d, BCSAW or
@@ -80,6 +81,7 @@ export default class Seesaws {
       const speed = v - LAUNCH_LOSS;
       if (speed < MIN_LAUNCH) return false;
       s.riders[other] = null;
+      playSfx(SFX.SEESAW_LAUNCH);   // seesaw_launch
       if (rider.player) {
         hooks.launchJack(rider.player, rider.player.x, rider.player.y - LAUNCH_LIFT, -speed);
       } else {
@@ -92,6 +94,7 @@ export default class Seesaws {
     }
     s.down = end;
     applyPropFrame(s.sprite, s.anim[end === 0 ? 0 : 1]);
+    playSfx(SFX.SEESAW_TIP);         // seesaw_tip
     return true;
   }
 

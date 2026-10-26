@@ -27,7 +27,7 @@ import Popups from './popups';
 import Bell from './bell';
 import Buttons from './buttons';
 import Rocket from './rocket';
-import { playSfx, SFX, BLOW_BY_MATERIAL, LAND_BY_MATERIAL } from '../audio/sfx';
+import { playSfx, stopAllSfx, SFX, BLOW_BY_MATERIAL, LAND_BY_MATERIAL } from '../audio/sfx';
 import BonusRound, { preloadBonusRound } from './bonusRound';
 import TimmyBins from './timmyBins';
 import Flags from './flags';
@@ -370,6 +370,9 @@ export default class GameScene extends Phaser.Scene {
       this._bonusRound = new BonusRound(this, level.bonusRound, () => this._bonusWon());
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bonusRound.destroy());
     }
+    // level_finish (0x10167) stops every voice: a hum or motor left on
+    // would otherwise outlive the level
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopAllSfx);
 
     // ── Dynamite ──────────────────────────────────────────────────────────
     // 202 placements across 42 levels, of two kinds: 63 that a hammer
@@ -513,6 +516,8 @@ export default class GameScene extends Phaser.Scene {
           return true;
         },
         impact: (h, hit) => {
+          // a cannonball coming down (cannonball_flying, VA 0x20ccf)
+          if (h.kind === 'ball' && !hit.side) playSfx(SFX.BALL_LANDS);
           // a weight landing presses what is under it (lead_lands_on, VA 0x1ea81)
           if (h.kind === 'lead' && !hit.side && this._buttons) {
             this._setOptions(this._buttons.hit(h.sprite.getBounds()));
@@ -1090,6 +1095,8 @@ export default class GameScene extends Phaser.Scene {
       this._clockMs -= 1000;
       this._timeLeft -= 1;
       this._showClock(this._timeLeft);
+      // hud_clock_tick (VA 0x19ec1): the last ten seconds beep
+      if (this._timeLeft > 0 && this._timeLeft <= 10) playSfx(SFX.CLOCK_LAST);
     }
     if (this._timeLeft <= 0) this._timeUp();
   }

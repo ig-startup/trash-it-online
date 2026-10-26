@@ -6,7 +6,7 @@ import {
   PROP_ANIMS, PROP_FRAME_INFO, HAMMER_BY_SLOT, HOOVER_BY_SLOT, hasProps,
 } from './props';
 import { JACK_FRAME_INFO, JACK_SCALE } from './jackSprites';
-import { playSfx, SFX } from '../audio/sfx';
+import { playSfx, stopSfx, SFX } from '../audio/sfx';
 import { MAX_CHARGE } from '../../../shared/constants.mjs';
 import {
   hammerAt, hammerKey, hammerFrameInfo, FIRST_HAMMER,
@@ -145,6 +145,7 @@ const ENTER_SOUND = {
   land: SFX.JUMP,
   windupSide: SFX.WINDUP_SIDE,
   windupOver: SFX.WINDUP_OVER,
+  hatIn: SFX.HAT_REACH,       // jack_stand / jack_skid on Down, jack_toss_hoover
   hammerDraw: SFX.HAT_REACH,
   hammerStow: SFX.HAT_REACH,
   hooverDraw: SFX.HAT_REACH,
@@ -152,7 +153,7 @@ const ENTER_SOUND = {
   hooverPutAway: SFX.HAT_REACH,
   pickUp: SFX.PICK_UP,
   throwRelease: SFX.THROW,
-  hatOut: SFX.HAT_OUT,
+  hatOut: SFX.HAT_UP,
   hatJump: SFX.HAT_HOP,
   stung: SFX.STUNG,
   flattened: SFX.FLATTENED,
@@ -1935,6 +1936,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       this._animFrame += 1;
       // jack_walk: a step on frames 2 and 10 of the run (VA 0x239ea)
       if (this.state === 'walk' && this.isLocal && (this._animFrame === 2 || this._animFrame === 10)) playSfx(SFX.STEP);
+      // jack_in_hat_moving: the hat scrapes along on frames 7 and 11 (VA 0x24afe)
+      if (this.state === 'hatWalk' && this.isLocal && (this._animFrame === 7 || this._animFrame === 11)) playSfx(SFX.HAT_SCRAPE);
 
       if (this._animFrame >= this._length(spec)) {
         if (spec.loop) {
@@ -2003,6 +2006,14 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this.vac.setTexture(this._vacKey);
       }
       this.vac.setVisible(!this._vacHidden);
+      // hoover_tick (VA 0x6166f, 0x6160d): its motor runs from the list's
+      // show until its hide, and winds down after
+      if (this.isLocal && !this._vacHidden && !this._vacHum) this._vacHum = playSfx(SFX.HOOVER_ON);
+      if (this._vacHidden && this._vacHum) {
+        stopSfx(this._vacHum, SFX.HOOVER_ON);
+        this._vacHum = null;
+        playSfx(SFX.HOOVER_OFF);
+      }
     }
   }
 
@@ -2027,6 +2038,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       const h = this._frameHeight(key);
       if (h > this.body.height && !this.headroom(this.x, this.body.bottom - h, this.body.top)) {
         this._enter('hat', this.scene.time.now);
+        if (this.isLocal) playSfx(SFX.HAT_BONK);
         return true;
       }
     }
