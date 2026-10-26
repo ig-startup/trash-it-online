@@ -115,6 +115,9 @@ PROPS = {
     # (56-58).
     "pause": ("PANEL.SPR", [55, 52, 53, 54, 12, 56, 57, 58]),
     "bloi": ("BLOI.SPR", list(range(7))),
+    # The buttons (.OB classes 28-30, VA 0x1722b): red 0/1, green 2/3,
+    # blue 4/5 — up and pressed.
+    "button": ("REDBUT.SPR", list(range(6))),
 }
 
 

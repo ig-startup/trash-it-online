@@ -25,6 +25,7 @@ import Gits from './gits';
 import Bonuses from './bonuses';
 import Popups from './popups';
 import Bell from './bell';
+import Buttons from './buttons';
 import { playSfx, SFX, BLOW_BY_MATERIAL, LAND_BY_MATERIAL } from '../audio/sfx';
 import BonusRound, { preloadBonusRound } from './bonusRound';
 import TimmyBins from './timmyBins';
@@ -68,6 +69,20 @@ const BLAST_STRIKES = 4;      // blocks the blast may strike (ecx = 4)
 const BLAST_SPREAD = 8;       // 3x3 cells around the stick: 0, +8, -8 each way
 const BLAST_SHOCK = 70;       // px either way the shock lights other sticks (VA 0x1d8d1)
 const BLAST_FRAME_MS = 45;
+// The level's option bits the buttons deal in (docs/re/objects/buttons.md):
+// 0x1000 sets off the level's one big event, which sets 0x2000 so it runs
+// once (watcher 0x1b089); the demolition sets 0x40 when it falls.
+const OPT_DEMOLISHED = 0x40;
+const OPT_BIG_EVENT = 0x1000;
+const OPT_BIG_EVENT_DONE = 0x2000;
+// The demolition (demolition_start 0x1b0f6, demolition_tick 0x2043c): 80
+// ticks, the shake at 8; the camera on a point 1900 px over the bottom of
+// the level, mid-way across, for 800 ticks.
+const DEMOLISH_TICKS = 0x50;
+const DEMOLISH_SHAKE_AT = 8;
+const DEMOLISH_RUBBLE_MASK = 0x7ffff;
+const DEMOLISH_SFX = 0x2b;
+const DEMOLISH_CAM = { over: 0x76c, ticks: 0x320 };
 
 
 /**
@@ -368,6 +383,21 @@ export default class GameScene extends Phaser.Scene {
       : null;
     if (this._tellies) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._tellies.destroy());
 
+    // ── Buttons (.OB classes 28-30) and the level's option bits ───────────
+    // Only 1D, 2T, 4T and BA have them: red, then green, then blue, and the
+    // last sets off the level's big event (bigEvent). See buttons.js.
+    this._options = 0;
+    this._bigEvent = level.bigEvent || null;
+    this._demolishIn = 0;
+    this._eventAcc = 0;
+    /** What the camera takes in besides the Jacks: {x, y, ticks}, or a `follow` sprite. */
+    this._camTargets = [];
+    this._buttons = hasProps(this) && PROP_ANIMS.button && (level.buttons || []).length
+      ? new Buttons(this, level.buttons, (x, from, to) => (to >= bellGround ? bellGround
+        : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)))
+      : null;
+    if (this._buttons) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._buttons.destroy());
+
     // ── Cannonballs (.OB class 7) ─────────────────────────────────────────
     // Things to pick up, like the dynamite — and what a cannon fires.
     this._balls = [];
@@ -433,7 +463,13 @@ export default class GameScene extends Phaser.Scene {
           h.vy = 0;
           return true;
         },
-        impact: (h, hit) => this._ballImpact(h, hit),
+        impact: (h, hit) => {
+          // a weight landing presses what is under it (lead_lands_on, VA 0x1ea81)
+          if (h.kind === 'lead' && !hit.side && this._buttons) {
+            this._setOptions(this._buttons.hit(h.sprite.getBounds()));
+          }
+          this._ballImpact(h, hit);
+        },
       });
     this._dynamite.forEach((d) => {
       if (d.litBy === 'hammer') d.handle = this._loose.add(d.sprite, 'dynamite');
@@ -890,6 +926,11 @@ export default class GameScene extends Phaser.Scene {
     // ── The bell ──────────────────────────────────────────────────────────
     // It is rung by a blow from above, not by a touch: see _ringBell.
     this._bell.update(delta);
+    if (this._buttons) {
+      this._buttons.update(delta, this._options,
+        (b, ticks) => this._camTargets.push({ follow: b, ticks }));
+    }
+    for (this._eventAcc += ticks; this._eventAcc >= 1; this._eventAcc -= 1) this._optionsTick();
     if (this._bonusRound && !this._over) this._bonusRound.update(delta);
     this._tickDynamite(time);
     if (this._cannons) this._tickCannons(delta);
@@ -1099,6 +1140,17 @@ export default class GameScene extends Phaser.Scene {
     if (jacks.length === 0) jacks = this._jacks;
     const xs = jacks.map((j) => j.player.x);
     const ys = jacks.map((j) => j.player.y);
+    // and whatever has joined the list for a while (camera_targets_bounds,
+    // VA 0x1daa7) — a button appearing, the demolition's point
+    const ticks = (delta * 60) / 1000;
+    this._camTargets = (this._camTargets || []).filter((t) => {
+      t.ticks -= ticks;
+      return t.ticks > 0;
+    });
+    this._camTargets.forEach((t) => {
+      xs.push(t.follow ? t.follow.x : t.x);
+      ys.push(t.follow ? t.follow.y : t.y);
+    });
     const x0 = Math.min(...xs) - CAM_MARGIN.side;
     const x1 = Math.max(...xs) + CAM_MARGIN.side;
     const y0 = Math.min(...ys) - CAM_MARGIN.top;
@@ -1113,7 +1165,6 @@ export default class GameScene extends Phaser.Scene {
     if (!this._cam) {
       this._cam = want;
     } else {
-      const ticks = (delta * 60) / 1000;
       const ease = (k) => 1 - (1 - k) ** ticks;
       this._cam.x += (want.x - this._cam.x) * ease(CAM_EASE);
       this._cam.y += (want.y - this._cam.y) * ease(CAM_EASE);
@@ -1241,6 +1292,7 @@ export default class GameScene extends Phaser.Scene {
     // kind a hammer lights listens for it.
     if (!overhead) return;
     this._ringBell(reach, pl);
+    if (this._buttons) this._setOptions(this._buttons.hit(reach));
     if (this._cannons) this._cannons.hit(reach);
     if (this._suckers) this._suckers.hit(reach);
     if (this._ufos) this._ufos.hit(reach);
@@ -1359,6 +1411,7 @@ export default class GameScene extends Phaser.Scene {
       }
     });
     if (this._gits) this._gits.blasted(shockAt.x, shockAt.y, shock);
+    if (this._buttons) this._setOptions(this._buttons.hit(shock));
     this._dynamite.forEach((d) => {
       if (d.lit || !d.sprite.active) return;
       if (Phaser.Geom.Intersects.RectangleToRectangle(shock, d.sprite.getBounds())) d.lit = time + FUSE_MS;
@@ -1542,6 +1595,54 @@ export default class GameScene extends Phaser.Scene {
     this._destructibleMap.delete(entry.id);
     this._destroyedCount += 1;
     this._showTrash();
+  }
+
+  /** Bits into the level's options, as a button sets them (VA 0x172a9). */
+  _setOptions(bits) {
+    this._options |= bits;
+  }
+
+  /**
+   * One tick of what watches the options. The first tick 0x1000 is set
+   * without 0x2000, the level's big event goes off (watcher 0x1b089, by the
+   * rules record's +0x26); then the demolition counts down (0x2043c).
+   */
+  _optionsTick() {
+    if ((this._options & (OPT_BIG_EVENT | OPT_BIG_EVENT_DONE)) === OPT_BIG_EVENT) {
+      this._options |= OPT_BIG_EVENT_DONE;
+      // 1D's own event is the dragon show (0x204be, docs/re/levels/dragon-show.md),
+      // which brings the level down at its end; until the clone has it, 1D
+      // is brought down the 2T way.
+      if (this._bigEvent) this._startDemolition();
+    }
+    if (this._demolishIn <= 0) return;
+    if (this._demolishIn === DEMOLISH_SHAKE_AT) this.cameras.main.shake(300, 0.01);
+    this._demolishIn -= 1;
+    if (this._demolishIn === 0) this._demolishAll();
+  }
+
+  /** demolition_start (VA 0x1b0f6): the count, and the camera drawn back. */
+  _startDemolition() {
+    this._demolishIn = DEMOLISH_TICKS;
+    const g = this._street.ground;
+    this._camTargets.push({
+      x: (this._street.left + this._street.right) / 2, y: g - DEMOLISH_CAM.over, ticks: DEMOLISH_CAM.ticks,
+    });
+  }
+
+  /**
+   * demolish_all (VA 0x206c0): every object still in the level is turned to
+   * rubble at once — the unbreakable ones too, which is what lets 2T, 4T and
+   * BA ask for more than their breakable share (docs/re/levels/percentage-check.md).
+   */
+  _demolishAll() {
+    this._options |= OPT_DEMOLISHED;
+    [...this._destructibleMap.values()].forEach((entry) => {
+      if (!entry.rect.active) return;
+      this._rubble.add(entry.rect, DEMOLISH_RUBBLE_MASK, entry.mat);
+      this._forgetBlock(entry);
+    });
+    playSfx(DEMOLISH_SFX);
   }
 
   /** `destroyed_percent`: what share of the level's objects is gone. */

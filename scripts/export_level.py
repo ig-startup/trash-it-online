@@ -75,6 +75,14 @@ TELLY_CLASS = 27
 UFO_CLASS = 31
 SEESAW_CLASS = 0
 WEIGHT_CLASS = 1
+#: The red, green and blue buttons (.OB classes 28-30, docs/re/objects/buttons.md):
+#: class -> (colour, the option bit that reveals a hidden one, and the bit it
+#: sets by its word 7 — 1, 2 or 4 — as the three constructor heads pick them).
+BUTTON_CLASSES = {
+    28: ("red", 0x100, {1: 0x400, 2: 0x1000, 4: 0x800}),
+    29: ("green", 0x400, {1: 0x200, 2: 0x1000, 4: 0x800}),
+    30: ("blue", 0x200, {1: 0x800, 2: 0x1000}),
+}
 MIN_OBJECTS = 10
 PAD = 1  # transparent gutter between packed shapes
 
@@ -482,6 +490,21 @@ def export(name):
                for x, y in [struct.unpack_from("<hh", payload, 0)]
                if 0 <= x <= lv["width"] and 0 <= y <= lv["height"]]
 
+    # Buttons. Classes 28-30, 20 bytes (button_create, VA 0x1722b): x, y —
+    # its foot — the word 7 what it sets and the word 9 1 for one hidden
+    # until its colour's bit is in the options (button_hidden, VA 0x17350).
+    buttons = [{"x": w[0], "y": w[1] + HEADROOM, "colour": colour,
+                "sets": sets.get(w[7], 0), "hidden": w[9] == 1,
+                **({"revealedBy": reveal} if w[9] == 1 else {})}
+               for cid, _off, payload in placed if cid in BUTTON_CLASSES
+               for colour, reveal, sets in [BUTTON_CLASSES[cid]]
+               for w in [struct.unpack_from("<10h", payload, 0)]
+               if 0 <= w[0] <= lv["width"] and 0 <= w[1] <= lv["height"]]
+    # What option 0x1000 sets off, by the rules record's +0x26 (VA 0x1ae49):
+    # 2 the 1D sequence (0x204be), 4 the demolition (0x1b0f6).
+    big_event = {2: "dragon", 4: "demolition"}.get(
+        struct.unpack_from("<h", rules, 0x26)[0] if rules else 0)
+
     # The UFO. The record's x, y go unused: each starts 100 px above a
     # random Jack (VA 0x13634). One record per level sets them all up.
     ufo = next((ufo_params(payload) for cid, _off, payload in placed
@@ -566,6 +589,11 @@ def export(name):
     }
     # What the level allows with the hammer and the hoover, bits 0x01-0x20
     # of its option word (ob.hand_options, VA 0x1ae49); left out when none.
+    # Only four levels have buttons (1D 2T 4T BA); the rest leave both out.
+    if buttons:
+        data["buttons"] = buttons
+    if big_event:
+        data["bigEvent"] = big_event
     hand = ob.hand_options(placed)
     if hand:
         data["handOptions"] = hand

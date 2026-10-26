@@ -11,8 +11,10 @@ object, the unbreakable ones (hit points -1, which `damage_down` and
 The authors knew it: of the 39 subtype-8 bells, most ask for exactly the
 ceiling or a point or two under it (0K 28 of 28, 1K 61/61, 5T 70/70,
 7A 97/97, AA 88/88, 5M 88/88). Three ask for more than the level holds —
-**2T 87 of 81, 4T 100 of 80, BA 100 of 87** — and, as the code reads,
-their bell never shows. Not checked in the running game.
+**2T 87 of 81, 4T 100 of 80, BA 100 of 87** — and those are the button
+levels: the last button's demolition removes every object, the
+unbreakable ones too, and the share goes to 100 (see
+[buttons](../objects/buttons.md)). Not checked in the running game.
 
 An earlier version of this section said nothing reads it back. **The
 subtype-8 bell does** (VA 0x340af, `state_340af`): it compares its own

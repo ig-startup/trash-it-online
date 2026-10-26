@@ -33,5 +33,6 @@ rider it always tips. It plays a sound.
   force is, not read.
 
 The weight weighs 25 (`+0x4c`), which is what a thrown one hits blocks
-with. Landing, it sets the hit flag on timmies, king timmies and Tommy
-under it (VA 0x1ea81).
+with. Landing, it sets the hit flag on the sprites under it with ids 0x35
+TIMMY, 0x36, 0x3f KTIMMY, 0x45 REDBUT (the buttons) and 0x5b TOMMY
+(VA 0x1ea81).
