@@ -707,7 +707,9 @@ export default class GameScene extends Phaser.Scene {
         },
         superHoover: (ticks) => { this._superHoover = ticks; },
         shown: (sprite) => this._camTrack(sprite, CAM_TICKS.hoover),
-        doublePoints: (ticks) => { this._doublePoints = ticks; },
+        // double_points_on (0x1a516) asks for CD track 5, which stops the
+        // level's music for good — CD or not (cd_play_track 0x6d48f)
+        doublePoints: (ticks) => { this._doublePoints = ticks; stopMusic(); },
         secret: (jack) => {
           // jack_touch_panel 0x1bacb: 32 sparks round him, sounds 0x8d, 0x8c
           this._secrets += 1;
