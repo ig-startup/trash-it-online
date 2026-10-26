@@ -10,10 +10,34 @@ All Miles Sound System 3.x; `sound.py` reads all four.
 - `SFX/0A.WVL` — a Miles wave library: 32-byte `WAVE_ENTRY` records
   (bank, patch, root key, offset, size, format, flags, rate), 8 patches
   of 2–4 s at 22050 Hz. The music is phrases, not notes — which is why a
-  six-minute XMI has 152 notes.
+  six-minute XMI has 152 notes: nearly every key is the root, 60, so a
+  note plays its phrase as recorded, cut at the note's duration.
 - `SFX/0?.XMI` — one per section letter, `FORM XDIR / CAT XMID`, three
-  sequences each (they differ). XMIDI runs at a fixed 120 Hz; `sound.py
-  export` writes them as `.mid` at that clock.
+  sequences each, and the three are **one tune at three volumes**: they
+  differ only in the channel volumes set at tick 0 (controller 7 = 43, 85,
+  127) — the AUDIO CONF setting picks one (`front/options.md`). XMIDI runs
+  at a fixed 120 Hz; `sound.py export` writes them as `.mid` at that clock.
+  Each loops forever from its FOR (controller 0x74, near tick 50) to its
+  NEXT (0x75, at the end) — `music_start` sets loop count 0.
+- **Which file.** `audio_init` (0x16cc7) takes the level's name (`8K`),
+  puts `0` over its first letter and loads `0K.XMI` (`"%s.XMI"`); this
+  copy has none for sections D, E and U (what a failed load does — the
+  "Error loading" string — is not read). The wave library is
+  `"0a.WVL"`, the same for every section, though `sprintf` is still handed
+  the name: the source surely said `"%s.WVL"` (same length), and this copy
+  — an old-games.ru rip — was patched to load the one file it kept.
+  **Inferred**, not checked against a full CD: `0A.XMI`, `0I.XMI` and
+  `0T.XMI` use only patches 0–7, which 0A.WVL has; the other eight ask for
+  8–15 (TIMB chunk and program changes), whole verses of them, and get
+  silence — and if each section had its own library, even I and T play
+  A's phrases here. The clone plays 0A's tune in every section
+  (`export_music.py`, `client/src/audio/music.js`).
+- **Pause and stop.** `pause_game` sets flag 2 of 0x96474, `sound_tick` →
+  `music_pause_resume` (0x17059) stops the sequence, and flag 4 on leaving
+  resumes it where it was; a phrase cut by the pause is not played again.
+  `level_finish` stops it; so does **every `cd_play_track`**, which sets
+  flag 2 before it looks for a CD — the double points and the 1D show end
+  the level's music for good, CD or not.
 - **CD audio.** Four moments play a Red Book track off the game's CD
   instead (`cd_play_track` 0x6d48f, through Miles' `AIL_redbook_*`, only if
   a CD drive was opened): track **5** the double points (`double_points_on`),

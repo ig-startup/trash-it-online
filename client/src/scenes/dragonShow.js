@@ -1,4 +1,5 @@
 import { PROP_ANIMS, PROP_FRAME_INFO } from '../entities/props';
+import { stopMusic } from '../audio/music';
 
 /**
  * The dragon show — level 1D's red button (`sequence_start`, VA 0x204be)
@@ -11,7 +12,7 @@ import { PROP_ANIMS, PROP_FRAME_INFO } from '../entities/props';
  * the camera framing the box round both is what pans and zooms. The face
  * and the bolts are VM.SPR, drawn stretched by the entity's +0x50 / +0x52.
  *
- * Left out: CD track 10 (the clone has no music), the column the bottom
+ * Left out: CD track 10 (the clone has no CD audio), the column the bottom
  * row's rubble is flung into (`rubble_mode`, docs/re/logic/destroyed-block.md),
  * and the bolt's +0x54 / +0x56 jitter, which nothing is known to read.
  *
@@ -68,6 +69,7 @@ export default class DragonShow {
 
   /** sequence_start (0x204be): an 80-tick wait before the face. */
   start() {
+    stopMusic();   // cd_play_track(10) stops the XMI, CD or no CD
     this.step = 0;
     this.timer = START_TICKS;
     this._fall = 0;

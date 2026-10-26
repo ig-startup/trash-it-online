@@ -21,8 +21,10 @@ then the chosen icon blinks for 23 steps of 4 ticks and the screen
 closes (or when the idle timeout runs out). G.EXE reads it as its own
 record's `+0x2c`: the music sequence is `0x96afa[+0x2c]` — 2, -1, 1, 0 —
 the sequence number in the section's `.XMI` (three each,
-`formats/sound.md`); anything outside 0..2 leaves the music off. So the
-setting is not a volume but **which of the three tunes**, or none.
+`formats/sound.md`); anything outside 0..2 leaves the music off. The
+three sequences are the same tune at channel volume 127, 85 and 43, so
+the setting **is the music volume** — large note loud, medium, small note
+(the default) quiet — or none.
 
 **CONTROLLER CONFIG — who plays on what** (`pad_config` 0x10ad6). Four
 columns, one a player (the blue, red, green and yellow lamps of
