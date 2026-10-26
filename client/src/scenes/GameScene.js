@@ -36,6 +36,8 @@ import {
 } from './blockKinds';
 import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
 import { QUIT_LEVEL } from './PauseScene';
+import Tint from './tint';
+import DragonShow from './dragonShow';
 import { LAST_ONE_SECONDS } from '../battle/LocalBattle';
 import { ARCADE_MAX_TENTHS, formatTenths, missionText } from '../battle/LocalArcade';
 
@@ -85,6 +87,12 @@ const DEMOLISH_SHAKE_AT = 8;
 const DEMOLISH_RUBBLE_MASK = 0x7ffff;
 const DEMOLISH_SFX = 0x2b;
 const DEMOLISH_CAM = { over: 0x76c, ticks: 0x320 };
+// The dragon show's blast (dragon_blast 0x20189): damage_bottom_row with
+// force −1 — as unsigned, more than anything can take, so it never thins
+// out — and the rubble mask 0xffff (0x410470).
+const DRAGON_FORCE = 0x7fffffff;
+const DRAGON_RUBBLE_MASK = 0xffff;
+const DRAGON_SHAKE_MS = 1000;   // request_shake 60
 /** How long the camera holds what the levels' objects show it (docs/re/logic/camera.md). */
 const CAM_TICKS = {
   bellFree: 180,     // the bell coming free, VA 0x340fa
@@ -383,10 +391,14 @@ export default class GameScene extends Phaser.Scene {
     this._cannons = hasProps(this) && PROP_ANIMS.cwhl
       ? new Cannons(this, level.cannons || [], (x, y) => this._blockAt(x, y),
         level.ground ? level.ground.y : levelHeight,
-        (h, x, y, vx, vy) => {
+        (h, x, y, vx, vy, c) => {
           h.inside = null;
           this._loose.throw(h, x, y, vx, vy);
-          this._camTrack(h.sprite, CAM_TICKS.launched, { moving: () => h.flying });
+          // only a cannon on the screen (launch_at_45: its +0x41 bit 0x80,
+          // which draw_queue_entity sets when it queues it to be drawn)
+          if (!c || this.cameras.main.worldView.contains(c.x, c.y)) {
+            this._camTrack(h.sprite, CAM_TICKS.launched, { moving: () => h.flying });
+          }
         })
       : null;
 
@@ -407,6 +419,16 @@ export default class GameScene extends Phaser.Scene {
     this._eventAcc = 0;
     /** What the camera takes in besides the Jacks: {x, y, ticks}, or a `follow` sprite. */
     this._camTargets = [];
+    this._tint = new Tint(this.cameras.main);
+    this._dragon = this._bigEvent === 'dragon'
+      ? new DragonShow(this, { x: levelWidth / 2, y: groundY }, {
+        camPoint: (x, y, ticks) => this._camPoint(x, y, ticks, true),
+        tint: this._tint,
+        shake: () => this.cameras.main.shake(DRAGON_SHAKE_MS, 0.01),
+        blast: () => this._damageBottomRow(),
+      })
+      : null;
+    if (this._dragon) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._dragon.destroy());
     this._buttons = hasProps(this) && PROP_ANIMS.button && (level.buttons || []).length
       ? new Buttons(this, level.buttons, (x, from, to) => (to >= bellGround ? bellGround
         : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)))
@@ -961,6 +983,8 @@ export default class GameScene extends Phaser.Scene {
     // ── The bell ──────────────────────────────────────────────────────────
     // It is rung by a blow from above, not by a touch: see _ringBell.
     this._bell.update(delta);
+    this._tint.update(delta);
+    if (this._dragon) this._dragon.update(delta);
     if (this._buttons) {
       this._buttons.update(delta, this._options,
         (b, ticks) => this._camTrack(b, ticks));
@@ -1237,9 +1261,33 @@ export default class GameScene extends Phaser.Scene {
     this._camTargets.push({ follow, ticks, wait: !!moving, moving, priority });
   }
 
-  /** camera_point (VA 0x1da48): a fixed point for `ticks` (flag 4). */
-  _camPoint(x, y, ticks) {
-    this._camTargets.push({ x, y, ticks });
+  /**
+   * camera_point (VA 0x1da48): a fixed point for `ticks` (flag 4), framed
+   * alone with any others when `priority`. Returned, for a script to move.
+   */
+  _camPoint(x, y, ticks, priority = false) {
+    const t = { x, y, ticks, priority };
+    this._camTargets.push(t);
+    return t;
+  }
+
+  /**
+   * damage_bottom_row (VA 0x69f54): every block on the level's bottom row
+   * struck from below, each its own blow, so it climbs whatever stands on it.
+   */
+  _damageBottomRow() {
+    const row = Math.floor(this._street.ground / this._tile) - 1;
+    const ids = new Set();
+    for (let tx = 0; tx < this._gridW; tx += 1) {
+      const id = this._cellOwner.get(row * this._gridW + tx);
+      if (id !== undefined) ids.add(id);
+    }
+    ids.forEach((id) => {
+      const blow = {
+        tally: new Map(), visits: 0, mask: DRAGON_RUBBLE_MASK, maxDepth: 1000, maxVisits: 20000,
+      };
+      this._applyForce(this._destructibleMap.get(id), DRAGON_FORCE, 0, blow, { down: false, up: true });
+    });
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -1538,11 +1586,11 @@ export default class GameScene extends Phaser.Scene {
     dirs = { down: true, up: false }) {
     if (!entry || !entry.rect.active) return;
     if (entry.solid) return;          // indestructible: absorbs it, passes nothing
-    if (blow.visits >= FORCE_MAX_VISITS) return;
+    if (blow.visits >= (blow.maxVisits || FORCE_MAX_VISITS)) return;
     blow.visits += 1;
 
     const pass = (ids, way) => {
-      if (depth >= FORCE_MAX_DEPTH || ids.length === 0) return;
+      if (depth >= (blow.maxDepth || FORCE_MAX_DEPTH) || ids.length === 0) return;
       const share = Math.floor(force / ids.length);
       if (share <= 2) return;
       ids.forEach((id) => {
@@ -1703,9 +1751,9 @@ export default class GameScene extends Phaser.Scene {
     if ((this._options & (OPT_BIG_EVENT | OPT_BIG_EVENT_DONE)) === OPT_BIG_EVENT) {
       this._options |= OPT_BIG_EVENT_DONE;
       // 1D's own event is the dragon show (0x204be, docs/re/levels/dragon-show.md),
-      // which brings the level down at its end; until the clone has it, 1D
-      // is brought down the 2T way.
-      if (this._bigEvent) this._startDemolition();
+      // which brings the level down at its end; 2T, 4T and BA's the demolition.
+      if (this._dragon) this._dragon.start();
+      else if (this._bigEvent) this._startDemolition();
     }
     if (this._demolishIn <= 0) return;
     if (this._demolishIn === DEMOLISH_SHAKE_AT) this.cameras.main.shake(300, 0.01);

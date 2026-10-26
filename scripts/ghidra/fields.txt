@@ -23,7 +23,7 @@ sprite 30 fix     vx             ; x += vx each tick (VA 0x22d31)
 sprite 34 fix     vy             ; += 0x4800 a tick while airborne (VA 0x22d31)
 sprite 3c u16     sprite_id      ; template word 0: its sprite-table index (0x35 TIMMY, 0x3f KTIMMY, 0x5b TOMMY, 0 JACKS)
 sprite 40 u8      flags          ; bit 2 faces left (entity_frame_rect), 0x20 holding, 0x80 hit from above
-sprite 41 u8      link_flags     ; 2 carrying, 4 carried, 0x20/0x40 riding links (docs/re/objects/sucker.md "Carrying", "The sucker")
+sprite 41 u8      link_flags     ; 2 carrying, 4 carried, 0x20/0x40 riding links, 0x80 on the screen (draw_queue_entity 0x2d5e9) (docs/re/objects/sucker.md "Carrying", "The sucker")
 sprite 44 s16     frame          ; index into the sprite sheet at +0xc8 (entity_frame_rect)
 sprite c8 ptr     sheet          ; the loaded .SPR this sprite draws from (entity_frame_rect)
 

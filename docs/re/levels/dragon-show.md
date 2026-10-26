@@ -57,6 +57,33 @@ The same holds for 0xa2f0e (2 during the show's first half, 1 otherwise).
 Both are written and never read — whatever they were meant to move (a
 backdrop offset, a palette mode) was left unwired.
 
+## Drawing and the palette
+
+A stretched frame (`draw_queue_entity` 0x2d5e9) is the frame's own size
+plus +0x50 across and +0x52 up: its left edge moves left by half the
+extra width, its top up by all of the extra height — the centre across
+and the bottom stay. So the face is 506 × 493 and then 606 × 593, its
+foot on the bottom of the level.
+
+The palette levels are `palette_tint_update`'s (0x14fe4): current R G B
+at 0xcd834 / 0xcd836 / 0xcd82e, their targets at 0xcd830 / 0xcd838 /
+0xcd82c, eased a fixed step a tick (0xcd832, 4 from `palette_tint_reset`,
+2 once step 9 has run). Each colour is moved by (level − 128) / 2 VGA
+steps and clamped. Step 9 sets the red target every tick, so after the
+turn to red at 70 ticks left it goes on pulsing 150 / 100 while green
+and blue stay at 0 — a dark red screen.
+
+`vm_flicker` also writes the bolt's +0x54 (−512…511) and +0x56 (−32…31)
+every other tick; no reader of those two for a VM.SPR entity is known —
+**Unsolved**.
+
+## In the clone
+
+`client/src/scenes/dragonShow.js` (the steps), `tint.js` (the palette
+levels, as a colour matrix on the world camera — and the fade in every
+level starts with), `GameScene._damageBottomRow`. Not yet: CD track 10,
+the rubble column of `rubble_mode`, the bolt's jitter, hammer 33's trick.
+
 ## What is left
 
 `sequence_handler_unused` (0x1b0ad) is a third option-0x1000 handler that

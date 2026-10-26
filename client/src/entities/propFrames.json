@@ -3392,6 +3392,206 @@
       "ay": 20,
       "src": "FORK.SPR:22"
     },
+    "vm_00": {
+      "file": "sprites/props/vm_00.png",
+      "w": 106,
+      "h": 93,
+      "ax": 54,
+      "ay": 45,
+      "src": "VM.SPR:0"
+    },
+    "vm_01": {
+      "file": "sprites/props/vm_01.png",
+      "w": 32,
+      "h": 128,
+      "ax": 34,
+      "ay": 70,
+      "src": "VM.SPR:1"
+    },
+    "vm_02": {
+      "file": "sprites/props/vm_02.png",
+      "w": 30,
+      "h": 128,
+      "ax": 28,
+      "ay": 69,
+      "src": "VM.SPR:2"
+    },
+    "vm_03": {
+      "file": "sprites/props/vm_03.png",
+      "w": 32,
+      "h": 128,
+      "ax": 29,
+      "ay": 69,
+      "src": "VM.SPR:3"
+    },
+    "vm_04": {
+      "file": "sprites/props/vm_04.png",
+      "w": 32,
+      "h": 128,
+      "ax": 26,
+      "ay": 69,
+      "src": "VM.SPR:4"
+    },
+    "dust_00": {
+      "file": "sprites/props/dust_00.png",
+      "w": 23,
+      "h": 6,
+      "ax": 12,
+      "ay": 6,
+      "src": "DUST.SPR:0"
+    },
+    "dust_01": {
+      "file": "sprites/props/dust_01.png",
+      "w": 28,
+      "h": 11,
+      "ax": 14,
+      "ay": 11,
+      "src": "DUST.SPR:1"
+    },
+    "dust_02": {
+      "file": "sprites/props/dust_02.png",
+      "w": 32,
+      "h": 15,
+      "ax": 16,
+      "ay": 15,
+      "src": "DUST.SPR:2"
+    },
+    "dust_03": {
+      "file": "sprites/props/dust_03.png",
+      "w": 31,
+      "h": 21,
+      "ax": 16,
+      "ay": 21,
+      "src": "DUST.SPR:3"
+    },
+    "dust_04": {
+      "file": "sprites/props/dust_04.png",
+      "w": 32,
+      "h": 30,
+      "ax": 16,
+      "ay": 30,
+      "src": "DUST.SPR:4"
+    },
+    "dust_05": {
+      "file": "sprites/props/dust_05.png",
+      "w": 31,
+      "h": 32,
+      "ax": 16,
+      "ay": 32,
+      "src": "DUST.SPR:5"
+    },
+    "dust_06": {
+      "file": "sprites/props/dust_06.png",
+      "w": 30,
+      "h": 31,
+      "ax": 16,
+      "ay": 31,
+      "src": "DUST.SPR:6"
+    },
+    "dust_07": {
+      "file": "sprites/props/dust_07.png",
+      "w": 31,
+      "h": 31,
+      "ax": 16,
+      "ay": 31,
+      "src": "DUST.SPR:7"
+    },
+    "dust_08": {
+      "file": "sprites/props/dust_08.png",
+      "w": 29,
+      "h": 5,
+      "ax": 16,
+      "ay": 5,
+      "src": "DUST.SPR:8"
+    },
+    "dust_09": {
+      "file": "sprites/props/dust_09.png",
+      "w": 31,
+      "h": 7,
+      "ax": 16,
+      "ay": 7,
+      "src": "DUST.SPR:9"
+    },
+    "dust_10": {
+      "file": "sprites/props/dust_10.png",
+      "w": 31,
+      "h": 8,
+      "ax": 15,
+      "ay": 8,
+      "src": "DUST.SPR:10"
+    },
+    "dust_11": {
+      "file": "sprites/props/dust_11.png",
+      "w": 32,
+      "h": 11,
+      "ax": 16,
+      "ay": 11,
+      "src": "DUST.SPR:11"
+    },
+    "dust_12": {
+      "file": "sprites/props/dust_12.png",
+      "w": 31,
+      "h": 14,
+      "ax": 15,
+      "ay": 14,
+      "src": "DUST.SPR:12"
+    },
+    "dust_13": {
+      "file": "sprites/props/dust_13.png",
+      "w": 28,
+      "h": 16,
+      "ax": 15,
+      "ay": 16,
+      "src": "DUST.SPR:13"
+    },
+    "dust_14": {
+      "file": "sprites/props/dust_14.png",
+      "w": 31,
+      "h": 11,
+      "ax": 16,
+      "ay": 11,
+      "src": "DUST.SPR:14"
+    },
+    "dust_15": {
+      "file": "sprites/props/dust_15.png",
+      "w": 26,
+      "h": 13,
+      "ax": 13,
+      "ay": 13,
+      "src": "DUST.SPR:15"
+    },
+    "dust_16": {
+      "file": "sprites/props/dust_16.png",
+      "w": 16,
+      "h": 15,
+      "ax": 8,
+      "ay": 8,
+      "src": "DUST.SPR:16"
+    },
+    "dust_17": {
+      "file": "sprites/props/dust_17.png",
+      "w": 26,
+      "h": 24,
+      "ax": 13,
+      "ay": 13,
+      "src": "DUST.SPR:17"
+    },
+    "dust_18": {
+      "file": "sprites/props/dust_18.png",
+      "w": 31,
+      "h": 32,
+      "ax": 16,
+      "ay": 16,
+      "src": "DUST.SPR:18"
+    },
+    "dust_19": {
+      "file": "sprites/props/dust_19.png",
+      "w": 32,
+      "h": 32,
+      "ax": 16,
+      "ay": 16,
+      "src": "DUST.SPR:19"
+    },
     "flag_red_00": {
       "file": "sprites/props/flag_red_00.png",
       "w": 22,
@@ -4143,6 +4343,35 @@
       "fork_20",
       "fork_21",
       "fork_22"
+    ],
+    "vm": [
+      "vm_00",
+      "vm_01",
+      "vm_02",
+      "vm_03",
+      "vm_04"
+    ],
+    "dust": [
+      "dust_00",
+      "dust_01",
+      "dust_02",
+      "dust_03",
+      "dust_04",
+      "dust_05",
+      "dust_06",
+      "dust_07",
+      "dust_08",
+      "dust_09",
+      "dust_10",
+      "dust_11",
+      "dust_12",
+      "dust_13",
+      "dust_14",
+      "dust_15",
+      "dust_16",
+      "dust_17",
+      "dust_18",
+      "dust_19"
     ],
     "flag_red": [
       "flag_red_00",
