@@ -286,6 +286,9 @@ const STATES = {
   // holds him there) until it throws him. Which frame he shows there is
   // not traced; the fall's is ours.
   caught: { slot: 31, anim: 'fall', ms: Infinity, hold: true, caught: true },
+  // At the wheel of a forklift (jack_driving 0x2b7e4, slot 77 — whose
+  // pose is the standing frame); the scene sits him in the seat each tick.
+  driving: { slot: 77, anim: 'idle', ms: Infinity, hold: true, caught: true },
 };
 
 /**
@@ -1488,6 +1491,25 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     body.reset(x, y);
     this._squashX = sx;
     this._squashY = sy;
+  }
+
+  /**
+   * In a forklift's seat at (x, y), facing its way (VA 0x2b86b): held there
+   * like `holdAt`, in his driving state.
+   */
+  seat(x, y, left) {
+    const body = this.body;
+    if (this.state !== 'driving') {
+      if (this.carried) {
+        this.emit('putdown', { handle: this.carried, ...this._feetAhead() });
+        this.carried = null;
+      }
+      body.setAllowGravity(false);
+      body.checkCollision.none = true;
+      this._enter('driving', this.scene.time.now);
+    }
+    this._facingLeft = left;
+    body.reset(x, y);
   }
 
   /** Let go where he is held, to fall as he will. */

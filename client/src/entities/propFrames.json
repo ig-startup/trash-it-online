@@ -3000,6 +3000,398 @@
       "ay": 8,
       "src": "REDBUT.SPR:5"
     },
+    "crawl_00": {
+      "file": "sprites/props/crawl_00.png",
+      "w": 64,
+      "h": 34,
+      "ax": 31,
+      "ay": 33,
+      "src": "CRAWL.SPR:0"
+    },
+    "crawl_01": {
+      "file": "sprites/props/crawl_01.png",
+      "w": 64,
+      "h": 34,
+      "ax": 31,
+      "ay": 33,
+      "src": "CRAWL.SPR:1"
+    },
+    "crawl_02": {
+      "file": "sprites/props/crawl_02.png",
+      "w": 64,
+      "h": 34,
+      "ax": 31,
+      "ay": 33,
+      "src": "CRAWL.SPR:2"
+    },
+    "crawl_03": {
+      "file": "sprites/props/crawl_03.png",
+      "w": 64,
+      "h": 34,
+      "ax": 31,
+      "ay": 33,
+      "src": "CRAWL.SPR:3"
+    },
+    "crawl_04": {
+      "file": "sprites/props/crawl_04.png",
+      "w": 64,
+      "h": 34,
+      "ax": 31,
+      "ay": 33,
+      "src": "CRAWL.SPR:4"
+    },
+    "crawl_05": {
+      "file": "sprites/props/crawl_05.png",
+      "w": 64,
+      "h": 34,
+      "ax": 31,
+      "ay": 33,
+      "src": "CRAWL.SPR:5"
+    },
+    "crawl_06": {
+      "file": "sprites/props/crawl_06.png",
+      "w": 64,
+      "h": 34,
+      "ax": 31,
+      "ay": 33,
+      "src": "CRAWL.SPR:6"
+    },
+    "crawl_07": {
+      "file": "sprites/props/crawl_07.png",
+      "w": 64,
+      "h": 34,
+      "ax": 31,
+      "ay": 33,
+      "src": "CRAWL.SPR:7"
+    },
+    "crawl_08": {
+      "file": "sprites/props/crawl_08.png",
+      "w": 32,
+      "h": 24,
+      "ax": 29,
+      "ay": 47,
+      "src": "CRAWL.SPR:8"
+    },
+    "crawl_09": {
+      "file": "sprites/props/crawl_09.png",
+      "w": 42,
+      "h": 30,
+      "ax": 76,
+      "ay": 26,
+      "src": "CRAWL.SPR:9"
+    },
+    "crawl_10": {
+      "file": "sprites/props/crawl_10.png",
+      "w": 42,
+      "h": 30,
+      "ax": 76,
+      "ay": 26,
+      "src": "CRAWL.SPR:10"
+    },
+    "crawl_11": {
+      "file": "sprites/props/crawl_11.png",
+      "w": 42,
+      "h": 18,
+      "ax": 34,
+      "ay": 13,
+      "src": "CRAWL.SPR:11"
+    },
+    "crawl_12": {
+      "file": "sprites/props/crawl_12.png",
+      "w": 41,
+      "h": 16,
+      "ax": 34,
+      "ay": 12,
+      "src": "CRAWL.SPR:12"
+    },
+    "crawl_13": {
+      "file": "sprites/props/crawl_13.png",
+      "w": 64,
+      "h": 32,
+      "ax": 32,
+      "ay": 31,
+      "src": "CRAWL.SPR:13"
+    },
+    "crawl_14": {
+      "file": "sprites/props/crawl_14.png",
+      "w": 32,
+      "h": 16,
+      "ax": 16,
+      "ay": 15,
+      "src": "CRAWL.SPR:14"
+    },
+    "crawl_15": {
+      "file": "sprites/props/crawl_15.png",
+      "w": 4,
+      "h": 4,
+      "ax": 2,
+      "ay": 3,
+      "src": "CRAWL.SPR:15"
+    },
+    "crawl_16": {
+      "file": "sprites/props/crawl_16.png",
+      "w": 8,
+      "h": 7,
+      "ax": 4,
+      "ay": 6,
+      "src": "CRAWL.SPR:16"
+    },
+    "apollo_00": {
+      "file": "sprites/props/apollo_00.png",
+      "w": 52,
+      "h": 16,
+      "ax": 25,
+      "ay": 15,
+      "src": "APOLLO.SPR:0"
+    },
+    "apollo_01": {
+      "file": "sprites/props/apollo_01.png",
+      "w": 83,
+      "h": 60,
+      "ax": 41,
+      "ay": 59,
+      "src": "APOLLO.SPR:1"
+    },
+    "apollo_02": {
+      "file": "sprites/props/apollo_02.png",
+      "w": 49,
+      "h": 73,
+      "ax": 24,
+      "ay": 72,
+      "src": "APOLLO.SPR:2"
+    },
+    "apollo_03": {
+      "file": "sprites/props/apollo_03.png",
+      "w": 50,
+      "h": 36,
+      "ax": 24,
+      "ay": 35,
+      "src": "APOLLO.SPR:3"
+    },
+    "apollo_04": {
+      "file": "sprites/props/apollo_04.png",
+      "w": 49,
+      "h": 76,
+      "ax": 24,
+      "ay": 75,
+      "src": "APOLLO.SPR:4"
+    },
+    "apollo_05": {
+      "file": "sprites/props/apollo_05.png",
+      "w": 49,
+      "h": 19,
+      "ax": 24,
+      "ay": 18,
+      "src": "APOLLO.SPR:5"
+    },
+    "apollo_06": {
+      "file": "sprites/props/apollo_06.png",
+      "w": 34,
+      "h": 46,
+      "ax": 15,
+      "ay": 45,
+      "src": "APOLLO.SPR:6"
+    },
+    "apollo_07": {
+      "file": "sprites/props/apollo_07.png",
+      "w": 31,
+      "h": 30,
+      "ax": 15,
+      "ay": 29,
+      "src": "APOLLO.SPR:7"
+    },
+    "apollo_08": {
+      "file": "sprites/props/apollo_08.png",
+      "w": 19,
+      "h": 43,
+      "ax": 9,
+      "ay": 42,
+      "src": "APOLLO.SPR:8"
+    },
+    "fork_00": {
+      "file": "sprites/props/fork_00.png",
+      "w": 19,
+      "h": 16,
+      "ax": 20,
+      "ay": 15,
+      "src": "FORK.SPR:0"
+    },
+    "fork_01": {
+      "file": "sprites/props/fork_01.png",
+      "w": 19,
+      "h": 16,
+      "ax": 20,
+      "ay": 15,
+      "src": "FORK.SPR:1"
+    },
+    "fork_02": {
+      "file": "sprites/props/fork_02.png",
+      "w": 19,
+      "h": 16,
+      "ax": 20,
+      "ay": 15,
+      "src": "FORK.SPR:2"
+    },
+    "fork_03": {
+      "file": "sprites/props/fork_03.png",
+      "w": 19,
+      "h": 16,
+      "ax": 20,
+      "ay": 15,
+      "src": "FORK.SPR:3"
+    },
+    "fork_04": {
+      "file": "sprites/props/fork_04.png",
+      "w": 13,
+      "h": 11,
+      "ax": -9,
+      "ay": 11,
+      "src": "FORK.SPR:4"
+    },
+    "fork_05": {
+      "file": "sprites/props/fork_05.png",
+      "w": 13,
+      "h": 11,
+      "ax": -9,
+      "ay": 11,
+      "src": "FORK.SPR:5"
+    },
+    "fork_06": {
+      "file": "sprites/props/fork_06.png",
+      "w": 13,
+      "h": 11,
+      "ax": -9,
+      "ay": 11,
+      "src": "FORK.SPR:6"
+    },
+    "fork_07": {
+      "file": "sprites/props/fork_07.png",
+      "w": 13,
+      "h": 11,
+      "ax": -9,
+      "ay": 11,
+      "src": "FORK.SPR:7"
+    },
+    "fork_08": {
+      "file": "sprites/props/fork_08.png",
+      "w": 46,
+      "h": 30,
+      "ax": 24,
+      "ay": 32,
+      "src": "FORK.SPR:8"
+    },
+    "fork_09": {
+      "file": "sprites/props/fork_09.png",
+      "w": 46,
+      "h": 30,
+      "ax": 24,
+      "ay": 32,
+      "src": "FORK.SPR:9"
+    },
+    "fork_10": {
+      "file": "sprites/props/fork_10.png",
+      "w": 6,
+      "h": 80,
+      "ax": -22,
+      "ay": 84,
+      "src": "FORK.SPR:10"
+    },
+    "fork_11": {
+      "file": "sprites/props/fork_11.png",
+      "w": 49,
+      "h": 14,
+      "ax": -28,
+      "ay": 15,
+      "src": "FORK.SPR:11"
+    },
+    "fork_12": {
+      "file": "sprites/props/fork_12.png",
+      "w": 31,
+      "h": 25,
+      "ax": 14,
+      "ay": 29,
+      "src": "FORK.SPR:12"
+    },
+    "fork_13": {
+      "file": "sprites/props/fork_13.png",
+      "w": 31,
+      "h": 25,
+      "ax": 14,
+      "ay": 29,
+      "src": "FORK.SPR:13"
+    },
+    "fork_14": {
+      "file": "sprites/props/fork_14.png",
+      "w": 31,
+      "h": 25,
+      "ax": 14,
+      "ay": 29,
+      "src": "FORK.SPR:14"
+    },
+    "fork_15": {
+      "file": "sprites/props/fork_15.png",
+      "w": 31,
+      "h": 25,
+      "ax": 14,
+      "ay": 29,
+      "src": "FORK.SPR:15"
+    },
+    "fork_16": {
+      "file": "sprites/props/fork_16.png",
+      "w": 128,
+      "h": 37,
+      "ax": 75,
+      "ay": 7,
+      "src": "FORK.SPR:16"
+    },
+    "fork_17": {
+      "file": "sprites/props/fork_17.png",
+      "w": 42,
+      "h": 35,
+      "ax": 36,
+      "ay": 22,
+      "src": "FORK.SPR:17"
+    },
+    "fork_18": {
+      "file": "sprites/props/fork_18.png",
+      "w": 37,
+      "h": 28,
+      "ax": 34,
+      "ay": 20,
+      "src": "FORK.SPR:18"
+    },
+    "fork_19": {
+      "file": "sprites/props/fork_19.png",
+      "w": 37,
+      "h": 26,
+      "ax": 34,
+      "ay": 18,
+      "src": "FORK.SPR:19"
+    },
+    "fork_20": {
+      "file": "sprites/props/fork_20.png",
+      "w": 37,
+      "h": 28,
+      "ax": 34,
+      "ay": 20,
+      "src": "FORK.SPR:20"
+    },
+    "fork_21": {
+      "file": "sprites/props/fork_21.png",
+      "w": 37,
+      "h": 26,
+      "ax": 34,
+      "ay": 18,
+      "src": "FORK.SPR:21"
+    },
+    "fork_22": {
+      "file": "sprites/props/fork_22.png",
+      "w": 37,
+      "h": 28,
+      "ax": 34,
+      "ay": 20,
+      "src": "FORK.SPR:22"
+    },
     "flag_red_00": {
       "file": "sprites/props/flag_red_00.png",
       "w": 22,
@@ -3696,6 +4088,61 @@
       "button_03",
       "button_04",
       "button_05"
+    ],
+    "crawl": [
+      "crawl_00",
+      "crawl_01",
+      "crawl_02",
+      "crawl_03",
+      "crawl_04",
+      "crawl_05",
+      "crawl_06",
+      "crawl_07",
+      "crawl_08",
+      "crawl_09",
+      "crawl_10",
+      "crawl_11",
+      "crawl_12",
+      "crawl_13",
+      "crawl_14",
+      "crawl_15",
+      "crawl_16"
+    ],
+    "apollo": [
+      "apollo_00",
+      "apollo_01",
+      "apollo_02",
+      "apollo_03",
+      "apollo_04",
+      "apollo_05",
+      "apollo_06",
+      "apollo_07",
+      "apollo_08"
+    ],
+    "fork": [
+      "fork_00",
+      "fork_01",
+      "fork_02",
+      "fork_03",
+      "fork_04",
+      "fork_05",
+      "fork_06",
+      "fork_07",
+      "fork_08",
+      "fork_09",
+      "fork_10",
+      "fork_11",
+      "fork_12",
+      "fork_13",
+      "fork_14",
+      "fork_15",
+      "fork_16",
+      "fork_17",
+      "fork_18",
+      "fork_19",
+      "fork_20",
+      "fork_21",
+      "fork_22"
     ],
     "flag_red": [
       "flag_red_00",

@@ -86,3 +86,9 @@ level option byte gets 0x800**. The arm waits 35 ticks and goes back up.
 The rocket is built across the story — engines, then the middle, then
 the capsule and tower in 9L. Nothing launches it: the level simply ends
 at the bell.
+
+**Clone:** `client/src/scenes/rocket.js` (`_crawlerTick`, `_armTick`,
+`_pieceTick`); the level's crawler, pieces and forklifts come from
+`scripts/export_level.py`, and the bell's `rocket` flag holds it back
+until option 0x800 (`GameScene._setOptions`). The arm eases at 1 px/tick,
+0.31 within 12 px (VA 0x116c9).

@@ -118,6 +118,16 @@ PROPS = {
     # The buttons (.OB classes 28-30, VA 0x1722b): red 0/1, green 2/3,
     # blue 4/5 — up and pressed.
     "button": ("REDBUT.SPR", list(range(6))),
+    # The crawler (.OB class 44, VA 0x111fb): 0-7 its tracks turning, 8 the
+    # lift, 9/10 the crane arm, 11/12 its hand open and shut, 13 the pad,
+    # 14-16 the tower's foot, a segment of it and the light on top.
+    "crawl": ("CRAWL.SPR", list(range(17))),
+    # The rocket's nine pieces, bottom up (.OB classes 43 → 35).
+    "apollo": ("APOLLO.SPR", list(range(9))),
+    # The forklift (.OB class 23, VA 0x1bbc3): 0-3 the rear wheel, 4-7 the
+    # front, 8 the body (9 jolted), 10 the mast, 11 the forks, 18-22 the
+    # gear lever.
+    "fork": ("FORK.SPR", list(range(23))),
 }
 
 

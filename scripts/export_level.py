@@ -75,6 +75,11 @@ TELLY_CLASS = 27
 UFO_CLASS = 31
 SEESAW_CLASS = 0
 WEIGHT_CLASS = 1
+#: The forklift, the crawler and the rocket's nine pieces (classes 43 → 35
+#: are pieces 0 → 8): docs/re/objects/forklift.md, crawler.md.
+FORKLIFT_CLASS = 23
+CRAWLER_CLASS = 44
+ROCKET_BIT_CLASSES = range(35, 44)
 #: The red, green and blue buttons (.OB classes 28-30, docs/re/objects/buttons.md):
 #: class -> (colour, the option bit that reveals a hidden one, and the bit it
 #: sets by its word 7 — 1, 2 or 4 — as the three constructor heads pick them).
@@ -500,6 +505,29 @@ def export(name):
                for colour, reveal, sets in [BUTTON_CLASSES[cid]]
                for w in [struct.unpack_from("<10h", payload, 0)]
                if 0 <= w[0] <= lv["width"] and 0 <= w[1] <= lv["height"]]
+    # The rocket levels (0L 2D 5L 9L TL). The crawler (class 44, VA
+    # 0x111fb) locks to the block under its record — at block + (64, 31),
+    # its home — and its pad stands 256 px right of that; the word 7's
+    # lowest set bit is how many pieces are stacked before the start.
+    # Pieces: x, y and their index (VA 0x1195e). Forklifts: x, y (0x1bbc3).
+    crawler = None
+    for cid, _off, payload in placed:
+        if cid != CRAWLER_CLASS:
+            continue
+        w = struct.unpack_from("<8h", payload, 0)
+        lock = next((o for o in lv["objects"] if o["x"] <= w[0] < o["x"] + o["w"]
+                     and o["y"] <= w[1] < o["y"] + o["h"]), None)
+        if lock:
+            crawler = {"x": lock["x"] + 64, "y": lock["y"] + 31 + HEADROOM,
+                       "stacked": _lowest_bit(w[7])}
+    rocket_bits = sorted(({"x": x, "y": y + HEADROOM, "index": 43 - cid}
+                          for cid, _off, payload in placed if cid in ROCKET_BIT_CLASSES
+                          for x, y in [struct.unpack_from("<hh", payload, 0)]),
+                         key=lambda b: b["index"]) if crawler else []
+    forklifts = [{"x": x, "y": y + HEADROOM}
+                 for cid, _off, payload in placed if cid == FORKLIFT_CLASS
+                 for x, y in [struct.unpack_from("<hh", payload, 0)]]
+
     # What option 0x1000 sets off, by the rules record's +0x26 (VA 0x1ae49):
     # 2 the 1D sequence (0x204be), 4 the demolition (0x1b0f6).
     big_event = {2: "dragon", 4: "demolition"}.get(
@@ -592,6 +620,15 @@ def export(name):
     # Only four levels have buttons (1D 2T 4T BA); the rest leave both out.
     if buttons:
         data["buttons"] = buttons
+    if crawler:
+        data["crawler"] = crawler
+        data["rocketBits"] = rocket_bits
+        # its subtype-2 bell waits for option 0x800, which the last piece
+        # stacked sets (crane_arm_tick, VA 0x116c9)
+        if data["bell"] and rung and rung[0][2] == 2:
+            data["bell"]["rocket"] = True
+    if forklifts:
+        data["forklifts"] = forklifts
     if big_event:
         data["bigEvent"] = big_event
     hand = ob.hand_options(placed)

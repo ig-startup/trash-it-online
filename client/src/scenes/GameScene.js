@@ -26,6 +26,7 @@ import Bonuses from './bonuses';
 import Popups from './popups';
 import Bell from './bell';
 import Buttons from './buttons';
+import Rocket from './rocket';
 import { playSfx, SFX, BLOW_BY_MATERIAL, LAND_BY_MATERIAL } from '../audio/sfx';
 import BonusRound, { preloadBonusRound } from './bonusRound';
 import TimmyBins from './timmyBins';
@@ -73,6 +74,7 @@ const BLAST_FRAME_MS = 45;
 // 0x1000 sets off the level's one big event, which sets 0x2000 so it runs
 // once (watcher 0x1b089); the demolition sets 0x40 when it falls.
 const OPT_DEMOLISHED = 0x40;
+const OPT_ROCKET = 0x800;     // what the subtype-2 bell waits for (VA 0x33fdd)
 const OPT_BIG_EVENT = 0x1000;
 const OPT_BIG_EVENT_DONE = 0x2000;
 // The demolition (demolition_start 0x1b0f6, demolition_tick 0x2043c): 80
@@ -337,9 +339,12 @@ export default class GameScene extends Phaser.Scene {
     this._bellTrash = bell.trash || 0;
     // A subtype-2 bell waits for so many timmies in the bins (VA 0x33fdd).
     this._bellBins = bell.bins || 0;
+    // A rocket level's subtype-2 bell waits for option 0x800: the last
+    // piece on the stack (rocket.js).
+    this._bellRocket = !!bell.rocket;
     this._bell = new Bell(this, bell, (x, from, to) => (to >= bellGround ? bellGround
       : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)),
-    { hidden: this._bellTrash > 0 || this._bellBins > 0 || !level.bell, fallbackColor: WORLD_COLORS.bell });
+    { hidden: this._bellTrash > 0 || this._bellBins > 0 || this._bellRocket || !level.bell, fallbackColor: WORLD_COLORS.bell });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._bell.destroy());
 
     // ── A bonus screen's object (G.EXE VA 0x10c1f; bonusRound.js) ─────────
@@ -397,6 +402,18 @@ export default class GameScene extends Phaser.Scene {
         : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)))
       : null;
     if (this._buttons) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._buttons.destroy());
+
+    // ── The rocket levels: the crawler, the pieces, the forklifts ─────────
+    // 0L 2D 5L 9L (rocket.js). Jack jumps into a forklift's seat and drives
+    // the pieces to the crawler, which stacks them on its pad.
+    this._rocket = hasProps(this) && PROP_ANIMS.crawl && level.crawler
+      ? new Rocket(this, level.crawler, level.rocketBits || [], level.forklifts || [],
+        (x, from, to) => (to >= bellGround ? bellGround
+          : floorUnder((bx, by) => this._blockAt(bx, by), x, from, to)),
+        (x, y) => this._blockAt(x, y),
+        () => this._setOptions(OPT_ROCKET))
+      : null;
+    if (this._rocket) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._rocket.destroy());
 
     // ── Cannonballs (.OB class 7) ─────────────────────────────────────────
     // Things to pick up, like the dynamite — and what a cannon fires.
@@ -884,17 +901,20 @@ export default class GameScene extends Phaser.Scene {
     live.forEach((j) => {
       const { pad, player } = j;
       const but2Pressed = JustDown(pad.but2);
+      const but1Pressed = JustDown(pad.but1);
+      j.keysNow = { but1: but1Pressed, but2Pressed };
       // The speed physics moved him at this frame, before he sets the next
       // one: what a cannon he pushes moves at too, or it runs a frame ahead.
       j.movedVx = player.body.velocity.x;
       player.update(pad, {
-        but1: JustDown(pad.but1),
+        but1: but1Pressed,
         but2: but2Pressed || pad.but2.isDown,
         but2Pressed,
       }, delta);
     });
 
     this._collapse.update(delta);
+    if (this._rocket) this._tickRocket(delta, live);
     // The super hoover takes the rubble from a box 2048 x 1024 ahead of
     // him, not 32 x 32 (VA 0x61740), and blinks; double points count each
     // piece twice (VA 0x19fd2).
@@ -937,7 +957,7 @@ export default class GameScene extends Phaser.Scene {
     const stillIn = this._liveJacks();
     if (this._tellies) {
       stillIn.forEach(({ player }) => {
-        if (player.state !== 'caught') this._tellies.meet(player);
+        if (player.state !== 'caught' && player.state !== 'driving') this._tellies.meet(player);
       });
       this._tellies.update(delta,
         (pl, x, y, sx, sy) => pl.holdAt(x, y, sx, sy),
@@ -945,7 +965,7 @@ export default class GameScene extends Phaser.Scene {
     }
     if (this._suckers) {
       stillIn.forEach(({ player }) => {
-        if (player.state !== 'caught') this._suckers.catchJack(player);
+        if (player.state !== 'caught' && player.state !== 'driving') this._suckers.catchJack(player);
       });
       this._suckers.update(delta,
         (pl, x, y) => pl.holdAt(x, y),
@@ -1331,6 +1351,30 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * The forklifts: a Jack in a seat drives — BUT2 gets him out — and one
+   * jumping into a free seat gets in (VA 0x1c19f, 0x2b86b).
+   */
+  _tickRocket(delta, live) {
+    live.forEach((j) => {
+      const f = this._rocket.drivenBy(j.player);
+      if (f) {
+        if (j.keysNow && j.keysNow.but2Pressed) this._rocket.leave(f);
+      } else this._rocket.board(j.player);
+    });
+    this._rocket.update(delta, (f) => {
+      const j = live.find((k) => k.player === f.driver);
+      if (!j) return null;
+      const { pad } = j;
+      // a press shifts once, however many ticks this frame runs
+      const shift = !!(j.keysNow && j.keysNow.but1);
+      if (shift) j.keysNow.but1 = false;
+      return {
+        left: pad.left.isDown, right: pad.right.isDown, up: pad.up.isDown, down: pad.down.isDown, shift,
+      };
+    });
+  }
+
   /** Burns the lit fuses and sets off the ones that run out. */
   _tickDynamite(time) {
     // The other kind lights at Jack's touch.
@@ -1600,6 +1644,10 @@ export default class GameScene extends Phaser.Scene {
   /** Bits into the level's options, as a button sets them (VA 0x172a9). */
   _setOptions(bits) {
     this._options |= bits;
+    if (this._bellRocket && (this._options & OPT_ROCKET)) {
+      this._bellRocket = false;
+      this._releaseBell(SFX.BELL_FREED_BINS);   // bell_wait_option_800
+    }
   }
 
   /**
