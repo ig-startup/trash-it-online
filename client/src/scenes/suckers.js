@@ -69,8 +69,11 @@ export default class Suckers {
     return !s.handle.carried && !s.handle.flying;
   }
 
-  /** The overhead blow arms one it reaches (VA 0x19065). */
-  hit(reach) {
+  /**
+   * The overhead blow arms one it reaches (VA 0x19065); `armed` hears of
+   * it, for the camera (sucker_armed, VA 0x191d8).
+   */
+  hit(reach, armed = null) {
     this.all.forEach((s) => {
       if (s.state !== 'idle' || !this._down(s)) return;
       if (!Phaser.Geom.Intersects.RectangleToRectangle(reach, this.box(s))) return;
@@ -78,6 +81,7 @@ export default class Suckers {
       s.count = ARMED;
       s.wait = ARMED_STEP;
       s.table = null;
+      if (armed) armed(s);
     });
   }
 

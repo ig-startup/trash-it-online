@@ -85,6 +85,15 @@ const DEMOLISH_SHAKE_AT = 8;
 const DEMOLISH_RUBBLE_MASK = 0x7ffff;
 const DEMOLISH_SFX = 0x2b;
 const DEMOLISH_CAM = { over: 0x76c, ticks: 0x320 };
+/** How long the camera holds what the levels' objects show it (docs/re/logic/camera.md). */
+const CAM_TICKS = {
+  bellFree: 180,     // the bell coming free, VA 0x340fa
+  bellRung: 60,      // a Jack ringing it while others are left, 0x341f2
+  bellLast: 900,     // the last ring — priority, 0x3423a
+  hoover: 180,       // spawn_super_hoover 0x1b447
+  sucker: 120,       // sucker_armed 0x191d8
+  launched: 120,     // seesaw_launch 0x1eda0, launch_at_45 0x60170
+};
 
 
 /**
@@ -377,6 +386,7 @@ export default class GameScene extends Phaser.Scene {
         (h, x, y, vx, vy) => {
           h.inside = null;
           this._loose.throw(h, x, y, vx, vy);
+          this._camTrack(h.sprite, CAM_TICKS.launched, { moving: () => h.flying });
         })
       : null;
 
@@ -500,7 +510,11 @@ export default class GameScene extends Phaser.Scene {
     // ── Seesaws and the 20-ton weights ────────────────────────────────────
     // .OB classes 0 and 1, in 43 and 42 levels. See seesaws.js.
     this._seesawHooks = {
-      launchJack: (pl, x, y, vy) => pl.thrownUp(x, y, vy),
+      launchJack: (pl, x, y, vy) => {
+        pl.thrownUp(x, y, vy);
+        this._camTrack(pl, CAM_TICKS.launched, { moving: () => !pl.body.blocked.down || pl.body.velocity.y < 0 });
+      },
+      launched: (h) => this._camTrack(h.sprite, CAM_TICKS.launched, { moving: () => h.flying }),
     };
     (level.weights || []).forEach((w) => {
       if (!hasProps(this) || !PROP_ANIMS.lead) return;
@@ -663,6 +677,7 @@ export default class GameScene extends Phaser.Scene {
           this._flashBonus(`+${seconds} СЕК`);
         },
         superHoover: (ticks) => { this._superHoover = ticks; },
+        shown: (sprite) => this._camTrack(sprite, CAM_TICKS.hoover),
         doublePoints: (ticks) => { this._doublePoints = ticks; },
         secret: (jack) => {
           // jack_touch_panel 0x1bacb: 32 sparks round him, sounds 0x8d, 0x8c
@@ -948,7 +963,7 @@ export default class GameScene extends Phaser.Scene {
     this._bell.update(delta);
     if (this._buttons) {
       this._buttons.update(delta, this._options,
-        (b, ticks) => this._camTargets.push({ follow: b, ticks }));
+        (b, ticks) => this._camTrack(b, ticks));
     }
     for (this._eventAcc += ticks; this._eventAcc >= 1; this._eventAcc -= 1) this._optionsTick();
     if (this._bonusRound && !this._over) this._bonusRound.update(delta);
@@ -1155,22 +1170,30 @@ export default class GameScene extends Phaser.Scene {
    * except the first time.
    */
   _updateCamera(delta) {
-    const cam = this.cameras.main;
     let jacks = this._liveJacks();
     if (jacks.length === 0) jacks = this._jacks;
-    const xs = jacks.map((j) => j.player.x);
-    const ys = jacks.map((j) => j.player.y);
     // and whatever has joined the list for a while (camera_targets_bounds,
-    // VA 0x1daa7) — a button appearing, the demolition's point
+    // VA 0x1daa7, see docs/re/logic/camera.md): one that has died leaves it;
+    // one that waits does not count down until it has stopped once; the
+    // priority ones, while there are any, are framed alone — the Jacks too
+    // are only list entries in the original, so the rung bell has the
+    // screen to itself.
     const ticks = (delta * 60) / 1000;
     this._camTargets = (this._camTargets || []).filter((t) => {
+      if (t.follow && t.follow.active === false) return false;
+      if (t.wait) {
+        if (!t.moving()) t.wait = false;
+        return true;
+      }
       t.ticks -= ticks;
       return t.ticks > 0;
     });
-    this._camTargets.forEach((t) => {
-      xs.push(t.follow ? t.follow.x : t.x);
-      ys.push(t.follow ? t.follow.y : t.y);
-    });
+    const at = (t) => (t.follow ? t.follow : t);
+    const first = this._camTargets.filter((t) => t.priority);
+    const points = first.length ? first.map(at)
+      : jacks.map((j) => j.player).concat(this._camTargets.map(at));
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
     const x0 = Math.min(...xs) - CAM_MARGIN.side;
     const x1 = Math.max(...xs) + CAM_MARGIN.side;
     const y0 = Math.min(...ys) - CAM_MARGIN.top;
@@ -1197,8 +1220,26 @@ export default class GameScene extends Phaser.Scene {
     const x = right - left <= this._cam.width
       ? (left + right) / 2
       : Phaser.Math.Clamp(this._cam.x, left + half, right - half);
+    const cam = this.cameras.main;
     cam.setZoom(this.scale.width / this._cam.width);
     cam.centerOn(x, this._cam.y);
+  }
+
+  /**
+   * camera_track (VA 0x1d9d6): something the camera takes in for `ticks`.
+   * `moving` given, the count waits until it has stopped (flag 2);
+   * `priority`, it is framed alone (flag 8).
+   * @param {{x: number, y: number, active?: boolean}} follow
+   * @param {number} ticks
+   * @param {{moving?: () => boolean, priority?: boolean}} [opts]
+   */
+  _camTrack(follow, ticks, { moving = null, priority = false } = {}) {
+    this._camTargets.push({ follow, ticks, wait: !!moving, moving, priority });
+  }
+
+  /** camera_point (VA 0x1da48): a fixed point for `ticks` (flag 4). */
+  _camPoint(x, y, ticks) {
+    this._camTargets.push({ x, y, ticks });
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -1314,7 +1355,10 @@ export default class GameScene extends Phaser.Scene {
     this._ringBell(reach, pl);
     if (this._buttons) this._setOptions(this._buttons.hit(reach));
     if (this._cannons) this._cannons.hit(reach);
-    if (this._suckers) this._suckers.hit(reach);
+    if (this._suckers) {
+      this._suckers.hit(reach, (s) => this._camTrack(s.base, CAM_TICKS.sucker,
+        { moving: () => s.handle.flying || s.handle.carried }));
+    }
     if (this._ufos) this._ufos.hit(reach);
     if (this._seesaws) this._seesaws.hit(reach, this._seesawHooks);
     if (this._gits) this._gits.hit(reach);
@@ -1673,9 +1717,7 @@ export default class GameScene extends Phaser.Scene {
   _startDemolition() {
     this._demolishIn = DEMOLISH_TICKS;
     const g = this._street.ground;
-    this._camTargets.push({
-      x: (this._street.left + this._street.right) / 2, y: g - DEMOLISH_CAM.over, ticks: DEMOLISH_CAM.ticks,
-    });
+    this._camPoint((this._street.left + this._street.right) / 2, g - DEMOLISH_CAM.over, DEMOLISH_CAM.ticks);
   }
 
   /**
@@ -1720,6 +1762,7 @@ export default class GameScene extends Phaser.Scene {
   /** The bell pops into view: kicked up, and down it comes (VA 0x340af). */
   _releaseBell(sound = SFX.BELL_FREED_PCT) {
     this._bell.release();
+    this._camTrack(this._bell, CAM_TICKS.bellFree);
     playSfx(sound);   // bell_wait_percent 0x8f, bell_wait_option_800 0x82
     this._flashBonus('КОЛОКОЛЬЧИК!');
   }
@@ -1769,6 +1812,9 @@ export default class GameScene extends Phaser.Scene {
       // every ring, and the last one — the level over — its own (VA 0x34255, 0x342a4)
       playSfx(this._liveJacks().length > 1 ? SFX.BELL_RUNG : SFX.BELL_LAST);
       this._rung.push(j);
+      // the camera to the bell: a while, or — the last ring — for itself alone
+      const last = this._liveJacks().length === 1;
+      this._camTrack(this._bell, last ? CAM_TICKS.bellLast : CAM_TICKS.bellRung, { priority: last });
       // Whoever rings is out of the level (Jack and hammer flagged done,
       // VA 0x34114); the level ends when everyone has rung.
       this._leaveLevel(j);
