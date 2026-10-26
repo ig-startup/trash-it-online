@@ -9,8 +9,10 @@ button, the bell freed and rung, an armed sucker, the super hoover, a
 see-saw's load, a cannon's shot and the demolition's point. Not yet: the
 sledge v3 slam, the apocalypse, MOOLA, the dragon show, Jack in the hat,
 the bonus round. A cannon's shot is tracked only when the cannon's
-`+0x41` has bit 0x80 (`launch_at_45`); what that bit means is not read,
-so the clone tracks every shot.
+`+0x41` has bit 0x80 (`launch_at_45`): `draw_queue_entity` (0x2d5e9)
+sets that bit when it queues the entity to be drawn and clears it when
+the entity is off the screen — so only a cannon in view turns the camera
+(the same test as `camera_track`'s cx = 1).
 
 ## The list
 
@@ -24,7 +26,8 @@ so the clone tracks every shot.
 | +0xc, +0xe | the point's x, y (fixed points only) |
 
 - `camera_track` (0x1d9d6): entity eax, ticks dx, flags ebx; joins only
-  when cx is 2, or cx is 1 and the entity's +0x41 has bit 0x80.
+  when cx is 2, or cx is 1 and the entity's +0x41 has bit 0x80 — it is
+  on the screen.
 - `camera_point` (0x1da48): point (ax, dx) for bx ticks, flags 4.
 - `camera_target_remove` (0x1da39): frees slot ax.
 

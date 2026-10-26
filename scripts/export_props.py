@@ -128,6 +128,10 @@ PROPS = {
     # front, 8 the body (9 jolted), 10 the mast, 11 the forks, 18-22 the
     # gear lever.
     "fork": ("FORK.SPR", list(range(23))),
+    # The dragon show (docs/re/levels/dragon-show.md): VM.SPR's demon face
+    # (0) and lightning bolts (1-4), and the DUST.SPR column of its blast.
+    "vm": ("VM.SPR", list(range(5))),
+    "dust": ("DUST.SPR", None),
 }
 
 
