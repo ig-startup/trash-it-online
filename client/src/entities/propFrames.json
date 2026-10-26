@@ -2952,6 +2952,54 @@
       "ay": 15,
       "src": "BLOI.SPR:6"
     },
+    "button_00": {
+      "file": "sprites/props/button_00.png",
+      "w": 38,
+      "h": 21,
+      "ax": 19,
+      "ay": 20,
+      "src": "REDBUT.SPR:0"
+    },
+    "button_01": {
+      "file": "sprites/props/button_01.png",
+      "w": 49,
+      "h": 9,
+      "ax": 25,
+      "ay": 8,
+      "src": "REDBUT.SPR:1"
+    },
+    "button_02": {
+      "file": "sprites/props/button_02.png",
+      "w": 38,
+      "h": 21,
+      "ax": 19,
+      "ay": 20,
+      "src": "REDBUT.SPR:2"
+    },
+    "button_03": {
+      "file": "sprites/props/button_03.png",
+      "w": 49,
+      "h": 9,
+      "ax": 25,
+      "ay": 8,
+      "src": "REDBUT.SPR:3"
+    },
+    "button_04": {
+      "file": "sprites/props/button_04.png",
+      "w": 38,
+      "h": 21,
+      "ax": 19,
+      "ay": 20,
+      "src": "REDBUT.SPR:4"
+    },
+    "button_05": {
+      "file": "sprites/props/button_05.png",
+      "w": 49,
+      "h": 9,
+      "ax": 25,
+      "ay": 8,
+      "src": "REDBUT.SPR:5"
+    },
     "flag_red_00": {
       "file": "sprites/props/flag_red_00.png",
       "w": 22,
@@ -3640,6 +3688,14 @@
       "bloi_04",
       "bloi_05",
       "bloi_06"
+    ],
+    "button": [
+      "button_00",
+      "button_01",
+      "button_02",
+      "button_03",
+      "button_04",
+      "button_05"
     ],
     "flag_red": [
       "flag_red_00",
