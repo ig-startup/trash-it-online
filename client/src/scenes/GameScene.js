@@ -38,6 +38,7 @@ import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
 import { QUIT_LEVEL } from './PauseScene';
 import Tint from './tint';
 import DragonShow from './dragonShow';
+import { startMusic, stopMusic, pauseMusic, resumeMusic } from '../audio/music';
 import { LAST_ONE_SECONDS } from '../battle/LocalBattle';
 import { ARCADE_MAX_TENTHS, formatTenths, missionText } from '../battle/LocalArcade';
 
@@ -374,6 +375,12 @@ export default class GameScene extends Phaser.Scene {
     // would otherwise outlive the level
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopAllSfx);
 
+    // ── The music (music_start 0x170b6, from load_level) ───────────────────
+    // A bonus round plays CD track 6 instead, which the clone has not; the
+    // level's end stops it (level_finish 0x10167).
+    if (!level.bonusRound) startMusic();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopMusic);
+
     // ── Dynamite ──────────────────────────────────────────────────────────
     // 202 placements across 42 levels, of two kinds: 63 that a hammer
     // lights — the overhead strike, which is the blow that reaches sprites
@@ -705,7 +712,9 @@ export default class GameScene extends Phaser.Scene {
         },
         superHoover: (ticks) => { this._superHoover = ticks; },
         shown: (sprite) => this._camTrack(sprite, CAM_TICKS.hoover),
-        doublePoints: (ticks) => { this._doublePoints = ticks; },
+        // double_points_on (0x1a516) asks for CD track 5, which stops the
+        // level's music for good — CD or not (cd_play_track 0x6d48f)
+        doublePoints: (ticks) => { this._doublePoints = ticks; stopMusic(); },
         secret: (jack) => {
           // jack_touch_panel 0x1bacb: 32 sparks round him, sounds 0x8d, 0x8c
           this._secrets += 1;
@@ -1925,6 +1934,7 @@ export default class GameScene extends Phaser.Scene {
   _pause() {
     if (this._over || this._quitting) return;
     this.scene.pause();
+    pauseMusic();
     // the story's and the arcade's menu has quit level, battle's not
     // (pause_hud 0x1aaa8 tests option 0x10000000 only); the coop is the clone's
     this.scene.launch('PauseScene', {
@@ -1943,6 +1953,7 @@ export default class GameScene extends Phaser.Scene {
    */
   _unpause(state) {
     this.scene.resume();
+    resumeMusic();
     // a button that picked from the menu is not a press in the game
     this._keys.settle();
     if (state === null) return;
