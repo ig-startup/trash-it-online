@@ -17,3 +17,7 @@
 0x2b86b  f  jack_drive_controls            ; keys → forklift +0x86, forks up/down, sits Jack in the seat; thrown off on a drop
 0x21220  f  input_but1_pressed             ; BUT1 pressed (keyboard), 0x80 (pad)
 0x2125c  f  input_but1_held                ; BUT1 held (keyboard), 0x40 (pad)
+0x9842a  d  forklift_seat_hotspot          ; 1 box: 6, -16, ±10, ±16 — Jack's point to get in
+0x9837a  d  forks_hotspot                  ; 1 box: 55, -4, ±20, ±6 from the forks — a load's point
+0x98474  d  forklift_gear_ratio            ; 5 dwords: 25 50 80 100 120
+0x98488  d  forklift_gear_push             ; 5 words: 200 60 30 15 7

@@ -22,7 +22,8 @@ frame 18 + gear).
 
 Jack's event list (0xa2f48), type 6 → 0x1c19f: Jack touches the body,
 is not rising faster than 2.82 px/tick, is in animation slot 5, 30 or
-74, and his point falls in the seat (hotspot 0x9842a). He is linked to
+74, and his point falls in the seat (hotspot 0x9842a: 6, −16 from the
+body, ±10 × ±16, mirrored facing left). He is linked to
 the forklift (`+0x5c` the driver, `+0x87` bit 2), drawn just in front of
 it, takes state 0x2b7e4 (slot 77), and the forklift gets half his vx.
 Each tick (0x2b86b) he sits 2 px behind and 17 px up from the body.
@@ -56,16 +57,29 @@ The gearbox (0x1c331), per gear 1–5:
 
 `rpm = |vx| / ratio`; accelerating adds `push × ratio` (16.16) per tick,
 ×1.5 above 6500 rpm, ¼ above 13000; braking takes away twice that. Over
-the limit (`+0x60`: 8500, or 14500 for a variant no level places) the
-engine holds it back by `(rpm − limit) / 8`. Off the pedal it coasts down
-by 2000 a tick and stops under 6000. The engine sound's rate follows.
+the limit (`+0x60`: 8500, or 14500 for a variant no level places) it
+brakes: the code works out `(rpm − limit) / 8` but the braking branch
+overwrites it with `push × −2`, so over the limit is braking, and the
+pedal does nothing. Off the pedal (and braking) it coasts down by 2000 a
+tick and stops under 6000. The engine sound (0x14, started at the
+forklift by `play_sound_at`) has its rate follow.
 
 ## The forks
 
 The forks (0x1bd87) search what overlaps them with mask 0x1000 (event
 list 0x9841a, any type → 0x1c002): a thing whose point lies on the forks
-is taken — its category and layer saved, its gravity cancelled. Raising
+is taken — its category and layer saved, its gravity cancelled. The
+search runs only while the forks are off the ground (`+0x72` ≠ 0), and
+the forks' hotspot (0x9837a) is 55, −4 from them, ±20 × ±6: a thing on
+the forklift's own ground is in reach only with the forks raised one
+pixel; one on a ledge, with the forks at its height. Raising
 lifts it; it rides at fork height − 4 and moves with the forklift.
 **Lowering to the ground, or onto something it lands on, lets go**
 (0x1bfca) — which is how a piece ends up lying on the ground beside the
-crawler. Moving the forks plays a sound once per movement.
+crawler. Moving the forks plays sound 0x15 once per movement.
+
+**Clone:** `client/src/scenes/rocket.js` (`_forkliftTick`, `_gearbox`,
+`_forksTick`, `board`), Jack's `driving` state in `Player.js`. Ours: one
+who has just got out (or been thrown off) cannot get back in until he
+has left the seat. Not in it: the engine sound, the dust, the gear lever
+on the panel, shifting down (no key does it).
