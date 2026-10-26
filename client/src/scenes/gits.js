@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PROP_ANIMS, applyPropFrame } from '../entities/props';
 import { COL, floorUnder } from './blockKinds';
+import { playSfx, SFX } from '../audio/sfx';
 
 /**
  * The gits — timmies, king timmies and the spike gits. See "The gits" in
@@ -254,6 +255,7 @@ export default class Gits {
         // up it goes, sparkling (0x3333c)
         g.state = 'bstruck';
         g.t = 0;
+        playSfx(SFX.BONUS_STRUCK);   // bonus_struck
         g.vy = BONUS_HOP;
         g.y -= 7;
         g.vx /= 2;
@@ -286,6 +288,7 @@ export default class Gits {
     const tick = 1000 / HZ;
     while (this._acc >= tick) {
       this._acc -= tick;
+      this._spikeVoiced = false;
       for (const g of [...this.all]) {
         if (!g.sprite.active) { this._drop(g); continue; }
         if (g.state === 'hoovered') {
@@ -436,10 +439,22 @@ export default class Gits {
   _spikeTick(g) {
     g.age += 1;
     if (g.state === 'bristle' || g.state === 'unbristle' || g.state === 'struck') return;
+    // git_tick (VA 0x302a2): a walking spike in view mutters every 16
+    // ticks — one spike a tick (0x3f208a)
+    if ((g.age & 15) === 0 && !this._spikeVoiced && this._seen(g)) {
+      this._spikeVoiced = true;
+      playSfx(SFX.SPIKE_MUTTER);
+    }
     if ((g.age & BRISTLE_MASK[g.period]) !== 0) return;
     g.state = 'bristle';
     g.t = 0;
     g.index = 0;
+    if (this._seen(g)) playSfx(SFX.SPIKE_BRISTLE);   // spike_tick, in view
+  }
+
+  /** On screen — link_flags 0x80 (+0x41), which these sounds test. */
+  _seen(g) {
+    return this._scene.cameras.main.worldView.contains(g.x, g.y);
   }
 
   /**
@@ -447,6 +462,7 @@ export default class Gits {
    * (up to 4 px/tick either way); flat on the first knock, dead on the next.
    */
   _knock(g) {
+    playSfx(SFX.GIT_KNOCKED);   // git_tick, the hit flag (VA 0x301b4)
     const n = g.knocks || 0;
     g.knocks = n + 1;
     g.vy = -1.5;
@@ -559,6 +575,7 @@ export default class Gits {
       g.sprite.setScale(1 + d / 32);
       if (d > BONUS_BURST) {
         this._w.shake();
+        playSfx(SFX.BONUS_BURST);    // bonus_swell
         this._w.prize(g.prize, g.count, g.x, g.y, g.left);
         g.sprite.destroy();
       }
@@ -681,6 +698,7 @@ export default class Gits {
       g.sprite.setScale(1 + g.t / STRUCK_TICKS / 2);
       if (g.t >= STRUCK_TICKS) {
         this._w.shake();
+        playSfx(SFX.GIT_STRUCK);   // git_struck_puff: the BLAM
         g.sprite.destroy();
       }
       return;
@@ -868,6 +886,7 @@ export default class Gits {
     g.jitter = g.t & 1;
     if (g.t === BLOW_AT) {
       g.sprite.destroy();
+      playSfx(SFX.GIT_STRUCK);     // bomb_blow, the two BLAMs
       this._w.bombBlast(g.x, g.y);
     }
   }

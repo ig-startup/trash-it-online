@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { PROP_ANIMS, applyPropFrame } from '../entities/props';
+import { playSfx, SFX } from '../audio/sfx';
 
 /**
  * Bonuses, the dispenser and the secret panel — .OB classes 33, 8 and 46.
@@ -152,6 +153,7 @@ export default class Bonuses {
       p.sprite.destroy();
       this.prizes.splice(i, 1);
       this._w.shake();
+      playSfx(SFX.CLOCK_BURST);   // clock_hit
     }
   }
 
@@ -199,6 +201,7 @@ export default class Bonuses {
         if (p.kind === 'bubble' && p.grounded) {
           // it will not keep still (0x1b220)
           p.grounded = false;
+          playSfx(SFX.BUBBLE_HOP);   // bubble_tick, heard from the camera
           p.vy = -Math.random() * 8;
           p.vx = (Math.random() < 0.5 ? -1 : 1) * Math.random() * 4;
         }
@@ -207,8 +210,12 @@ export default class Bonuses {
         // a puff where it was (jack_touch_clock 0x12096,
         // jack_touch_super_hoover 0x1b48c)
         if (this._w.puff && p.kind !== 'bubble') this._w.puff(p.x, p.y, p.sprite.width, p.sprite.height);
-        if (p.kind === 'clock') this._w.addTime(CLOCK_SECONDS);
-        if (p.kind === 'hoover') this._w.superHoover(SUPER_HOOVER_TICKS);
+        if (p.kind === 'clock') { this._w.addTime(CLOCK_SECONDS); playSfx(SFX.CLOCK_TAKEN); }
+        if (p.kind === 'hoover') {
+          this._w.superHoover(SUPER_HOOVER_TICKS);
+          // super_hoover_on: four at once, its fanfare
+          [SFX.SUPER_HOOVER_A, SFX.SUPER_HOOVER_B, SFX.SUPER_HOOVER_C, SFX.SUPER_HOOVER_D].forEach((id) => playSfx(id));
+        }
         if (p.kind === 'bubble') this._w.doublePoints(DOUBLE_POINTS_TICKS);
         p.sprite.destroy();
         this.prizes.splice(i, 1);
@@ -286,6 +293,8 @@ export default class Bonuses {
   _clockStep(p) {
     const spin = 24 * CLOCK_FRAME_TICKS * CLOCK_TURNS;
     const phase = p.t % (spin + CLOCK_HOP_TICKS);
+    // clock_tick (VA 0x11e28): a tick at the end of every turn
+    if (phase < spin && phase % (24 * CLOCK_FRAME_TICKS) === 24 * CLOCK_FRAME_TICKS - 1) playSfx(SFX.CLOCK_TURN);
     if (phase < spin) {
       this._show(p.sprite, 'clok', Math.floor(phase / CLOCK_FRAME_TICKS) % 24);
       return;
@@ -333,6 +342,7 @@ export default class Bonuses {
     if (d.wait > 0) { d.wait -= 1; return true; }
     if (d.left > 0) {
       this._w.ball(d.x - 17, d.y - 16, DIS_BALL_VX[d.turn & 7], -DIS_BALL_VY);
+      playSfx(SFX.DISPENSER_BALL);   // dispenser_fire
       d.turn += 1;
       d.left -= 1;
       d.wait = d.gap;

@@ -22,6 +22,7 @@
 import Phaser from 'phaser';
 import { LocalKeys } from '../input/keySets';
 import { PROP_ANIMS } from '../entities/props';
+import { playSfx, SFX } from '../audio/sfx';
 
 const VIEW_W = 320;
 const VIEW_H = 200;
@@ -124,9 +125,10 @@ export default class PauseScene extends Phaser.Scene {
     this._ticks += 1;
     const p = this._pressed();
     // pause_cursor_tick 0x1ac13
-    if (p.down && this._row < LAST_ROW[this._menu]) this._row += 1;
-    if (p.up && this._row > 0) this._row -= 1;
-    if (p.fire) this._pick();
+    // pause_cursor_tick (0x1ac13): a sound for each row moved, another to pick
+    if (p.down && this._row < LAST_ROW[this._menu]) { this._row += 1; playSfx(SFX.PAUSE_MOVE); }
+    if (p.up && this._row > 0) { this._row -= 1; playSfx(SFX.PAUSE_MOVE); }
+    if (p.fire) { playSfx(SFX.PAUSE_PICK); this._pick(); }
     if (this._picked !== null) return;
     // the arrow eases a quarter of the way to its row a tick
     this._arrowY += (ARROW_Y[this._menu][this._row] - this._arrowY) / 4;
