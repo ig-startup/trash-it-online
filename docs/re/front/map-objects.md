@@ -105,4 +105,5 @@ by the PIT clock / 13 ms when a frame runs late (`continue.md`).
 **In the clone**: `scripts/export_worldmap.py` writes each node's object
 (`icons`) and the sheets; `WorldMapScene.js` plays the bin and hat scripts
 above as [frame, ticks] steps, the loops off the tick count, and orders
-them by these depths (a node's -1 and Jack by y). The sounds are not in.
+them by these depths (a node's -1 and Jack by y), with the sounds
+(`formats/sound.md`, F.EXE's).

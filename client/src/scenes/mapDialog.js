@@ -14,6 +14,7 @@
  * where its screen is drawn (`origin`) and keeps them on that camera.
  */
 import { writeYel } from './yelFont';
+import { playFrontSfx } from '../audio/sfx';
 
 /** The sign: LSSHOP frame 1 at (-154, -384), 16 px a tick down, slowed by 0x84d0. */
 const SIGN = { frame: 1, x: -154 + 160, y: -384 + 128, vy: 16, ay: -0x84d0 / 0x10000 };
@@ -50,6 +51,7 @@ export default class MapDialog {
     this.texts = [];
     this.pointer = null;
     this.choice = null;
+    playFrontSfx(0x23);   // map_dialog_tick (0x1eb6f): the sign set off
     this.ticks = 0;
     this._place();
   }
@@ -133,8 +135,11 @@ export default class MapDialog {
     }
     if (this.phase === 'ask') {
       // left yes, right no; fire answers — yes unless no was picked
+      // dialog_yes_no (0x1ea3b, 0x1ea7b): a sound when the arrow changes
+      const was = this.choice;
       if (keys.left) this.choice = 'yes';
       if (keys.right) this.choice = 'no';
+      if (this.choice !== was) playFrontSfx(0x2b);
       if (this.pointer && this.choice) {
         const f = this.choice === 'yes' ? YES_FRAME : NO_FRAME;
         const [, , , , ox, oy] = this.o.yel.frames[f];

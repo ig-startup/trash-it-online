@@ -11,6 +11,7 @@
  */
 import Phaser from 'phaser';
 import { loadKeySets, LocalKeys, SOLO_EXTRA } from '../input/keySets';
+import { playFrontSfx } from '../audio/sfx';
 
 const PIC_W = 320;
 const PIC_H = 200;
@@ -182,11 +183,14 @@ export default class ContinueScene extends Phaser.Scene {
     const fire = this._enter.isDown || this._pads.some((p) => p.but1.isDown || p.but2.isDown);
     if (fire && !this._done) {
       this._done = true;
+      playFrontSfx(0x02);
+      playFrontSfx(0x23);
       // YES falls at 1/8 a tick per tick, NO at 3/8, CONTINUE? rises at 1/4
       this._words.forEach((w) => { w.ay = w.away; });
     }
-    if (this._pads.some((p) => p.left.isDown)) this._choice = YES;
-    if (this._pads.some((p) => p.right.isDown)) this._choice = NO;
+    // a sound when the choice changes: 0x33 yes, 0x32 no
+    if (this._pads.some((p) => p.left.isDown) && this._choice !== YES) { this._choice = YES; playFrontSfx(0x33); }
+    if (this._pads.some((p) => p.right.isDown) && this._choice !== NO) { this._choice = NO; playFrontSfx(0x32); }
   }
 
   /** continue_word_tick 0x15415: wait, move, stop at speed 0, flash if picked. */
@@ -197,6 +201,8 @@ export default class ContinueScene extends Phaser.Scene {
     }
     w.y += w.vy;
     w.vy += w.ay;
+    // the thud as it lands: at a speed of -6 or +5 (continue_word_tick 0x15464)
+    if (w.vy === -6 || w.vy === 5) playFrontSfx(0x23);
     if (!this._done) {
       if (w.ay > 0 ? w.vy >= 0 : w.vy <= 0) {
         w.vy = 0;

@@ -99,6 +99,27 @@ hoover 0x94-0x97 at once. The pause menu 1 a row, 0x30 a pick.
 place in the view and fades as the view widens; the clone plays them
 centred, at full volume.
 
+**F.EXE's sounds** — the screens outside a level — are the same engine
+on the other bank: `front_engine_reset` hands `load_sound_bank` (0x219a6)
+FSFX/SBANK.0 and the table at **0x8e28e**, 60 scripts, one per sample
+nearly; its `voice_set_loop` reads the loop table at **0x8e380** (VA
+0x228e2), where only sample 54 loops — script 0x31, the hammer shop's own
+8.5-second loop, started by `shop_init` and again after a film. `sound.py
+scripts F.EXE` lists them. Which plays what, from the calls (the id the
+`mov eax, imm` before each): the map — Jack's step 0x15 every 16 ticks of
+walking, 0x19 a node or the shop refused, a won level's bin 1 and hat 0x2d
+as their scripts reach them (`eaaf`), the sign of the dialog 0x23 as it
+sets off, its arrow 0x2b each time it changes, the shop's house 0x25 as it
+passes y −60, 0x27 down, 0x2a Jack taken in, 0x26 off again; continue? —
+0x33 yes and 0x32 no as the choice changes, fire 2 and 0x23, each word's
+thud 0x23 at a speed of −6 or +5; the shop — 0x0a the cursor's every move
+over the grid, 0x0c the buttons' and the yes/no's, fire 0x08 on back, 2
+on a hammer sold here and 0x37 on one not, 0x0c the film, 2 no, 0x38
+bought, and the card 5 a step — the last two steps, the rings, 0x2d
+(**Inferred**: seven calls of 5 and two of 0x2d in `shop_card_tick`'s
+jump table, the rings being the two last of nine steps). The clone plays
+them with `playFrontSfx` (`sfx.js`).
+
 **Voices**: 15 (the sample handles `ail_startup` gets); a sound takes a
 free one, else the next round the ring whose priority is no higher (never
 0x7fff), else it is not played (`sound_voice_alloc` 0x1618f). A `play`
