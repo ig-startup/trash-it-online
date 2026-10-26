@@ -337,6 +337,14 @@ def describe_xmi(seq):
 SCRIPT_TABLE = 0x95f9c
 SCRIPT_COUNT = 154
 LOOP_TABLE = 0x96204        # per bank sample: (s32 start, s32 end) bytes
+# F.EXE, the front end, has its own of the same build for FSFX/SBANK.0:
+# the table front_engine_reset hands load_sound_bank (VA 0x23397), its
+# 60 scripts, and the loop table its voice_set_loop reads (VA 0x228e2,
+# G's 0x16c89) — one per FSFX sample.
+TABLES = {
+    'G': (SCRIPT_TABLE, SCRIPT_COUNT, LOOP_TABLE, 67),
+    'F': (0x8e28e, 60, 0x8e380, 60),
+}
 OPS = {
     0: ('play', 5, 'sample, rate (-1 = file rate), -, -'),
     1: ('stop_sample', 1, ''),
@@ -363,9 +371,13 @@ OPS = {
 }
 
 
+def _which(exe_path):
+    return 'F' if os.path.basename(exe_path).upper().startswith('F') else 'G'
+
+
 def read_scripts(exe_path):
     """→ [{'id', 'va', 'priority', 'ops': [(va, op, name, args)]}],
-    plus the loop table, from G.EXE."""
+    plus the loop table, from G.EXE or F.EXE."""
     here = os.path.dirname(os.path.abspath(__file__))
     sys.path.insert(0, here)
     from le_loader import LE
@@ -374,8 +386,8 @@ def read_scripts(exe_path):
     def w(va):
         return struct.unpack('<h', le.va_read(va, 2))[0]
 
-    ptrs = struct.unpack('<%dI' % SCRIPT_COUNT,
-                         le.va_read(SCRIPT_TABLE, 4 * SCRIPT_COUNT))
+    table, count, loop_table, samples = TABLES[_which(exe_path)]
+    ptrs = struct.unpack('<%dI' % count, le.va_read(table, 4 * count))
     scripts = []
     for sid, va in enumerate(ptrs):
         s = {'id': sid, 'va': va, 'priority': w(va), 'ops': []}
@@ -392,8 +404,8 @@ def read_scripts(exe_path):
             if op == 10:
                 break
         scripts.append(s)
-    raw = le.va_read(LOOP_TABLE, 8 * 67)
-    loops = {i: struct.unpack_from('<ii', raw, 8 * i) for i in range(67)
+    raw = le.va_read(loop_table, 8 * samples)
+    loops = {i: struct.unpack_from('<ii', raw, 8 * i) for i in range(samples)
              if struct.unpack_from('<ii', raw, 8 * i) != (0, 0)}
     return scripts, loops
 
@@ -491,8 +503,9 @@ def cmd_export(path, out):
 
 def cmd_scripts(exe):
     scripts, loops = read_scripts(exe)
-    print('sound scripts (G.EXE VA %#x), priority then ops; '
-          'sample = SFX/SBANK.0 entry' % SCRIPT_TABLE)
+    which = _which(exe)
+    print('sound scripts (%s.EXE VA %#x), priority then ops; sample = %s/SBANK.0 '
+          'entry' % (which, TABLES[which][0], 'FSFX' if which == 'F' else 'SFX'))
     for s in scripts:
         print('  %#04x %3d  @%#x  pri %5d  %s' % (s['id'], s['id'], s['va'],
                                                 s['priority'],

@@ -28,7 +28,9 @@ const LOCKED = 0x7fff;
 
 let ctx = null;
 let out = null;
-const buffers = [];
+/** G.EXE's set, and F.EXE's for the screens outside a level (`front`). */
+const BANKS = { game: SOUNDS, front: SOUNDS.front };
+const buffers = { game: [], front: [] };
 const voices = [];
 let ring = VOICES;
 let acc = 0;
@@ -50,13 +52,13 @@ export function initSfx(game) {
   out.gain.value = VOLUME;
   out.connect(mgr.destination || ctx.destination);
   for (let i = 0; i < VOICES; i += 1) voices.push({ busy: false });
-  SOUNDS.samples.forEach((s, i) => {
+  Object.entries(BANKS).forEach(([bank, set]) => set.samples.forEach((s, i) => {
     fetch(s.file)
       .then((r) => r.arrayBuffer())
       .then((b) => ctx.decodeAudioData(b))
-      .then((buf) => { buffers[i] = buf; })
+      .then((buf) => { buffers[bank][i] = buf; })
       .catch(() => {});
-  });
+  }));
   game.events.on('poststep', (_time, delta) => {
     acc = Math.min(acc + delta, 100);
     while (acc >= 1000 / HZ) {
@@ -76,20 +78,23 @@ export function toggleMute() {
 /**
  * Starts sound `id` (`play_sound` 0x15de2).
  * @param {number} id  an index into the script table
- * @param {{delay?: number}} [opts]  ticks before its first op — what
- *   `blow_walk_cells` and `play_sound_staggered` write into the new voice
- *   (+0x18) so a blow's cells do not all sound at once
+ * @param {{delay?: number, bank?: 'game' | 'front'}} [opts]  `delay`:
+ *   ticks before its first op — what `blow_walk_cells` and
+ *   `play_sound_staggered` write into the new voice (+0x18) so a blow's
+ *   cells do not all sound at once; `bank`: whose scripts (`playFrontSfx`)
  * @returns {object | null} the voice, for `stopSfx`
  */
 export function playSfx(id, opts = {}) {
   if (!ctx) return null;
-  const script = SOUNDS.scripts[id];
+  const bank = opts.bank || 'game';
+  const script = BANKS[bank].scripts[id];
   if (!script) return null;
   const v = allocVoice(script.priority);
   if (!v) return null;
   Object.assign(v, {
     busy: true,
     id,
+    bank,
     priority: script.priority,
     ops: script.ops,
     pc: 0,
@@ -103,6 +108,14 @@ export function playSfx(id, opts = {}) {
   });
   if (!v.wait) run(v);
   return v;
+}
+
+/**
+ * Starts sound `id` of F.EXE's set — a screen outside a level (F.EXE's
+ * play_sound 0x21a3b, its scripts at 0x8e28e on FSFX/SBANK.0).
+ */
+export function playFrontSfx(id) {
+  return playSfx(id, { bank: 'front' });
 }
 
 /** sound_stop_all (0x167b3): every voice — level_finish, the level's end. */
@@ -148,8 +161,8 @@ function stopSample(v) {
 
 function startSample(v, index, rate) {
   stopSample(v);
-  const buf = buffers[index];
-  const info = SOUNDS.samples[index];
+  const buf = buffers[v.bank][index];
+  const info = BANKS[v.bank].samples[index];
   v.sample = index;
   v.base = rate === -1 || rate === 0xffff ? info.rate : rate;
   if (!buf || muted) return;
@@ -169,7 +182,7 @@ function startSample(v, index, rate) {
 function setRate(v) {
   if (!v.src) return;
   const hz = Math.max(100, (v.base + v.vibOff - v.jitterOff) & 0xffff);
-  v.src.playbackRate.value = hz / SOUNDS.samples[v.sample].rate;
+  v.src.playbackRate.value = hz / BANKS[v.bank].samples[v.sample].rate;
 }
 
 /** One logic tick of a voice: its effects, then its script. */
@@ -224,7 +237,7 @@ function run(v) {
       case 8: v.slide = null; break;
       case 9: v.vib = null; v.vibOff = 0; setRate(v); break;
       case 10: free(v); return;                                  // end
-      case 11: playSfx(a); break;                                // sound
+      case 11: playSfx(a, { bank: v.bank }); break;              // sound
       case 18: v.jitter = { mask: a, every: b, count: b }; break;
       case 19: v.jitter = null; v.jitterOff = 0; setRate(v); break;
       default: break;                                            // pan, nop, skip

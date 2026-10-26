@@ -18,6 +18,7 @@
 import Phaser from 'phaser';
 import { loadKeySets, LocalKeys, SOLO_EXTRA } from '../input/keySets';
 import { writeYel } from './yelFont';
+import { playFrontSfx, stopSfx } from '../audio/sfx';
 
 const PIC_W = 320;
 const PIC_H = 200;
@@ -98,6 +99,9 @@ export default class ShopScene extends Phaser.Scene {
 
   _build() {
     const shop = this._shop;
+    // shop_init (0x1b8ed): the shop's own loop, for as long as it is open
+    this._hum = playFrontSfx(0x31);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => stopSfx(this._hum, 0x31));
     const story = this._story;
     Object.entries(shop.sheets).forEach(([name, sheet]) => {
       const tex = this.textures.get(key(name));
@@ -207,9 +211,12 @@ export default class ShopScene extends Phaser.Scene {
 
     const s = this._state;
     if (s === BROWSE) {
+      // shop_cursor_tick (0x1b31a): a click for every move
+      if (left || right) playFrontSfx(0x0a);
       if (left) this._col = this._col === 0 ? EXIT_COL : this._col - 1;
       if (right) this._col = this._col === EXIT_COL ? 0 : this._col + 1;
       if (this._col !== EXIT_COL) {
+        if (up || down) playFrontSfx(0x0a);
         if (up) this._row = this._row === 0 ? ROWS - 1 : this._row - 1;
         if (down) this._row = this._row === ROWS - 1 ? 0 : this._row + 1;
       }
@@ -217,10 +224,13 @@ export default class ShopScene extends Phaser.Scene {
       this._button = BACK;
       if (fire) this._fireBrowse();
     } else if (s === MENU) {
+      if (up || down) playFrontSfx(0x0c);
       if (up) this._button = this._button === 0 ? BACK : this._button - 1;
       if (down) this._button = this._button === BACK ? 0 : this._button + 1;
       if (fire) this._fireMenu();
     } else if (s === CONFIRM) {
+      // shop_yes_no_pointer (0x1b228, 0x1b25c): when the arrow changes
+      if ((left && this._choice !== 1) || (right && this._choice !== 0)) playFrontSfx(0x0c);
       if (left) this._choice = 1;
       if (right) this._choice = 0;
       if (fire) this._fireConfirm();
@@ -246,11 +256,16 @@ export default class ShopScene extends Phaser.Scene {
 
   _fireBrowse() {
     if (this._col === EXIT_COL) {
+      playFrontSfx(0x08);   // shop_fire 0x1bb44
       this._leave();
       return;
     }
     // a hammer this world sells (table 0x8d90c); else only a sound
-    if (!this._shop.open[this._story.world][this._row * COLS + this._col]) return;
+    if (!this._shop.open[this._story.world][this._row * COLS + this._col]) {
+      playFrontSfx(0x37);   // 0x1bbc6
+      return;
+    }
+    playFrontSfx(0x02);     // 0x1bb8d
     this._state = MENU;
     this._cardStep = 0;
     this._cardLeft = 0;
@@ -276,8 +291,10 @@ export default class ShopScene extends Phaser.Scene {
     } else if (this._button === FILM) {
       // state 7 plays the hammer's film, D\SMK\<sla, slb ...>.SMK: not on
       // the clone's disc
+      playFrontSfx(0x0c);   // 0x1bdcb
       this._msg.setText('ФИЛЬМЫ МОЛОТКОВ В КЛОНЕ НЕ ПОКАЗЫВАЮТСЯ');
     } else {
+      playFrontSfx(0x08);   // 0x1bdf6
       this._wait = BACK_TICKS;
       this._state = WAIT;
     }
@@ -286,6 +303,7 @@ export default class ShopScene extends Phaser.Scene {
   _fireConfirm() {
     this._clearTexts();
     if (this._choice !== 1) {
+      playFrontSfx(0x02);   // 0x1be55
       this._wait = BACK_TICKS;
       this._state = WAIT;
       return;
@@ -297,6 +315,7 @@ export default class ShopScene extends Phaser.Scene {
       this._state = WAIT;
       return;
     }
+    playFrontSfx(0x38);     // shop_buy 0x1bfa8
     this._say(this._shop.words.bought);
     this._writeMoney();
     this._wait = SAY_TICKS;
@@ -357,6 +376,8 @@ export default class ShopScene extends Phaser.Scene {
     const item = this._item();
     const step = this._cardStep;
     this._cardStep += 1;
+    // shop_card_tick (0x1c34f): a sound a step, another for each ring
+    playFrontSfx(step < 7 ? 0x05 : 0x2d);
     // a label: x -205, y dy - 156 (0x1c7e6)
     const label = (n, dy, dx = 0) => this._card.push(this._put('hamshp_e', LABEL_FRAME + n, -205 + 160 + dx, dy - 156 + 128));
     // a bar of two parts: red from 0, green after it (0x1c2e4, 0x26efb)

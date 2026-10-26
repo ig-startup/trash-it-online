@@ -17,6 +17,7 @@ import Phaser from 'phaser';
 import Story from '../story/Story';
 import MapDialog from './mapDialog';
 import { loadKeySets, LocalKeys, SOLO_EXTRA } from '../input/keySets';
+import { playFrontSfx } from '../audio/sfx';
 
 const MAP_W = 640;
 const MAP_H = 480;
@@ -86,21 +87,22 @@ const TAKEN = { shrink: -10000, stretch: -50000, behindAt: -10, narrowest: -22, 
 
 /**
  * The bins' and hats' scripts (docs/re/front/map-objects.md), as
- * [frame, ticks] steps: the loop of a level not yet trashed, from a random
- * step (eaac); the pose of one trashed; and the one just won, played once.
+ * [frame, ticks, sound?] steps: the loop of a level not yet trashed, from
+ * a random step (eaac); the pose of one trashed; and the one just won,
+ * played once — its sound (eaaf) as the step starts.
  */
 const SCRIPTS = {
   // 0x89dfa, 0x89e36, 0x89efe: the lid rattles; the bin crushed flat
   bin: {
     loop: [0, 1, 2, 3, 2, 1].map((f) => [f, 3]),
     trashed: [[6, HOLD]],
-    won: [[0, 45], [4, 5], [5, 5], [6, HOLD]],
+    won: [[0, 45], [4, 5, 0x01], [5, 5], [6, HOLD]],
   },
   // 0x89e4a, 0x89e9e, 0x89ebe
   hat: {
     loop: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((f) => [f, 4]),
     trashed: [[15, HOLD]],
-    won: [[0, 44], [12, 4], [13, 4], [14, 4], [15, HOLD]],
+    won: [[0, 44], [12, 4, 0x2d], [13, 4], [14, 4], [15, HOLD]],
   },
 };
 
@@ -394,6 +396,7 @@ export default class WorldMapScene extends Phaser.Scene {
           return false;
         }
         this._say('С ЭТИМ МОЛОТКОМ В МАГАЗИН НЕЛЬЗЯ');
+        playFrontSfx(0x19);
       }
       if (g) {
         const m = moves[w.at][g];
@@ -429,7 +432,11 @@ export default class WorldMapScene extends Phaser.Scene {
       }
     }
 
-    if (w.moving) this._step();
+    if (w.moving) {
+      this._step();
+      // map_jack_tick (0x1fa4f): his step, every 16 ticks
+      if ((this._ticks & 15) === 0) playFrontSfx(0x15);
+    }
     return false;
   }
 
@@ -467,6 +474,8 @@ export default class WorldMapScene extends Phaser.Scene {
     // while the house is about he stands faced to us (map_jack_tick)
     w.dir = 3;
     if (f.phase === 'fall') {
+      // 0x1f4aa: the whoosh as it passes 60 px over the top
+      if (f.y < -60 && f.y + f.vy >= -60) playFrontSfx(0x25);
       f.y += f.vy;
       if (f.y >= land) {
         f.y = land;
@@ -481,10 +490,12 @@ export default class WorldMapScene extends Phaser.Scene {
         f.vy = 0;
         f.phase = 'sit';
         f.left = SHOP.sit;
+        playFrontSfx(0x27);   // 0x1f4ef: down
       }
     } else if (f.phase === 'sit') {
       f.left -= 1;
       if (f.left === SHOP.jackIn) {
+        playFrontSfx(0x2a);   // 0x1f541: Jack taken in
         this._taken = {
           a: 0, va: 0, b: 0, vb: 0, h: 0, c: 0, y: 0, phase: 1, behind: false,
         };
@@ -497,6 +508,8 @@ export default class WorldMapScene extends Phaser.Scene {
       if (f.left > 0) f.left -= 1;
       else f.phase = 'climb';
     } else if (f.phase === 'climb') {
+      // map_shop_flight_tail (0x1f586): off, at -0x24220 of climb
+      if (f.vy > -0x24220 / 0x10000 && f.vy - SHOP.climb <= -0x24220 / 0x10000) playFrontSfx(0x26);
       f.vy -= SHOP.climb;
       f.y += f.vy;
       if (f.y < SHOP.gone) {
@@ -628,6 +641,7 @@ export default class WorldMapScene extends Phaser.Scene {
       return true;
     } else if (r.act === 'refuse') {
       this._say(r.why);
+      playFrontSfx(0x19);   // map_fire_pressed: not this one
     }
     return false;
   }
@@ -671,6 +685,7 @@ export default class WorldMapScene extends Phaser.Scene {
         else if (o.loops) o.step = 0;
         o.left = o.steps[o.step][1];
         this._placeIcon(o, o.steps[o.step][0]);
+        if (o.steps[o.step][2] !== undefined) playFrontSfx(o.steps[o.step][2]);
       }
       // 0x1f689: T's node 15 goes behind Jack once he is low enough
       if (icon.behindJackBelow) o.depth = this._w.y >= icon.behindJackBelow ? 0x1cd : 1;

@@ -12,8 +12,10 @@ are and the scripts as data:
     python3 scripts/export_sounds.py
 
 Writes client/public/sounds/sfx_NN.wav and client/src/audio/sounds.json:
-{samples: [{file, rate, loop}], scripts: [{priority, ops: [[op, ...args]]}]},
-the op numbers those of formats/sound.py OPS, rates as unsigned Hz.
+{samples: [{file, rate, loop}], scripts: [{priority, ops: [[op, ...args]]}],
+front: {samples, scripts}}, the op numbers those of formats/sound.py OPS,
+rates as unsigned Hz. `front` is F.EXE's own set — FSFX/SBANK.0, written
+as fsfx_NN.wav, and its 60 scripts — for the screens outside a level.
 """
 import json
 import os
@@ -33,15 +35,14 @@ PREFIX = "sounds"
 RATE_OPS = {0, 17}
 
 
-def main():
-    os.makedirs(OUT_WAV, exist_ok=True)
-    os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)
-    bank = sound.read_sbank(os.path.join(ORIG, "SFX", "SBANK.0"))
-    scripts, loops = sound.read_scripts(os.path.join(ORIG, "G.EXE"))
+def export_set(folder, exe, prefix):
+    """One bank and the scripts that play it → {samples, scripts}."""
+    bank = sound.read_sbank(os.path.join(ORIG, folder, "SBANK.0"))
+    scripts, loops = sound.read_scripts(os.path.join(ORIG, exe))
 
     samples = []
     for s in bank:
-        name = "sfx_%02d.wav" % s["index"]
+        name = "%s_%02d.wav" % (prefix, s["index"])
         sound.write_wav(os.path.join(OUT_WAV, name), s["data"], s["rate"],
                         s["bits"], s["channels"])
         entry = {"file": "%s/%s" % (PREFIX, name), "rate": s["rate"]}
@@ -61,13 +62,20 @@ def main():
                 args[1] &= 0xffff
             ops.append([op] + args)
         out_scripts.append({"priority": s["priority"], "ops": ops})
+    return {"samples": samples, "scripts": out_scripts}
 
+
+def main():
+    os.makedirs(OUT_WAV, exist_ok=True)
+    os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)
+    game = export_set("SFX", "G.EXE", "sfx")
+    front = export_set("FSFX", "F.EXE", "fsfx")
     with open(OUT_JSON, "w") as f:
-        json.dump({"samples": samples, "scripts": out_scripts}, f,
-                  separators=(",", ":"))
-    print("%d samples → %s, %d scripts → %s" % (
-        len(samples), os.path.relpath(OUT_WAV, REPO), len(out_scripts),
-        os.path.relpath(OUT_JSON, REPO)))
+        json.dump(dict(game, front=front), f, separators=(",", ":"))
+    for name, d in (("game", game), ("front", front)):
+        print("%s: %d samples → %s, %d scripts → %s" % (
+            name, len(d["samples"]), os.path.relpath(OUT_WAV, REPO),
+            len(d["scripts"]), os.path.relpath(OUT_JSON, REPO)))
 
 
 if __name__ == "__main__":
