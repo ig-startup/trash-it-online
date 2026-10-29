@@ -187,6 +187,9 @@ const STATES = {
   // 0x24174, slots 24-27 — the overhead swing, padded longer the more it
   // was charged (see OVER_STRIKES)
   strikeOver: { slotFrom: 24, anim: 'hammerOver', ms: TICK_MS, next: 'hammerStand', locks: true, brakes: true },
+  // 0x2a4d8, slot 66 — the sledge hammer v3's trick: the overhead swing's
+  // frames for 28 ticks, one a tick (see SLEDGE_TRICK_SEQ), sliding to a stop
+  sledgeTrick: { slot: 66, anim: 'hammerOver', ms: TICK_MS, next: 'stand', locks: true, brakes: true },
   // 0x25813, slot 31 — in the air
   fall: { slot: 31, anim: 'fall', ms: 80, loop: true, profile: 'slow' },
   // 0x25a3e, slot 32 — hitting the ground
@@ -443,6 +446,17 @@ const OVER_STRIKES = [
   },
 ];
 
+/**
+ * Slot 66's first 28 frames (sheet 59-70 → the hammerOver pose from 55), the
+ * ticks sledge_v3_trick (VA 0x2a4d8) plays; the slam is on the 8th.
+ * See docs/re/jack/sledge-trick.md.
+ */
+const SLEDGE_TRICK_SEQ = [59, 59, 59, 59, 60, 60, 61, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 63, 63,
+  63, 63, 63, 64, 64, 64, 65, 65, 66].map((f) => f - 55);
+const SLEDGE_TRICK_SLAM_FRAME = 8;
+/** touching_own_flag (VA 0x1f602): |dx| and |dy - 21| under 50 px of his flag. */
+const FLAG_NEAR = { r: 50, up: 21 };
+
 // A hammer-list word: the frame of his hammer's sheet, and two sticky switches.
 const HAMMER_FRAME = 0x3fff;
 const HAMMER_HIDE = 0x4000;
@@ -515,6 +529,17 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._jumpBoost = 0;       // what is left of a held jump's extra lift
     this._hammerHidden = true;  // in the hat, per the game's list flags
     this._hammerOut = false;    // the hammer mode: out of the hat, in hand
+    /**
+     * Key combinations (docs/re/jack/combos.md): `trickArmed` is player
+     * +0xb0 + hammer*2, set for one tick by the scene's ComboWatcher and
+     * spent by the hat, the overhead windup or the sideways one;
+     * `hammerAway` is +0x9a — his hammer is loose in the level (the sledge
+     * v3's trick, the apocalypse).
+     */
+    this.trickArmed = false;
+    this.hammerAway = false;
+    /** Set by the scene: whether his loose hammer is where he could take it back. */
+    this.canRetrieveHammer = null;
     this._jumpTicks = 0;
     this._invuln = 0;          // +0x7c: ticks he cannot be hurt, blinking (VA 0x2b9fd)
     this._noEvents = 0;        // player +0x15a: ticks nothing touches him
@@ -876,6 +901,13 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     // ── The hard hat: Down went in, Up comes out (0x244c0) ────────────────
     if (this.state === 'hat' || this.state === 'hatWalk') {
+      // jack_in_hat (0x24727) → hat_trick_armed (0x211d2): the armed flag, not
+      // at his own flag, sends him home to it (only standing still in the hat)
+      if (this.state === 'hat' && this.trickArmed && !this.atOwnFlag()) {
+        this.trickArmed = false;
+        this._hatToFlag(body, now);
+        return;
+      }
       if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
         body.setVelocityX(0);
         this._enter('hatOut', now);
@@ -922,8 +954,15 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     const allowed = this._armed
       ? !(this._hand & HAND.keepHammer) && !(hoover && (this._hand & HAND.noHoover))
       : !(this._hand & (hoover ? HAND.noHoover : HAND.noHammer));
-    if (but1 && onGround && allowed) {
+    // A hammer that is loose in the level is drawn only over it (0x22029)
+    const mayDraw = !this.hammerAway || hoover
+      || !!(this.canRetrieveHammer && this.canRetrieveHammer());
+    if (but1 && onGround && allowed && mayDraw) {
       body.setVelocityX(0);
+      if (this.hammerAway && !hoover) {
+        this.hammerAway = false;
+        this.emit('hammer_retrieved');
+      }
       if (hoover) this._enter('hooverDraw', now);
       else this._enter(this._armed ? 'hammerStow' : 'hammerDraw', now);
       return;
@@ -1837,6 +1876,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this._animFrame = this._charge;
         this._showFrame(STATES[this.state]);
       }
+      this._spendTrick(w, now);
       return;
     }
 
@@ -1845,6 +1885,59 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       ? SIDE_STRIKES(charge)
       : OVER_STRIKES[charge];
     this._enter(w.strike, now, { seq, impacts, charge });
+    this._spendTrick(w, now);
+  }
+
+  /**
+   * The armed flag, tested in both windups every tick (jack_windup_over
+   * 0x23f0f, jack_windup_side 0x23a27): it is cleared whatever the hammer,
+   * and for the sledge v3 (20) overhead or the apocalypse hammer (29)
+   * sideways it sets the trick going. The scene does the rest.
+   */
+  _spendTrick(w, now) {
+    if (!this.trickArmed) return;
+    this.trickArmed = false;
+    const over = w.strike === 'strikeOver';
+    if (over && this.hammerStats.index === 20) {
+      this._chargeTicks = 0;
+      this._enter('sledgeTrick', now, { seq: SLEDGE_TRICK_SEQ, impacts: null, charge: 0 });
+      this.emit('trick', 'sledge');
+    } else if (!over && this.hammerStats.index === 29 && !this.hammerAway) {
+      // drop_hammer, set_state, apocalypse_start (VA 0x23a27)
+      this.loseHammer();
+      this._enter('stand', now);
+      this.emit('trick', 'apocalypse');
+    }
+  }
+
+  /** touching_own_flag (VA 0x1f602): near the flag he flies home to. */
+  atOwnFlag() {
+    const flag = this.flag;
+    return !!flag && Math.abs(this.x - flag.x) < FLAG_NEAR.r
+      && Math.abs(this.y - FLAG_NEAR.up - flag.y) < FLAG_NEAR.r;
+  }
+
+  /**
+   * hat_trick_armed taken (VA 0x247bc): the timmies he holds go up as
+   * angels, and he flies to his flag as a flattened Jack does (0x2a2fe).
+   * The scene flashes the palette and holds the camera where he was.
+   */
+  _hatToFlag(body, now) {
+    this.emit('spill', 1e9);
+    this.emit('hat_to_flag', { x: this.x, y: this.y });
+    body.setVelocity(0, 0);
+    body.setAllowGravity(false);
+    body.checkCollision.none = true;
+    this._crush = { ticks: 0, acc: 0, vx: 0, vy: 0 };
+    this._enter('flyHome', now);
+  }
+
+  /** His hammer leaves his hands for the level (+0x9a = 1, VA 0x2806f drop_hammer). */
+  loseHammer() {
+    this.hammerAway = true;
+    this._hammerOut = false;
+    this._hammerHidden = true;
+    if (this.hammer) this.hammer.setVisible(false);
   }
 
   /** The braking a windup, a strike and the skid share: ∓5000 a tick. */
@@ -1949,6 +2042,10 @@ export default class Player extends Phaser.Physics.Arcade.Image {
           return;
         }
       }
+      // sledge_v3_trick (0x2a4d8): the hammer is slammed down on the 8th tick
+      if (this.state === 'sledgeTrick' && this._animFrame === SLEDGE_TRICK_SLAM_FRAME) {
+        this.emit('sledge_slam');
+      }
       if (this._impacts && this._impacts.includes(this._animFrame)) {
         this.emit('hammer_impact', {
           charge: this._strikeCharge,
@@ -1988,7 +2085,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this._hammerKey = String(word & HAMMER_FRAME);
         this.hammer.setFrame(this._hammerKey);
       }
-      this.hammer.setVisible(word !== null && !this._hammerHidden);
+      this.hammer.setVisible(word !== null && !this._hammerHidden && !this.hammerAway);
     }
     if (this.vac) {
       // Slots without a hoover list put it away (VA 0x617c7); the rest

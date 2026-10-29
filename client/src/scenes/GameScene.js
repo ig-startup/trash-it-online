@@ -38,6 +38,7 @@ import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
 import { QUIT_LEVEL } from './PauseScene';
 import Tint from './tint';
 import DragonShow from './dragonShow';
+import HammerTricks from './hammerTricks';
 import { startMusic, stopMusic, pauseMusic, resumeMusic } from '../audio/music';
 import { LAST_ONE_SECONDS } from '../battle/LocalBattle';
 import { ARCADE_MAX_TENTHS, formatTenths, missionText } from '../battle/LocalArcade';
@@ -77,6 +78,7 @@ const BLAST_FRAME_MS = 45;
 // 0x1000 sets off the level's one big event, which sets 0x2000 so it runs
 // once (watcher 0x1b089); the demolition sets 0x40 when it falls.
 const OPT_DEMOLISHED = 0x40;
+const DRAGON_HAMMER = 33;    // the mystical dragon hammer: its trick is the dragon show
 const OPT_ROCKET = 0x800;     // what the subtype-2 bell waits for (VA 0x33fdd)
 const OPT_BIG_EVENT = 0x1000;
 const OPT_BIG_EVENT_DONE = 0x2000;
@@ -88,6 +90,7 @@ const DEMOLISH_SHAKE_AT = 8;
 const DEMOLISH_RUBBLE_MASK = 0x7ffff;
 const DEMOLISH_SFX = 0x2b;
 const DEMOLISH_CAM = { over: 0x76c, ticks: 0x320 };
+const MOOLA_CAM = { over: 0x640, ticks: 0x190 };   // moola_demolition, VA 0x204f4
 // The dragon show's blast (dragon_blast 0x20189): damage_bottom_row with
 // force −1 — as unsigned, more than anything can take, so it never thins
 // out — and the rubble mask 0xffff (0x410470).
@@ -430,7 +433,8 @@ export default class GameScene extends Phaser.Scene {
     /** What the camera takes in besides the Jacks: {x, y, ticks}, or a `follow` sprite. */
     this._camTargets = [];
     this._tint = new Tint(this.cameras.main);
-    this._dragon = this._bigEvent === 'dragon'
+    // …and so can hammer 33's key combination, on any level (docs/re/jack/combos.md)
+    this._dragon = this._bigEvent === 'dragon' || this._hammerIndex === DRAGON_HAMMER
       ? new DragonShow(this, { x: levelWidth / 2, y: groundY }, {
         camPoint: (x, y, ticks) => this._camPoint(x, y, ticks, true),
         tint: this._tint,
@@ -904,6 +908,27 @@ export default class GameScene extends Phaser.Scene {
     this._rubble = new Rubble(this, level.ground ? level.ground.y : levelHeight);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._rubble.destroy());
 
+    // ── The hammers' key combinations and tricks (hammerTricks.js) ────────
+    this._camHold = null;
+    this._tricks = new HammerTricks(this, this._hammerIndex, {
+      bell: () => (level.bell ? { x: level.bell.x, y: level.bell.y } : null),
+      dragon: () => { if (this._dragon) this._dragon.start(); },
+      moola: (pl) => this._startMoola(pl),
+      camPoint: (x, y, ticks) => this._camPoint(x, y, ticks),
+      flash: (levels) => this._tint.set(levels),
+      solids: () => this._loose._solidRects(),
+      floorAt: (rects, x, y, from) => this._loose._floorAt(rects, x, y, from),
+      ground: () => this._street.ground,
+      impact: ({ x, y, speed, mass }) => this._weightImpact(mass, { x, y, speed }),
+      camTrack: (follow, ticks, opts) => this._camTrack(follow, ticks, opts),
+      shake: () => this.cameras.main.shake(120, 0.006),
+      cam: () => this._cam,
+      camHold: (hold) => { this._camHold = hold; },
+      blowAt: (x, y, force, mask) => this._blowAt(x, y, force, mask),
+    });
+    this._jacks.forEach((j) => this._tricks.add(j));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._tricks.destroy());
+
     // ── Remote players ────────────────────────────────────────────────────────
     this.remotePlayers = new Map();
 
@@ -949,6 +974,7 @@ export default class GameScene extends Phaser.Scene {
     // testing isDown would miss a key that was already back up by the time
     // we looked.
     const { JustDown } = Phaser.Input.Keyboard;
+    this._tricks.before(delta);
     live.forEach((j) => {
       const { pad, player } = j;
       const but2Pressed = JustDown(pad.but2);
@@ -964,6 +990,8 @@ export default class GameScene extends Phaser.Scene {
       }, delta);
     });
 
+    this._tricks.after();
+    this._tricks.update(delta);
     this._collapse.update(delta);
     if (this._rocket) this._tickRocket(delta, live);
     // The super hoover takes the rubble from a box 2048 x 1024 ahead of
@@ -1245,6 +1273,14 @@ export default class GameScene extends Phaser.Scene {
       y: y0 + h / 2,
       width: Phaser.Math.Clamp(Math.max(w, (h * VIEW_WIDTH) / VIEW_HEIGHT), VIEW_WIDTH, VIEW_MAX),
     };
+    // What a script holds the camera at (the apocalypse hammer's flight,
+    // options 0x98225 bits 0x40 0x80 and 0x98226 bit 1; VA 0x2c22f)
+    const hold = this._camHold;
+    if (hold) {
+      if (hold.x !== null) want.x = hold.x;
+      if (hold.y !== null) want.y = Math.min(hold.y, this._street.ground - 50);
+      if (hold.width !== null) want.width = Phaser.Math.Clamp(hold.width, VIEW_WIDTH, VIEW_MAX);
+    }
     if (!this._cam) {
       this._cam = want;
     } else {
@@ -1274,7 +1310,9 @@ export default class GameScene extends Phaser.Scene {
    * @param {{moving?: () => boolean, priority?: boolean}} [opts]
    */
   _camTrack(follow, ticks, { moving = null, priority = false } = {}) {
-    this._camTargets.push({ follow, ticks, wait: !!moving, moving, priority });
+    const target = { follow, ticks, wait: !!moving, moving, priority };
+    this._camTargets.push(target);
+    return target;
   }
 
   /**
@@ -1673,10 +1711,19 @@ export default class GameScene extends Phaser.Scene {
    */
   _ballImpact(h, { x, y, speed, side, dir }) {
     if (h.kind !== 'ball' && h.kind !== 'lead') return;
-    const sp = Math.floor(speed);
-    if (sp < (side ? 3 : 5)) return;
     // the weight's mass is its +0x4c, 25 (VA 0x1e6c3)
     const mass = h.kind === 'lead' ? 25 : h.big ? 50000 : 5;
+    this._weightImpact(mass, { x, y, speed, side, dir });
+  }
+
+  /**
+   * Any weight coming down on a block, by its mass (+0x4c): a cannonball's
+   * 5 or 50000, the lead weight's 25, the sledge v3's trick hammer's 6 and 12
+   * (sprite_strikes_block_y VA 0x1f36d, _x 0x1f28c).
+   */
+  _weightImpact(mass, { x, y, speed, side = false, dir = 1 }) {
+    const sp = Math.floor(speed);
+    if (sp < (side ? 3 : 5)) return;
     const force = side ? mass * 2 ** (sp - 2) : (mass * 2 ** (sp - 2)) / 2;
     const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
     const entry = id === undefined ? null : this._destructibleMap.get(id);
@@ -1689,6 +1736,22 @@ export default class GameScene extends Phaser.Scene {
       this._applyForce(entry, force, 0, blow(), { down: false, up: true });
       this._applyForce(entry, force, 0, blow(), { down: true, up: false });
     }
+  }
+
+  /**
+   * blow_at (VA 0x1f8c5) for the apocalypse hammer's strike: the block under
+   * the point is struck with the table's force and rubble mask, down and up
+   * its structure. Reports what blow_walk_cells does in its flags: a block
+   * was struck (1), and something broke (2).
+   */
+  _blowAt(x, y, force, mask) {
+    const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+    const entry = id === undefined ? null : this._destructibleMap.get(id);
+    if (!entry || !entry.rect.active) return { struck: false, broke: false };
+    const before = this._destroyedCount;
+    this._applyForce(entry, force, 0,
+      { tally: new Map(), visits: 0, mask }, { down: true, up: true });
+    return { struck: true, broke: this._destroyedCount > before };
   }
 
   /**
@@ -1782,6 +1845,17 @@ export default class GameScene extends Phaser.Scene {
     this._demolishIn = DEMOLISH_TICKS;
     const g = this._street.ground;
     this._camPoint((this._street.left + this._street.right) / 2, g - DEMOLISH_CAM.over, DEMOLISH_CAM.ticks);
+  }
+
+  /**
+   * moola_demolition (VA 0x204f4), hammer 34's trick: the same count, once
+   * at a time, with the camera on a point over his x, 1600 px over the
+   * level's bottom, for 400 ticks.
+   */
+  _startMoola(player) {
+    if (this._demolishIn > 0) return;
+    this._demolishIn = DEMOLISH_TICKS;
+    this._camPoint(player.x, this._street.ground - MOOLA_CAM.over, MOOLA_CAM.ticks);
   }
 
   /**
