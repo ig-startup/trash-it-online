@@ -495,6 +495,7 @@ export default class GameScene extends Phaser.Scene {
         player, pad, data: pd, spawn, rang: false, movedVx: 0,
       };
       player.on('hammer_impact', (blow) => this._checkHammerDestructibles(blow, player));
+      player.on('stomp', ({ box }) => this._groundPound(box, player));
       return j;
     });
     /** The Jack this browser sends to the server, when there is one. */
@@ -1437,6 +1438,25 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
+   * A ground pound landing (jack_ground_pound 0x2b3ac, docs/re/jack/keyboard.md):
+   * the screen shakes for 10 ticks, and jack_stomp_hits (0x2b315) strikes from
+   * above the TIMMY, TOMMY, SUCKER and BELL sprites in the box under him — the
+   * same flag the overhead blow sets, so the bell rings and a timmy is knocked.
+   * (The two flung pixels of effect_pair_sideways 0x1e54d are not drawn.)
+   * @param {Phaser.Geom.Rectangle} box
+   * @param {Player} pl
+   */
+  _groundPound(box, pl) {
+    this.cameras.main.shake((10 * 1000) / 60, 0.006);
+    this._ringBell(box, pl);
+    if (this._gits) this._gits.hit(box, ['timmy']);
+    if (this._suckers) {
+      this._suckers.hit(box, (s) => this._camTrack(s.base, CAM_TICKS.sucker,
+        { moving: () => s.handle.flying || s.handle.carried }));
+    }
+  }
+
+  /**
    * Pushing (VA 0x28771 → 0x27f96): in the stance, he takes hold of a
    * cannon on wheels his box overlaps, and while it still does it rolls at
    * his speed. Out of the stance, or apart, it rolls on by itself.
@@ -1860,7 +1880,7 @@ export default class GameScene extends Phaser.Scene {
   /**
    * An overhead blow's reach against the bell. bell_touch_tick (VA 0x34114)
    * rings only on the sprite's "hit from above" flag (+0x40 bit 0x80), which
-   * the overhead strike sets (and the ground pound, not in the clone), and
+   * the overhead strike sets (and the ground pound, `_groundPound`), and
    * only while the bell stands on something (bit 0x10) — touching it, or a
    * sideways blow, does nothing. The hitter (+8) is traced back to his Jack.
    * Every player rings it, each for himself.

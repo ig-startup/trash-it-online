@@ -62,6 +62,8 @@ const PROFILES = {
   run: { top: perS(350000), accel: perS2(12000), turn: perS2(12000) },
   // profile 0 — the windups and strikes, the hat, the hoover
   slow: { top: perS(100000), accel: perS2(4000), turn: perS2(8000) },
+  // profile 2 — slot 74, the ground pound (and hitting the ground)
+  pound: { top: perS(200000), accel: perS2(10000), turn: perS2(10000) },
   // profile 4 — pushing
   push: { top: perS(200000), accel: perS2(8000), turn: perS2(10000) },
 };
@@ -143,6 +145,7 @@ const HAMMER_STRIP_STOW = range('hatReach', 0, 19);
 const ENTER_SOUND = {
   rise: SFX.JUMP,
   land: SFX.JUMP,
+  pound: SFX.POUND,
   windupSide: SFX.WINDUP_SIDE,
   windupOver: SFX.WINDUP_OVER,
   hatIn: SFX.HAT_REACH,       // jack_stand / jack_skid on Down, jack_toss_hoover
@@ -189,6 +192,8 @@ const STATES = {
   strikeOver: { slotFrom: 24, anim: 'hammerOver', ms: TICK_MS, next: 'hammerStand', locks: true, brakes: true },
   // 0x25813, slot 31 — in the air
   fall: { slot: 31, anim: 'fall', ms: 80, loop: true, profile: 'slow' },
+  // 0x2b3ac, slot 74 — the ground pound: Down + BUT2 in the air (docs/re/jack/keyboard.md)
+  pound: { slot: 74, anim: 'pound', ms: Infinity, hold: true, pound: true, profile: 'pound' },
   // 0x25a3e, slot 32 — hitting the ground
   land: { slot: 32, anim: 'land', ms: 45, next: 'stand' },
   // 0x22b91, slot 5 — the jump: frames 6-12 of the sheet, which sit inside
@@ -817,6 +822,10 @@ export default class Player extends Phaser.Physics.Arcade.Image {
       body.setVelocity(0, 0);
       return;
     }
+    if (spec.pound) {
+      this._poundTick(cursors, body, dt, now, onGround);
+      return;
+    }
     if (this._checkCrusher(body, now, onGround)) return;
     this._regrab = Math.max(0, this._regrab - dt * ORIGINAL_HZ);
 
@@ -1050,6 +1059,14 @@ export default class Player extends Phaser.Physics.Arcade.Image {
           this._jumpBoost = Math.max(0, this._jumpBoost - JUMP_BOOST_DECAY * dt * ORIGINAL_HZ);
         }
       }
+    }
+
+    // Down held and BUT2 pressed, in the jump or the fall: the ground pound
+    // (input_down_and_jump 0x20eb5, from the shared tail 0x22d31).
+    if (!onGround && (this.state === 'rise' || this.state === 'fall')
+        && cursors.down.isDown && but2Pressed) {
+      this._startPound(body, now);
+      return;
     }
 
     if (!onGround) {
@@ -1844,6 +1861,42 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._enter(w.strike, now, { seq, impacts, charge });
   }
 
+  /**
+   * The ground pound (jack_ground_pound 0x2b3ac, docs/re/jack/keyboard.md):
+   * he drops at 0x12000 a tick² — four times the usual pull — and still
+   * steers (profile 2); the hammer's frame is that of the state, none.
+   */
+  _startPound(body, now) {
+    body.setGravityY(this.scene.physics.world.gravity.y * 3);
+    this._enter('pound', now);
+  }
+
+  /**
+   * One tick of the drop. Landing he runs on (|vx| > 10000) or stands, the
+   * screen shakes 10 ticks (request_shake 10) and he strikes from above
+   * (jack_stomp_hits 0x2b315): the box `{-8, -6, 18, 7}` at 0xa0334 from
+   * his feet, which the scene turns on the timmies, suckers and the bell
+   * in it. Up at a ladder catches it as in the air (0x2b60c).
+   */
+  _poundTick(cursors, body, dt, now, onGround) {
+    this._steer(cursors, body, dt, PROFILES.pound);
+    if (cursors.up.isDown && this.ladder && this._regrab <= 0
+        && Math.abs(body.velocity.x) < LADDER.grabSpeed && this.ladder.at(this.x, this.y)) {
+      body.setGravityY(0);
+      this._grabLadder(now);
+      return;
+    }
+    if (!onGround) return;
+    body.setGravityY(0);
+    const running = Math.abs(body.velocity.x) > perS(10000);
+    if (!running) body.setVelocityX(0);
+    this._enter(running ? 'walk' : 'stand', now);
+    if (this.isLocal) playSfx(SFX.STOMP);
+    this.emit('stomp', {
+      box: new Phaser.Geom.Rectangle(Math.round(this.x) - 8, Math.round(this.y) - 6, 18, 7),
+    });
+  }
+
   /** The swing's start: the charge at nothing, the windup's frames (0x23a27, 0x23f0f). */
   _startWindup(name, now) {
     this._charge = 0;
@@ -1926,6 +1979,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this.state = name;
     if (this.isLocal && ENTER_SOUND[name] !== undefined) playSfx(ENTER_SOUND[name]);
     const spec = STATES[name] || STATES.stand;
+    if (prev === 'pound') this.body.setGravityY(0);   // the drop's extra pull ends with it
     if (STATES[prev] && STATES[prev].ladder && !spec.ladder) this._offLadder();
     // In hand once it is out of the hat, until it goes back in — or into
     // the hat with the hoover's strip, or with him when he ducks.

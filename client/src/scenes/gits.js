@@ -240,9 +240,11 @@ export default class Gits {
   /**
    * The overhead blow. A spike or bomb git it reaches is done for (VA
    * 0x32b15); a timmy or king on its feet is knocked (git_tick, VA 0x30069).
+   * `only` limits it to those kinds (the ground pound reaches timmies alone).
    */
-  hit(reach) {
+  hit(reach, only = null) {
     this.all.forEach((g) => {
+      if (only && !only.includes(g.kind)) return;
       if (g.kind === 'timmy' || g.kind === 'king') {
         if (g.state !== 'walk' && g.state !== 'turn' && g.state !== 'shaken') return;
         if (g.handle && (g.handle.carried || g.handle.flying)) return;
