@@ -114,6 +114,9 @@ PROPS = {
     # yeah / naah, 54 resume / quit game — Jack's face (12) and the arrow
     # (56-58).
     "pause": ("PANEL.SPR", [55, 52, 53, 54, 12, 56, 57, 58]),
+    # The countdown that opens a level (list 0x97374, docs/re/front/hud.md):
+    # PANEL 47 (its script turns it into 49), 48 and 50 "GO".
+    "countdown": ("PANEL.SPR", [47, 48, 49, 50]),
     "bloi": ("BLOI.SPR", list(range(7))),
     # The buttons (.OB classes 28-30, VA 0x1722b): red 0/1, green 2/3,
     # blue 4/5 — up and pressed.

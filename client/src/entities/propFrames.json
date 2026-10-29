@@ -2896,6 +2896,38 @@
       "ay": 19,
       "src": "PANEL.SPR:58"
     },
+    "countdown_00": {
+      "file": "sprites/props/countdown_00.png",
+      "w": 28,
+      "h": 29,
+      "ax": 26,
+      "ay": 14,
+      "src": "PANEL.SPR:47"
+    },
+    "countdown_01": {
+      "file": "sprites/props/countdown_01.png",
+      "w": 33,
+      "h": 31,
+      "ax": 26,
+      "ay": 15,
+      "src": "PANEL.SPR:48"
+    },
+    "countdown_02": {
+      "file": "sprites/props/countdown_02.png",
+      "w": 24,
+      "h": 32,
+      "ax": 22,
+      "ay": 14,
+      "src": "PANEL.SPR:49"
+    },
+    "countdown_03": {
+      "file": "sprites/props/countdown_03.png",
+      "w": 44,
+      "h": 25,
+      "ax": 32,
+      "ay": 10,
+      "src": "PANEL.SPR:50"
+    },
     "bloi_00": {
       "file": "sprites/props/bloi_00.png",
       "w": 11,
@@ -4271,6 +4303,12 @@
       "pause_05",
       "pause_06",
       "pause_07"
+    ],
+    "countdown": [
+      "countdown_00",
+      "countdown_01",
+      "countdown_02",
+      "countdown_03"
     ],
     "bloi": [
       "bloi_00",
