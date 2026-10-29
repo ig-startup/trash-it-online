@@ -46,6 +46,9 @@ PROPS = {
     # frame number, since their frame lists (VA 0xa40be) index the sheet
     # directly — the walk is 1-16, the fall 6-9, the skid 17-25.
     "timmy": ("TIMMY.SPR", list(range(35))),
+    # Tommy: a timmy whose .OB flags are 2, drawn from TOMMY.SPR (spawn_timmy
+    # 0x3053f, sprite 0x5b); frames 26-34 are its swing at a block.
+    "tommy": ("TOMMY.SPR", list(range(35))),
     "ktimmy": ("KTIMMY.SPR", None),
     # The timmy bin (.OB classes 18-21): frame = how far into swallowing
     # one it is, by the table at 0xa3622 (docs/re/objects/timmy-bin.md).

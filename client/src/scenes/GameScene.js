@@ -348,6 +348,7 @@ export default class GameScene extends Phaser.Scene {
         th: Math.max(1, Math.round(d.height / this._tile)),
         mass: d.mass || 1,
         mat: d.mat || 0,
+        marker: d.marker || 0,          // .COL word 2, for the gits (markerAt)
       };
       this._destructibleMap.set(d.id, entry);
       this._stampCells(entry);
@@ -662,6 +663,18 @@ export default class GameScene extends Phaser.Scene {
         },
         prize: (kind, count, x, y, left) => { if (this._bonuses) this._bonuses.prize(kind, count, x, y, left); },
         bin: (x, y, vy) => !!this._bins && this._bins.take(x, y, vy),
+        // A Tommy's blow (git_strikes_cell 0x207d4): damage_up on the cell
+        // with the level's rules +0x40, a puff, the material's blow sound.
+        strike: (x, y) => {
+          const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+          const e = id === undefined ? null : this._destructibleMap.get(id);
+          if (!e || !e.rect.active) return;
+          if (level.tommyStrike) {
+            this._applyForce(e, level.tommyStrike, 0, undefined, { down: false, up: true });
+          }
+          puff(x, y);
+          playSfx(BLOW_BY_MATERIAL[e.mat] || BLOW_BY_MATERIAL[0]);
+        },
       })
       : null;
     if (this._gits) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._gits.destroy());

@@ -312,6 +312,286 @@
       "ay": 0,
       "src": "TIMMY.SPR:34"
     },
+    "tommy_00": {
+      "file": "sprites/props/tommy_00.png",
+      "w": 17,
+      "h": 21,
+      "ax": 9,
+      "ay": 19,
+      "src": "TOMMY.SPR:0"
+    },
+    "tommy_01": {
+      "file": "sprites/props/tommy_01.png",
+      "w": 20,
+      "h": 20,
+      "ax": 11,
+      "ay": 19,
+      "src": "TOMMY.SPR:1"
+    },
+    "tommy_02": {
+      "file": "sprites/props/tommy_02.png",
+      "w": 21,
+      "h": 20,
+      "ax": 11,
+      "ay": 19,
+      "src": "TOMMY.SPR:2"
+    },
+    "tommy_03": {
+      "file": "sprites/props/tommy_03.png",
+      "w": 16,
+      "h": 22,
+      "ax": 6,
+      "ay": 21,
+      "src": "TOMMY.SPR:3"
+    },
+    "tommy_04": {
+      "file": "sprites/props/tommy_04.png",
+      "w": 19,
+      "h": 21,
+      "ax": 8,
+      "ay": 21,
+      "src": "TOMMY.SPR:4"
+    },
+    "tommy_05": {
+      "file": "sprites/props/tommy_05.png",
+      "w": 21,
+      "h": 20,
+      "ax": 10,
+      "ay": 21,
+      "src": "TOMMY.SPR:5"
+    },
+    "tommy_06": {
+      "file": "sprites/props/tommy_06.png",
+      "w": 21,
+      "h": 19,
+      "ax": 11,
+      "ay": 20,
+      "src": "TOMMY.SPR:6"
+    },
+    "tommy_07": {
+      "file": "sprites/props/tommy_07.png",
+      "w": 21,
+      "h": 20,
+      "ax": 12,
+      "ay": 20,
+      "src": "TOMMY.SPR:7"
+    },
+    "tommy_08": {
+      "file": "sprites/props/tommy_08.png",
+      "w": 21,
+      "h": 20,
+      "ax": 12,
+      "ay": 19,
+      "src": "TOMMY.SPR:8"
+    },
+    "tommy_09": {
+      "file": "sprites/props/tommy_09.png",
+      "w": 20,
+      "h": 20,
+      "ax": 11,
+      "ay": 19,
+      "src": "TOMMY.SPR:9"
+    },
+    "tommy_10": {
+      "file": "sprites/props/tommy_10.png",
+      "w": 20,
+      "h": 20,
+      "ax": 11,
+      "ay": 19,
+      "src": "TOMMY.SPR:10"
+    },
+    "tommy_11": {
+      "file": "sprites/props/tommy_11.png",
+      "w": 17,
+      "h": 21,
+      "ax": 7,
+      "ay": 21,
+      "src": "TOMMY.SPR:11"
+    },
+    "tommy_12": {
+      "file": "sprites/props/tommy_12.png",
+      "w": 17,
+      "h": 21,
+      "ax": 7,
+      "ay": 21,
+      "src": "TOMMY.SPR:12"
+    },
+    "tommy_13": {
+      "file": "sprites/props/tommy_13.png",
+      "w": 18,
+      "h": 20,
+      "ax": 8,
+      "ay": 21,
+      "src": "TOMMY.SPR:13"
+    },
+    "tommy_14": {
+      "file": "sprites/props/tommy_14.png",
+      "w": 18,
+      "h": 19,
+      "ax": 9,
+      "ay": 20,
+      "src": "TOMMY.SPR:14"
+    },
+    "tommy_15": {
+      "file": "sprites/props/tommy_15.png",
+      "w": 20,
+      "h": 20,
+      "ax": 11,
+      "ay": 20,
+      "src": "TOMMY.SPR:15"
+    },
+    "tommy_16": {
+      "file": "sprites/props/tommy_16.png",
+      "w": 20,
+      "h": 20,
+      "ax": 11,
+      "ay": 19,
+      "src": "TOMMY.SPR:16"
+    },
+    "tommy_17": {
+      "file": "sprites/props/tommy_17.png",
+      "w": 21,
+      "h": 20,
+      "ax": 10,
+      "ay": 19,
+      "src": "TOMMY.SPR:17"
+    },
+    "tommy_18": {
+      "file": "sprites/props/tommy_18.png",
+      "w": 23,
+      "h": 5,
+      "ax": 14,
+      "ay": 3,
+      "src": "TOMMY.SPR:18"
+    },
+    "tommy_19": {
+      "file": "sprites/props/tommy_19.png",
+      "w": 23,
+      "h": 12,
+      "ax": 13,
+      "ay": 10,
+      "src": "TOMMY.SPR:19"
+    },
+    "tommy_20": {
+      "file": "sprites/props/tommy_20.png",
+      "w": 19,
+      "h": 16,
+      "ax": 9,
+      "ay": 14,
+      "src": "TOMMY.SPR:20"
+    },
+    "tommy_21": {
+      "file": "sprites/props/tommy_21.png",
+      "w": 19,
+      "h": 16,
+      "ax": 9,
+      "ay": 14,
+      "src": "TOMMY.SPR:21"
+    },
+    "tommy_22": {
+      "file": "sprites/props/tommy_22.png",
+      "w": 19,
+      "h": 16,
+      "ax": 9,
+      "ay": 14,
+      "src": "TOMMY.SPR:22"
+    },
+    "tommy_23": {
+      "file": "sprites/props/tommy_23.png",
+      "w": 19,
+      "h": 16,
+      "ax": 9,
+      "ay": 14,
+      "src": "TOMMY.SPR:23"
+    },
+    "tommy_24": {
+      "file": "sprites/props/tommy_24.png",
+      "w": 24,
+      "h": 23,
+      "ax": 12,
+      "ay": 19,
+      "src": "TOMMY.SPR:24"
+    },
+    "tommy_25": {
+      "file": "sprites/props/tommy_25.png",
+      "w": 24,
+      "h": 23,
+      "ax": 12,
+      "ay": 19,
+      "src": "TOMMY.SPR:25"
+    },
+    "tommy_26": {
+      "file": "sprites/props/tommy_26.png",
+      "w": 14,
+      "h": 20,
+      "ax": 7,
+      "ay": 19,
+      "src": "TOMMY.SPR:26"
+    },
+    "tommy_27": {
+      "file": "sprites/props/tommy_27.png",
+      "w": 18,
+      "h": 20,
+      "ax": 11,
+      "ay": 19,
+      "src": "TOMMY.SPR:27"
+    },
+    "tommy_28": {
+      "file": "sprites/props/tommy_28.png",
+      "w": 23,
+      "h": 20,
+      "ax": 15,
+      "ay": 19,
+      "src": "TOMMY.SPR:28"
+    },
+    "tommy_29": {
+      "file": "sprites/props/tommy_29.png",
+      "w": 26,
+      "h": 19,
+      "ax": 18,
+      "ay": 18,
+      "src": "TOMMY.SPR:29"
+    },
+    "tommy_30": {
+      "file": "sprites/props/tommy_30.png",
+      "w": 25,
+      "h": 16,
+      "ax": 18,
+      "ay": 15,
+      "src": "TOMMY.SPR:30"
+    },
+    "tommy_31": {
+      "file": "sprites/props/tommy_31.png",
+      "w": 25,
+      "h": 16,
+      "ax": 19,
+      "ay": 13,
+      "src": "TOMMY.SPR:31"
+    },
+    "tommy_32": {
+      "file": "sprites/props/tommy_32.png",
+      "w": 20,
+      "h": 17,
+      "ax": 15,
+      "ay": 16,
+      "src": "TOMMY.SPR:32"
+    },
+    "tommy_33": {
+      "file": "sprites/props/tommy_33.png",
+      "w": 26,
+      "h": 19,
+      "ax": 11,
+      "ay": 18,
+      "src": "TOMMY.SPR:33"
+    },
+    "tommy_34": {
+      "file": "sprites/props/tommy_34.png",
+      "w": 23,
+      "h": 20,
+      "ax": 10,
+      "ay": 19,
+      "src": "TOMMY.SPR:34"
+    },
     "ktimmy_00": {
       "file": "sprites/props/ktimmy_00.png",
       "w": 31,
@@ -3924,6 +4204,43 @@
       "timmy_32",
       "timmy_33",
       "timmy_34"
+    ],
+    "tommy": [
+      "tommy_00",
+      "tommy_01",
+      "tommy_02",
+      "tommy_03",
+      "tommy_04",
+      "tommy_05",
+      "tommy_06",
+      "tommy_07",
+      "tommy_08",
+      "tommy_09",
+      "tommy_10",
+      "tommy_11",
+      "tommy_12",
+      "tommy_13",
+      "tommy_14",
+      "tommy_15",
+      "tommy_16",
+      "tommy_17",
+      "tommy_18",
+      "tommy_19",
+      "tommy_20",
+      "tommy_21",
+      "tommy_22",
+      "tommy_23",
+      "tommy_24",
+      "tommy_25",
+      "tommy_26",
+      "tommy_27",
+      "tommy_28",
+      "tommy_29",
+      "tommy_30",
+      "tommy_31",
+      "tommy_32",
+      "tommy_33",
+      "tommy_34"
     ],
     "ktimmy": [
       "ktimmy_00",

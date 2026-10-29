@@ -40,6 +40,12 @@ import { playSfx, SFX } from '../audio/sfx';
  * it up (0x3333c); landed, it swells and bursts (0x33559) into its prize,
  * which `world.prize` hands on (bonuses.js).
  *
+ * Tommy is a timmy whose `.OB` flags are 2 (spawn_timmy 0x3053f, TOMMY.SPR).
+ * On marker 28 with a block ahead it brakes (git_brake_to_strike 0x31f52)
+ * and swings at the block (git_strike_block 0x31d4b): the tenth count hits
+ * the cell with the level's `tommyStrike` (git_strikes_cell 0x207d4). See
+ * docs/re/objects/gits.md "Marker 28".
+ *
  * Units are the game's: px and px/tick, stepped at 60 Hz.
  */
 const HZ = 60;
@@ -62,6 +68,15 @@ const FALL = [6, 7, 8, 9];
 const HOP = [3, 4, 5, 6, 7, 8, 9];
 const TURN = [17, 18, 19, 20, 21, 22, 23, 22, 21, 24, 25];
 const SHEET = { timmy: 'timmy', king: 'ktimmy', spike: 'spk', bomb: 'bom', bonus: 'bon' };
+/** Marker 28: strike the block (action 15, flag bit 1 gits only). */
+const STRIKE_MARKER = 28;
+const STRIKE_LOOK = 5;                  // cells ahead git_wander_speed looks
+const STRIKE_BRAKE = 20000 / 65536;     // slot 15: |vx| over 0xffff loses this a tick
+const BRAKE = [17, 18, 19, 20, 21, 22, 23, 24, 25];
+/** Slot 14, indexed by the count that steps every 4th tick. */
+const STRIKE = [26, 27, 28, 29, 30, 31, 31, 31, 31, 32, 33, 33, 33, 33, 34];
+const STRIKE_HIT = 10;                  // the count that hits the cell
+const STRIKE_DONE = 16;                 // past it, it walks on
 const STRUCK_TICKS = 8;
 /** Slot 19: the spike bristling, the bomb's fuse — the list's index steps. */
 const BRISTLE = [26, 27, 28, 29, 30, 31, 32, 33, 34];
@@ -128,6 +143,8 @@ export default class Gits {
    * @param {(kind: number, count: number, x: number, y: number, left: boolean) => void} world.prize
    * @param {(x: number, y: number, vy: number) => boolean} [world.bin]  a timmy
    *   bin takes one coming down there (timmyBins.js)
+   * @param {(x: number, y: number) => void} [world.strike]  a Tommy's blow on
+   *   the cell there (git_strikes_cell 0x207d4)
    */
   constructor(scene, level, world) {
     this._scene = scene;
@@ -192,12 +209,13 @@ export default class Gits {
   }
 
   _make(kind, x, y, flags) {
-    const frames = PROP_ANIMS[SHEET[kind]];
+    const tommy = kind === 'timmy' && flags === 2 && !!PROP_ANIMS.tommy;
+    const frames = tommy ? PROP_ANIMS.tommy : PROP_ANIMS[SHEET[kind]];
     const sprite = this._scene.add.image(x, y, frames[0]).setDepth(2);
     applyPropFrame(sprite, frames[0]);
     const g = {
       kind, sprite, frames, x, y, vx: 0, vy: 0, flags, state: 'locked', t: 0,
-      left: Math.random() < 0.5, marker: -1, handle: null, block: null, frame: 0,
+      left: Math.random() < 0.5, marker: -1, handle: null, block: null, frame: 0, tommy,
     };
     this.all.push(g);
     return g;
@@ -246,7 +264,7 @@ export default class Gits {
     this.all.forEach((g) => {
       if (only && !only.includes(g.kind)) return;
       if (g.kind === 'timmy' || g.kind === 'king') {
-        if (g.state !== 'walk' && g.state !== 'turn' && g.state !== 'shaken') return;
+        if (!['walk', 'turn', 'shaken', 'brake', 'strike'].includes(g.state)) return;
         if (g.handle && (g.handle.carried || g.handle.flying)) return;
         if (Phaser.Geom.Intersects.RectangleToRectangle(reach, g.sprite.getBounds())) this._knock(g);
         return;
@@ -730,6 +748,10 @@ export default class Gits {
       this._fuseStep(g);
       return;
     }
+    if (g.state === 'brake' || g.state === 'strike') {
+      this._strikeStep(g);
+      return;
+    }
     if (g.state === 'fall' || g.state === 'hop') {
       if (Math.abs(g.vx) > 9999 / 65536) g.vx -= Math.sign(g.vx) * AIR_DRAG;
       this._moveX(g);
@@ -789,6 +811,11 @@ export default class Gits {
       const goRight = m === 2 || (m === 30 && g.flags & 2);
       if (goLeft && !g.left) this._turn(g);
       if (goRight && g.left) this._turn(g);
+      if (m === STRIKE_MARKER && g.flags & 2 && this._w.strike && this._blockAhead(g)) {
+        g.state = 'brake';
+        g.t = 0;
+        return;
+      }
     }
     // a hop now and then at the bottom
     if ((g.kind === 'timmy' || g.kind === 'king')
@@ -891,6 +918,66 @@ export default class Gits {
       playSfx(SFX.GIT_STRUCK);     // bomb_blow, the two BLAMs
       this._w.bombBlast(g.x, g.y);
     }
+  }
+
+  /**
+   * git_wander_speed (0x3392b): a block cell within five ahead of it, 12 px
+   * up for a Tommy, 22 for the rest.
+   */
+  _blockAhead(g) {
+    const dir = g.left ? -1 : 1;
+    const y = g.y - (g.tommy ? 12 : 22);
+    for (let i = 0; i < STRIKE_LOOK; i += 1) {
+      if (this._w.blockAt(g.x + dir * 8 * i, y)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Braking (git_brake_to_strike 0x31f52): 20000 a tick until it stands;
+   * then a cell ahead — x ± 6, y − 12 for TIMMY, x ± 12, y − 22 for the
+   * rest — and it swings, else it walks on. The swing (git_strike_block
+   * 0x31d4b): a count every 4th tick, at 10 the cell ahead — x ± 6, y − 12
+   * for a Tommy, x ± 12, y − 22 for the rest (the two disagree, as in the
+   * game) — is struck with the level's force; past 16 it walks on.
+   * The clone's own: when that cell is empty it strikes the one the brake
+   * saw, or on 0I a Tommy stopped 10 px short of its pillar swings at air.
+   */
+  _strikeStep(g) {
+    const dir = g.left ? -1 : 1;
+    const small = g.state === 'brake' ? !g.tommy : g.tommy;
+    const cx = g.x + dir * (small ? 6 : 12);
+    const cy = g.y - (small ? 12 : 22);
+    if (this._floor(g.x, g.y - 1, g.y + 1) === null) {
+      g.state = 'fall';
+      g.t = 0;
+      return;
+    }
+    if (g.state === 'brake') {
+      g.vx = Math.abs(g.vx) > 0xffff / 65536 ? g.vx - Math.sign(g.vx) * STRIKE_BRAKE : 0;
+      if (this._moveX(g)) g.vx = 0;
+      g.frame = BRAKE[Math.min(BRAKE.length - 1, g.t >> 2)];
+      if (g.vx !== 0) return;
+      g.t = 0;
+      g.count = 0;
+      g.aim = { x: cx, y: cy };
+      g.state = this._w.blockAt(cx, cy) ? 'strike' : 'walk';
+      return;
+    }
+    g.vx = 0;
+    if ((g.t & 3) === 0) {
+      g.count += 1;
+      if (g.count === STRIKE_HIT) {
+        const at = this._w.blockAt(cx, cy) || !g.aim ? { x: cx, y: cy } : g.aim;
+        this._w.strike(at.x, at.y);
+      }
+      // the marker underfoot is kept: the same block does not start it again
+      if (g.count > STRIKE_DONE) {
+        g.state = 'walk';
+        g.t = 0;
+      }
+    }
+    g.frame = STRIKE[Math.min(STRIKE.length - 1, g.count)];
   }
 
   _turn(g) {
