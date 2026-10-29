@@ -406,6 +406,12 @@ def export(name):
     if rules and len(rules) >= 0x48:
         base, shift = struct.unpack_from("<hh", rules, 0x44)
         bomb_force = base << (shift & 31)
+    # What a Tommy striking a block hits it with (the routine at VA 0x31d4b):
+    # the rules' word at +0x40 (+0x42 for the rest, 0 in every level).
+    # Non-zero in eleven levels. docs/re/objects/gits.md "Markers".
+    tommy_strike = 0
+    if rules and len(rules) >= 0x42:
+        tommy_strike = struct.unpack_from("<H", rules, 0x40)[0]
 
     # Bonus gits. Class 33 (VA 0x1b4cf): the word at +0xe 1 walking, 2 a
     # shell locked in the block under it; the lowest bit of +0x12 its prize
@@ -587,6 +593,7 @@ def export(name):
         "spikes": spikes,
         "bombs": bombs,
         "bombForce": bomb_force,
+        **({"tommyStrike": tommy_strike} if tommy_strike else {}),
         "bonuses": bonuses,
         "dispensers": dispensers,
         "panels": panels,
