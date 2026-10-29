@@ -436,6 +436,7 @@ export default class GameScene extends Phaser.Scene {
         tint: this._tint,
         shake: () => this.cameras.main.shake(DRAGON_SHAKE_MS, 0.01),
         blast: () => this._damageBottomRow(),
+        jackX: () => Math.round(this._liveJacks()[0] ? this._liveJacks()[0].player.x : levelWidth / 2),
       })
       : null;
     if (this._dragon) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._dragon.destroy());
@@ -1293,6 +1294,9 @@ export default class GameScene extends Phaser.Scene {
    * struck from below, each its own blow, so it climbs whatever stands on it.
    */
   _damageBottomRow() {
+    // rubble_mode 1 (docs/re/logic/destroyed-block.md): what falls in this
+    // call is flung about Jack's x, pulled back and shot up as a column.
+    this._rubbleColumn = this._dragon ? this._dragon.pullX : null;
     const row = Math.floor(this._street.ground / this._tile) - 1;
     const ids = new Set();
     for (let tx = 0; tx < this._gridW; tx += 1) {
@@ -1305,6 +1309,7 @@ export default class GameScene extends Phaser.Scene {
       };
       this._applyForce(this._destructibleMap.get(id), DRAGON_FORCE, 0, blow, { down: false, up: true });
     });
+    this._rubbleColumn = null;
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -1641,7 +1646,7 @@ export default class GameScene extends Phaser.Scene {
     if (this._collapse) this._collapse.touch();   // any hit sets the dirty flag
 
     if (entry.hp <= 0) {
-      this._rubble.add(entry.rect, blow.mask || HAMMER_RUBBLE_MASK, entry.mat);
+      this._rubble.add(entry.rect, blow.mask || HAMMER_RUBBLE_MASK, entry.mat, this._rubbleColumn);
       blow.cells = (blow.cells || 0) + (entry.width >> 3) * (entry.height >> 3);
       this._forgetBlock(entry);
     } else if (entry.rect.setFillStyle) {
