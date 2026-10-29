@@ -38,6 +38,7 @@ import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
 import { QUIT_LEVEL } from './PauseScene';
 import Tint from './tint';
 import DragonShow from './dragonShow';
+import HudPanel from './hudPanel';
 import { startMusic, stopMusic, pauseMusic, resumeMusic } from '../audio/music';
 import { LAST_ONE_SECONDS } from '../battle/LocalBattle';
 import { ARCADE_MAX_TENTHS, formatTenths, missionText } from '../battle/LocalArcade';
@@ -111,6 +112,15 @@ const CAM_TICKS = {
  * spawns the local player with Arcade Physics.
  * Network sync (RemotePlayer, SocketManager) is added in T7.
  */
+/**
+ * The pad of a Jack who is held (level option 0x1000000, until the
+ * countdown's GO): nothing pressed, so he stands where he is.
+ */
+const idleKey = () => ({ isDown: false, isUp: true, _justDown: false, _justUp: false });
+const IDLE_PAD = {
+  left: idleKey(), right: idleKey(), up: idleKey(), down: idleKey(), but1: idleKey(), but2: idleKey(),
+};
+
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GameScene' });
@@ -827,6 +837,24 @@ export default class GameScene extends Phaser.Scene {
     if (this._arcade) this.timerText.setText(formatTenths(0));
     else this._showClock(this._timeLeft);
 
+    // ── The countdown (hud_setup, list 0x97374, docs/re/front/hud.md) ─────
+    // 3, 2, 1, GO fly over the view; until its `go` the players are held
+    // (option 0x1000000) and the clock waits. Where a server runs the room
+    // it is the server's to start.
+    this._held = false;
+    this._countdown = null;
+    if (!this._online() && hasProps(this) && PROP_ANIMS.countdown) {
+      this._held = true;
+      this._countdown = new HudPanel(this, 'countdown', {
+        adopt: (img) => this._hud(img),
+        zoom,
+        go: () => { this._held = false; },
+        shake: (ticks) => this.cameras.main.shake((ticks * 1000) / 60, 0.006),
+        sound: (id) => playSfx(id),
+      });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._countdown && this._countdown.destroy());
+    }
+
     // Mode label — panel right
     const modeLabel = this._modeLabel();
     this._modeLabelText = this._hud(this.add.text(784, panelTop + 10, modeLabel, {
@@ -940,6 +968,7 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (!this._jacks) return;
+    if (this._countdown) this._countdown.update(delta);
     this._tickClock(delta);
     const live = this._liveJacks();
     if (live.length === 0) {
@@ -959,7 +988,7 @@ export default class GameScene extends Phaser.Scene {
       // The speed physics moved him at this frame, before he sets the next
       // one: what a cannon he pushes moves at too, or it runs a frame ahead.
       j.movedVx = player.body.velocity.x;
-      player.update(pad, {
+      player.update(this._held ? IDLE_PAD : pad, this._held ? {} : {
         but1: but1Pressed,
         but2: but2Pressed || pad.but2.isDown,
         but2Pressed,
@@ -1090,7 +1119,7 @@ export default class GameScene extends Phaser.Scene {
 
   /** The clock run here, when no server does: down a second a second. */
   _tickClock(delta) {
-    if (this._online() || this._over) return;
+    if (this._online() || this._over || this._held) return;
     if (this._arcade) {
       // up a tenth every 6 ticks, to 60:00.0 and no further (VA 0x19edb)
       this._clockMs += delta;
