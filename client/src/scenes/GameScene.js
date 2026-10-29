@@ -38,6 +38,7 @@ import { LocalKeys, loadKeySets, SOLO_EXTRA } from '../input/keySets';
 import { QUIT_LEVEL } from './PauseScene';
 import Tint from './tint';
 import DragonShow from './dragonShow';
+import HudPanel from './hudPanel';
 import { startMusic, stopMusic, pauseMusic, resumeMusic } from '../audio/music';
 import { LAST_ONE_SECONDS } from '../battle/LocalBattle';
 import { ARCADE_MAX_TENTHS, formatTenths, missionText } from '../battle/LocalArcade';
@@ -111,6 +112,15 @@ const CAM_TICKS = {
  * spawns the local player with Arcade Physics.
  * Network sync (RemotePlayer, SocketManager) is added in T7.
  */
+/**
+ * The pad of a Jack who is held (level option 0x1000000, until the
+ * countdown's GO): nothing pressed, so he stands where he is.
+ */
+const idleKey = () => ({ isDown: false, isUp: true, _justDown: false, _justUp: false });
+const IDLE_PAD = {
+  left: idleKey(), right: idleKey(), up: idleKey(), down: idleKey(), but1: idleKey(), but2: idleKey(),
+};
+
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GameScene' });
@@ -338,6 +348,7 @@ export default class GameScene extends Phaser.Scene {
         th: Math.max(1, Math.round(d.height / this._tile)),
         mass: d.mass || 1,
         mat: d.mat || 0,
+        marker: d.marker || 0,          // .COL word 2, for the gits (markerAt)
       };
       this._destructibleMap.set(d.id, entry);
       this._stampCells(entry);
@@ -436,6 +447,7 @@ export default class GameScene extends Phaser.Scene {
         tint: this._tint,
         shake: () => this.cameras.main.shake(DRAGON_SHAKE_MS, 0.01),
         blast: () => this._damageBottomRow(),
+        jackX: () => Math.round(this._liveJacks()[0] ? this._liveJacks()[0].player.x : levelWidth / 2),
       })
       : null;
     if (this._dragon) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._dragon.destroy());
@@ -495,6 +507,7 @@ export default class GameScene extends Phaser.Scene {
         player, pad, data: pd, spawn, rang: false, movedVx: 0,
       };
       player.on('hammer_impact', (blow) => this._checkHammerDestructibles(blow, player));
+      player.on('stomp', ({ box }) => this._groundPound(box, player));
       return j;
     });
     /** The Jack this browser sends to the server, when there is one. */
@@ -650,6 +663,18 @@ export default class GameScene extends Phaser.Scene {
         },
         prize: (kind, count, x, y, left) => { if (this._bonuses) this._bonuses.prize(kind, count, x, y, left); },
         bin: (x, y, vy) => !!this._bins && this._bins.take(x, y, vy),
+        // A Tommy's blow (git_strikes_cell 0x207d4): damage_up on the cell
+        // with the level's rules +0x40, a puff, the material's blow sound.
+        strike: (x, y) => {
+          const id = this._cellOwner.get(Math.floor(y / this._tile) * this._gridW + Math.floor(x / this._tile));
+          const e = id === undefined ? null : this._destructibleMap.get(id);
+          if (!e || !e.rect.active) return;
+          if (level.tommyStrike) {
+            this._applyForce(e, level.tommyStrike, 0, undefined, { down: false, up: true });
+          }
+          puff(x, y);
+          playSfx(BLOW_BY_MATERIAL[e.mat] || BLOW_BY_MATERIAL[0]);
+        },
       })
       : null;
     if (this._gits) this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._gits.destroy());
@@ -825,6 +850,24 @@ export default class GameScene extends Phaser.Scene {
     if (this._arcade) this.timerText.setText(formatTenths(0));
     else this._showClock(this._timeLeft);
 
+    // ── The countdown (hud_setup, list 0x97374, docs/re/front/hud.md) ─────
+    // 3, 2, 1, GO fly over the view; until its `go` the players are held
+    // (option 0x1000000) and the clock waits. Where a server runs the room
+    // it is the server's to start.
+    this._held = false;
+    this._countdown = null;
+    if (!this._online() && hasProps(this) && PROP_ANIMS.countdown) {
+      this._held = true;
+      this._countdown = new HudPanel(this, 'countdown', {
+        adopt: (img) => this._hud(img),
+        zoom,
+        go: () => { this._held = false; },
+        shake: (ticks) => this.cameras.main.shake((ticks * 1000) / 60, 0.006),
+        sound: (id) => playSfx(id),
+      });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._countdown && this._countdown.destroy());
+    }
+
     // Mode label — panel right
     const modeLabel = this._modeLabel();
     this._modeLabelText = this._hud(this.add.text(784, panelTop + 10, modeLabel, {
@@ -938,6 +981,7 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (!this._jacks) return;
+    if (this._countdown) this._countdown.update(delta);
     this._tickClock(delta);
     const live = this._liveJacks();
     if (live.length === 0) {
@@ -957,7 +1001,7 @@ export default class GameScene extends Phaser.Scene {
       // The speed physics moved him at this frame, before he sets the next
       // one: what a cannon he pushes moves at too, or it runs a frame ahead.
       j.movedVx = player.body.velocity.x;
-      player.update(pad, {
+      player.update(this._held ? IDLE_PAD : pad, this._held ? {} : {
         but1: but1Pressed,
         but2: but2Pressed || pad.but2.isDown,
         but2Pressed,
@@ -1088,7 +1132,7 @@ export default class GameScene extends Phaser.Scene {
 
   /** The clock run here, when no server does: down a second a second. */
   _tickClock(delta) {
-    if (this._online() || this._over) return;
+    if (this._online() || this._over || this._held) return;
     if (this._arcade) {
       // up a tenth every 6 ticks, to 60:00.0 and no further (VA 0x19edb)
       this._clockMs += delta;
@@ -1292,6 +1336,9 @@ export default class GameScene extends Phaser.Scene {
    * struck from below, each its own blow, so it climbs whatever stands on it.
    */
   _damageBottomRow() {
+    // rubble_mode 1 (docs/re/logic/destroyed-block.md): what falls in this
+    // call is flung about Jack's x, pulled back and shot up as a column.
+    this._rubbleColumn = this._dragon ? this._dragon.pullX : null;
     const row = Math.floor(this._street.ground / this._tile) - 1;
     const ids = new Set();
     for (let tx = 0; tx < this._gridW; tx += 1) {
@@ -1304,6 +1351,7 @@ export default class GameScene extends Phaser.Scene {
       };
       this._applyForce(this._destructibleMap.get(id), DRAGON_FORCE, 0, blow, { down: false, up: true });
     });
+    this._rubbleColumn = null;
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -1434,6 +1482,25 @@ export default class GameScene extends Phaser.Scene {
         playSfx(SFX.DYNA_STRUCK);   // dyna_hammer_state
       }
     });
+  }
+
+  /**
+   * A ground pound landing (jack_ground_pound 0x2b3ac, docs/re/jack/keyboard.md):
+   * the screen shakes for 10 ticks, and jack_stomp_hits (0x2b315) strikes from
+   * above the TIMMY, TOMMY, SUCKER and BELL sprites in the box under him — the
+   * same flag the overhead blow sets, so the bell rings and a timmy is knocked.
+   * (The two flung pixels of effect_pair_sideways 0x1e54d are not drawn.)
+   * @param {Phaser.Geom.Rectangle} box
+   * @param {Player} pl
+   */
+  _groundPound(box, pl) {
+    this.cameras.main.shake((10 * 1000) / 60, 0.006);
+    this._ringBell(box, pl);
+    if (this._gits) this._gits.hit(box, ['timmy']);
+    if (this._suckers) {
+      this._suckers.hit(box, (s) => this._camTrack(s.base, CAM_TICKS.sucker,
+        { moving: () => s.handle.flying || s.handle.carried }));
+    }
   }
 
   /**
@@ -1621,7 +1688,7 @@ export default class GameScene extends Phaser.Scene {
     if (this._collapse) this._collapse.touch();   // any hit sets the dirty flag
 
     if (entry.hp <= 0) {
-      this._rubble.add(entry.rect, blow.mask || HAMMER_RUBBLE_MASK, entry.mat);
+      this._rubble.add(entry.rect, blow.mask || HAMMER_RUBBLE_MASK, entry.mat, this._rubbleColumn);
       blow.cells = (blow.cells || 0) + (entry.width >> 3) * (entry.height >> 3);
       this._forgetBlock(entry);
     } else if (entry.rect.setFillStyle) {
@@ -1860,7 +1927,7 @@ export default class GameScene extends Phaser.Scene {
   /**
    * An overhead blow's reach against the bell. bell_touch_tick (VA 0x34114)
    * rings only on the sprite's "hit from above" flag (+0x40 bit 0x80), which
-   * the overhead strike sets (and the ground pound, not in the clone), and
+   * the overhead strike sets (and the ground pound, `_groundPound`), and
    * only while the bell stands on something (bit 0x10) — touching it, or a
    * sideways blow, does nothing. The hitter (+8) is traced back to his Jack.
    * Every player rings it, each for himself.

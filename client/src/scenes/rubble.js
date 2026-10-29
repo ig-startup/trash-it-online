@@ -27,6 +27,10 @@ const STILL = 0x9c40 / FX;          // a bounce slower than this stops it (0xfff
 const REST_TICKS = 2000;            // +0x60 at destruction
 const GONE = 4;                     // px a sucked piece shrinks to before it goes
 const DEPTH = 0.5;                  // over the wall, under the blocks and Jack
+const PULL = 20000 / FX;            // the column's pull toward its point, a tick
+const PULL_HARD = 0x9c400 / FX;     // …and the hard one, from the wrong side
+const COLUMN_LIFT = 8000 / FX;      // rising: up this much a tick
+const COLUMN_TOP = 600;             // …until this far above the bottom
 const MAX_PIECES = 250;             // a guard; the game keeps every one
 
 /** A random whole number below 2^31, the game's shift-register draw. */
@@ -50,8 +54,11 @@ export default class Rubble {
    * @param {number} mask the blow's debris mask (hammer record +0x34 / +0x38,
    *   or the blast's 0x3ffff)
    * @param {number} [mat] the block's material, which its bounce sounds of
+   * @param {number|null} [column] set while the dragon brings the bottom row
+   *   down (`rubble_mode` 1): the x the debris is flung about and pulled back
+   *   to, then shot up as a column (docs/re/logic/destroyed-block.md)
    */
-  add(src, mask, mat = 0) {
+  add(src, mask, mat = 0, column = null) {
     if (this._pieces.length >= MAX_PIECES) {
       const oldest = this._pieces.shift();
       if (oldest.img.active) oldest.img.destroy();
@@ -62,6 +69,16 @@ export default class Rubble {
       : this._scene.add.rectangle(b.x, b.y, b.width, b.height, 0x8a6a4a);
     img.setOrigin(0, 0).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH);
     const vx = (rand() & mask) / FX;
+    if (column !== null) {
+      // remove_object_data, rubble_mode 1: vx up to ±16 px/tick, no vy
+      const side = (rand() & 0xfffff) / FX;
+      this._pieces.push({
+        img, x: b.x, y: b.y, w0: b.width, h0: b.height, w: b.width, h: b.height,
+        vx: rand() & 1 ? side : -side, vy: 0, resting: false, rest: REST_TICKS,
+        sucked: false, mat, column: { at: column, mode: 'fly' },
+      });
+      return;
+    }
     this._pieces.push({
       img,
       x: b.x,
@@ -125,6 +142,10 @@ export default class Rubble {
 
   /** The flight, the bounce, the wait and the sinking. True once gone. */
   _fall(p) {
+    if (p.column) {
+      this._columnStep(p);
+      return false;
+    }
     if (!p.resting) {
       p.x += p.vx;
       p.vy += GRAVITY;
@@ -150,6 +171,52 @@ export default class Rubble {
     p.y += 1;
     p.h -= 1;
     return p.h <= 1;
+  }
+
+  /**
+   * The dragon's column, one tick (rubble_fly_to_point 0x6109e,
+   * rubble_column_rise 0x610f0, rubble_column_fall 0x6118d). Flung sideways
+   * it is pulled back toward the point by 20000 a tick while it heads away;
+   * once it is heading in it rises, 8000 a tick, held to the point (a hard
+   * 0x9c400 a tick from the wrong side) until it is 600 px above the
+   * bottom, then falls back swaying across the point, and below that line
+   * is ordinary rubble again.
+   */
+  _columnStep(p) {
+    const c = p.column;
+    const at = c.at;
+    const line = this._floorY - COLUMN_TOP;
+    const left = Math.floor(p.x) < at;
+    const right = Math.floor(p.x) > at;
+    if (c.mode === 'fly') {
+      p.x += p.vx;
+      const lx = Math.floor(p.x);
+      if (lx < at) {
+        if (p.vx < 0) p.vx += PULL; else c.mode = 'rise';
+      } else if (lx > at) {
+        if (p.vx >= 1) p.vx -= PULL; else c.mode = 'rise';
+      }
+      return;
+    }
+    if (c.mode === 'rise') {
+      if (line < Math.floor(p.y)) p.vy -= COLUMN_LIFT;
+      else {
+        c.mode = 'fall';
+        p.vx = Math.floor((p.vx * FX) / 4) / FX;
+      }
+      if (left) p.vx += p.vx < 1 ? PULL_HARD : PULL;
+      else if (right) p.vx -= p.vx < 0 ? PULL : PULL_HARD;
+      p.y += p.vy;
+      p.x += p.vx;
+      return;
+    }
+    // falling back
+    if (left) p.vx += PULL;
+    else if (right) p.vx -= PULL;
+    p.vy += GRAVITY;
+    p.x += p.vx;
+    p.y += p.vy;
+    if (line < Math.floor(p.y)) p.column = null;
   }
 
   /** Drawn in by the hoover, and squashed. True once gone. */

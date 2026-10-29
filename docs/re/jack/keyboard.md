@@ -86,6 +86,16 @@ stands, tips a seesaw under him, shakes the screen for 10 ticks, and
 strikes from above up to five timmies, tommies, suckers or bells in a box
 under him (`jack_stomp_hits` 0x2b315). A drop past 358 px ends in the hard
 landing (0x29828).
+The trigger (`input_down_and_jump` 0x20eb5: DOWN held, BUT2 pressed) sits in
+the shared tail 0x22d31, so it works from the jump (0x22b91), the fall
+(0x256e9) and the somersault (0x29072); UP held at a ladder catches it as in
+the air. Its box is `{-8, -6, 18, 7}` from his feet (record 0xa0334, same
+layout as the overhead blow's: dx, dy, w, h); the sprites it hits take the
+same "hit from above" flag (`+0x40` 0x80) the overhead blow sets, so the bell
+rings and a timmy is knocked. Sounds: 0x69 as the drop starts, 0x70 on
+landing; the drop's frame is `JACKS.SPR` 326. Clone: `Player._poundTick`,
+`GameScene._groundPound` — not the somersault's start, the hard landing,
+the seesaw or the two flung pixels (`effect_pair_sideways` 0x1e54d).
 
 The level's option word (0x98224, [level-options](../levels/level-options.md)) switches actions off: bit 1 the
 hammer, 2 putting it away (BUT1 or DOWN with it out), 4 the hoover, 8 putting the hoover away.

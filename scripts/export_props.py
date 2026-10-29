@@ -46,6 +46,9 @@ PROPS = {
     # frame number, since their frame lists (VA 0xa40be) index the sheet
     # directly — the walk is 1-16, the fall 6-9, the skid 17-25.
     "timmy": ("TIMMY.SPR", list(range(35))),
+    # Tommy: a timmy whose .OB flags are 2, drawn from TOMMY.SPR (spawn_timmy
+    # 0x3053f, sprite 0x5b); frames 26-34 are its swing at a block.
+    "tommy": ("TOMMY.SPR", list(range(35))),
     "ktimmy": ("KTIMMY.SPR", None),
     # The timmy bin (.OB classes 18-21): frame = how far into swallowing
     # one it is, by the table at 0xa3622 (docs/re/objects/timmy-bin.md).
@@ -114,6 +117,9 @@ PROPS = {
     # yeah / naah, 54 resume / quit game — Jack's face (12) and the arrow
     # (56-58).
     "pause": ("PANEL.SPR", [55, 52, 53, 54, 12, 56, 57, 58]),
+    # The countdown that opens a level (list 0x97374, docs/re/front/hud.md):
+    # PANEL 47 (its script turns it into 49), 48 and 50 "GO".
+    "countdown": ("PANEL.SPR", [47, 48, 49, 50]),
     "bloi": ("BLOI.SPR", list(range(7))),
     # The buttons (.OB classes 28-30, VA 0x1722b): red 0/1, green 2/3,
     # blue 4/5 — up and pressed.

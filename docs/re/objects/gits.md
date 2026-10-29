@@ -49,7 +49,13 @@ a non-zero +0x40: 0I 1I 3I 8I 9I (150, 2, 2, 1), 1A 2A 3A (15000), 9S
 (1000), TI (10000), US (3000). Markers 29 and 30 are walk left / right
 for flag-bit-1 gits only. The two offset pairs disagree on which sprite
 is the small one (TIMMY in the brake, Tommy in the strike) — as in the
-original. Not in the clone.
+original (checked in the disassembly, 0x31fd6 and 0x31e9c). The puff is
+table 0x9ff32 for Tommy (puff, size −6, 3 effects of kind 10) and 0x9ff3a
+for the rest; the sound is the struck cell's material (table 0x9fefe).
+Clone: `scenes/gits.js` `_strikeStep`, the blow `world.strike` in
+GameScene. Its own: when the strike's cell is empty it strikes the cell
+the brake saw — on 0I a Tommy comes to rest 10 px short of its pillar
+and would swing at air. The effects of kind 10 are not drawn.
 
 **Held by the sucker** (slot 18, `git_held_by_sucker` 0x323b0): a timmy
 the sucker cup freezes (`+0x40 |= 0x400020`, `objects/sucker.md`) follows
