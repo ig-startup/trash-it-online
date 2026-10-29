@@ -828,6 +828,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
 
     // ── States that own the player until their animation is done ──────────
     if (spec.locks) {
+      if (this._quickSecondBlow(cursors, but2Pressed, now)) return;
       // The game's `pressed` lasts one tick; an Up from before the duck
       // (UP + BUT1 for the hoover) must not bring him straight back out.
       if (this.state === 'hatIn') Phaser.Input.Keyboard.JustDown(cursors.up);
@@ -933,11 +934,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     // Held alone, the sideways windup; with a direction, the overhead one.
     if (this._armed && onGround) {
       if (but2) {
-        this._charge = 0;
-        this._chargeTicks = 0;
-        this._chargeStep = 0;
-        this._enter(across ? 'windupOver' : 'windupSide', now);
-        this.emit('hammer_swing');
+        this._startWindup(across ? 'windupOver' : 'windupSide', now);
         return;
       }
       // Down alone: straight into the hat, the hammer with him (0x27ff7) —
@@ -1847,6 +1844,41 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._enter(w.strike, now, { seq, impacts, charge });
   }
 
+  /** The swing's start: the charge at nothing, the windup's frames (0x23a27, 0x23f0f). */
+  _startWindup(name, now) {
+    this._charge = 0;
+    this._chargeTicks = 0;
+    this._chargeStep = 0;
+    this._enter(name, now);
+    this.emit('hammer_swing');
+  }
+
+  /**
+   * The quick second blow (docs/re/logic/collapse.md, "The strike state's
+   * exits"). The sideways strike (jack_strike 0x23cef) watches Jack's
+   * sheet frame (JACKS.SPR 37-54, the list's index + 37): BUT2 pressed
+   * while it is at most 53 and lower than last tick's — the swing coming
+   * back up — goes straight into the sideways windup (0x23a27). The
+   * overhead one (jack_swing_over 0x24174, frames 55-70 = index + 55)
+   * takes BUT2 pressed with an arrow held (input_side_strike 0x210c0) from
+   * frame 64 on, into the overhead windup (0x23f0f).
+   */
+  _quickSecondBlow(cursors, but2Pressed, now) {
+    const side = this.state === 'strikeSide';
+    if (!side && this.state !== 'strikeOver') return false;
+    const idx = this._seq ? this._seq[Math.min(this._animFrame, this._seq.length - 1)] : 0;
+    const frame = idx + (side ? 37 : 55);
+    const last = this._lastStrikeFrame;
+    this._lastStrikeFrame = frame;
+    if (!but2Pressed) return false;
+    const go = side
+      ? frame <= 53 && frame < last
+      : frame >= 64 && (cursors.left.isDown || cursors.right.isDown);
+    if (!go) return false;
+    this._startWindup(side ? 'windupSide' : 'windupOver', now);
+    return true;
+  }
+
   /** The braking a windup, a strike and the skid share: ∓5000 a tick. */
   _brake(vx, dt, rate = SKID_BRAKE) {
     if (Math.abs(vx) < SKID_STOP) return 0;
@@ -1908,6 +1940,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     this._seq = strike ? strike.seq : (spec.frames || null);
     this._impacts = strike ? strike.impacts : null;
     this._strikeCharge = strike ? strike.charge : 0;
+    this._lastStrikeFrame = 0;
     this._animFrame = spec.startFrame || 0;
     this._animTimer = now;
     if (spec.hurt) {

@@ -202,6 +202,13 @@ writes them — a hammer bought is another record, copied at the next level.
 - on a new frame, BUT2 pressed (0x21084) while the hammer's frame is at
   most 53 and lower than last tick's (`+0x5c`) — the swing coming back
   up — straight into the windup again (0x23a27): a quick second blow;
+  (Frame is Jack's own `JACKS.SPR` frame at `+0x44`: the sideways list
+  runs 47-54, so the swing's return is any frame under 54 lower than the
+  last.) The overhead swing (`jack_swing_over` 0x24174) has the same exit
+  in another form: BUT2 pressed *with* an arrow held (0x210c0) once the
+  frame is 64 or more (its list is 59-70) goes to the overhead windup
+  (0x23f0f); an unfinished list ends in standing (0x23499). Clone:
+  `Player._quickSecondBlow`;
 - meanwhile he slides, `vx` eased 5000 a tick and zeroed under 10000,
   walls stopping him (0x60393 / 0x60496);
 - no floor under him: from standing a 2 px/tick hop (`vy` −2) as he
