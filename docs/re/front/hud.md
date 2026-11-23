@@ -78,4 +78,13 @@ The menu and what quitting does: [pause](pause.md).
 17 and 18 + gear (`forklift_panel_gear` 0x1c553) and, for player 0, the
 rev needle REV.SPR (`forklift_rev_needle` 0x1c5fe, eased two a tick).
 
-Clone: its own text panel under the view (`GameScene.js`, the HUD camera); none of the above is the original's yet.
+Clone: its own text panel under the view (`GameScene.js`, the HUD camera) —
+the clock, counters, banners and the pause are not the original's yet. What
+is: the **countdown** (list 0x97374, `scripts/export_hud.py` →
+`scenes/hudScripts.json`, played by `scenes/hudPanel.js`, which runs the
+ops 5, 11-18 and the record's x/y and size): 3, 2, 1, GO over the view,
+the players held and the clock stopped until its `go` (`GameScene._held`) —
+at one keyboard; online the server starts the room. The record's size is
+the frame's own plus `size`'s two numbers (a stretch, not a size), its x, y
+the top left, the entry's y less 18 (`panel_icon_alloc`); `stop` frees the
+record (it clears its live bit), `end` only stops the script.

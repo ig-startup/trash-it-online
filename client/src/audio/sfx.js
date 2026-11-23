@@ -248,6 +248,8 @@ function run(v) {
 /** Sound ids the clone plays — the game's own, from the calls in G.EXE. */
 export const SFX = {
   JUMP: 0x6f,             // jack_jump, jack_land, jack_hurt_flying
+  POUND: 0x69,            // jack_ground_pound, as the drop starts
+  STOMP: 0x70,            // jack_stomp_hits, on landing
   STEP: 0x1a,             // jack_walk, frames 2 and 10
   HAT_REACH: 0x10,        // jack_hammer_to_hat: hammer or hoover in or out
   WINDUP_SIDE: 0x0c,      // jack_windup_side

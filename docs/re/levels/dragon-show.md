@@ -81,8 +81,8 @@ every other tick; no reader of those two for a VM.SPR entity is known —
 
 `client/src/scenes/dragonShow.js` (the steps), `tint.js` (the palette
 levels, as a colour matrix on the world camera — and the fade in every
-level starts with), `GameScene._damageBottomRow`. Not yet: CD track 10,
-the rubble column of `rubble_mode`, the bolt's jitter, hammer 33's trick.
+level starts with), `GameScene._damageBottomRow`. The rubble column of `rubble_mode` is in (`Rubble._columnStep`, about
+Jack's x). Not yet: CD track 10, the bolt's jitter, hammer 33's trick.
 
 ## What is left
 

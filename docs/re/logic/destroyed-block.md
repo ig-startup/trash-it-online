@@ -29,4 +29,7 @@ the bottom, its vx quartered, held to the point by ±0x9c400 a tick on the
 wrong side and ±20000 on the right one; then it falls back under 5000 a
 tick swaying across the point (`rubble_column_fall` 0x6118d), and below
 600 px above the bottom it is ordinary falling rubble again (0x60f60). A
-column of debris shot up the middle of the screen. Not in the clone.
+column of debris shot up the middle of the screen. The point is Jack's x
+as the show started (`sequence_start` 0x204be reads the current player's
+`+0x26` into 0x28b96a) — in the one level that has it, 1D. Clone:
+`Rubble._columnStep`, `GameScene._damageBottomRow`.

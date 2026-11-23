@@ -12,9 +12,10 @@ import { stopMusic } from '../audio/music';
  * the camera framing the box round both is what pans and zooms. The face
  * and the bolts are VM.SPR, drawn stretched by the entity's +0x50 / +0x52.
  *
- * Left out: CD track 10 (the clone has no CD audio), the column the bottom
- * row's rubble is flung into (`rubble_mode`, docs/re/logic/destroyed-block.md),
- * and the bolt's +0x54 / +0x56 jitter, which nothing is known to read.
+ * The bottom row's rubble is flung into a column about Jack's x
+ * (`rubble_mode`, docs/re/logic/destroyed-block.md): `pullX` is that x, noted
+ * as the show starts (0x28b96a). Left out: CD track 10 (the clone has no CD
+ * audio) and the bolt's +0x54 / +0x56 jitter, which nothing is known to read.
  *
  * In the game's own units, stepped at its 60 Hz.
  */
@@ -36,6 +37,7 @@ export default class DragonShow {
    * @param {import('./tint').default} hooks.tint
    * @param {() => void} hooks.shake
    * @param {() => void} hooks.blast  damage_bottom_row: the level brought down from below
+   * @param {() => number} [hooks.jackX]  where Jack stands as the show starts
    */
   constructor(scene, at, hooks) {
     this._scene = scene;
@@ -46,6 +48,7 @@ export default class DragonShow {
     this._acc = 0;
     this._point = null;
     this._fall = 0;     // 0x28bf7e: written, never read
+    this.pullX = at.x;
     this._shown = [];   // {sprite, life, tick?}
     this._steps = [
       () => {},
@@ -70,6 +73,7 @@ export default class DragonShow {
   /** sequence_start (0x204be): an 80-tick wait before the face. */
   start() {
     stopMusic();   // cd_play_track(10) stops the XMI, CD or no CD
+    this.pullX = this._h.jackX ? this._h.jackX() : this._at.x;   // 0x28b96a
     this.step = 0;
     this.timer = START_TICKS;
     this._fall = 0;

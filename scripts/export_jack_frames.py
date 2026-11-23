@@ -99,6 +99,8 @@ ANIMS = {
     # and the same stance standing still (slot 52, 0x28691).
     "push": list(range(207, 223)),       # slot 38
     "pushStand": [245],                  # slot 52
+    # The ground pound (jack_ground_pound 0x2b3ac): one frame, falling fast.
+    "pound": [326],                      # slot 74
 }
 
 #: Where the held-button strike starts inside `hammerSide` (frame 47).
