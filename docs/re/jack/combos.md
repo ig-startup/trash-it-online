@@ -18,7 +18,7 @@ pad spelling and a keyboard spelling.
 | keys (keyboard) | pad | handler | does |
 |---|---|---|---|
 | BUT1, release, BUT1, release, BUT1, release | the same | 0x1dead `arm_hammer_trick` | sets the player's flag for this hammer (`+0xb0 + hammer×2 = 1`) |
-| R, R, L, then BUT1 five times (released between) | 0x40 ×5 | 0x1e037 `warp_to_bell` | **Jack jumps to the bell** (0x3f209a, 10 px above) — a cheat |
+| R, R, L, BUT1 ×5, BUT2, BUT1, BUT2, BUT1 ×6, BUT2, U, D, R, L, BUT1, BUT2, BUT1, BUT2 (each released before the next) | R R L, 0x40 ×5, … | 0x1e037 `warp_to_bell` | **Jack jumps to the bell** (0x3f209a, 10 px above) — a cheat |
 
 The armed flag lasts **one tick**: `logic_frame` clears every player's
 flag for his hammer each frame (0x2ba7d), so the combination has to end
@@ -40,7 +40,19 @@ while Jack is already in the state that spends it. It is spent by:
 
 | hammer | keys | handler |
 |---|---|---|
-| 20 sledge v3 | D+BUT2, BUT2, three times (pad: D, 0x40 ×3) | arm |
+| 20 sledge v3 | D+BUT2, BUT2, three times, then everything let go (pad: D, 0x40 ×3) | arm |
 | 29 apocalypse v3 | BUT2, L+BUT2, BUT2, D+BUT2, BUT2, L+BUT2, BUT2, U+BUT2, BUT2 (pad: 0x80 with L D L U) | arm |
-| 33 mystical dragon | the bell-warp keys | **0x204c3**: CD track 10 and the [dragon show](../levels/dragon-show.md) (table 0x9ff42) — the same one 1D's button starts; it runs before the warp |
-| 34 THE ULTIMATE MOOLA | R, BUT2, L, BUT1, U, BUT2, D, BUT1 (pad: R 0x80 L B1 U B2 D 0x40) | **0x204f4**: the 80-tick count and the **demolition of the whole level** |
+| 33 mystical dragon | R, R, L, BUT1 ×5, BUT2, BUT1, BUT2, BUT1, BUT2 — the warp's first 12 keys, then BUT2 where the warp has BUT1 (the 13th key, the 25th word) | **0x204c3**: CD track 10 and the [dragon show](../levels/dragon-show.md) (table 0x9ff42) — the same one 1D's button starts. Registered before the warp, so it fires first; the two part at that 13th key |
+| 34 THE ULTIMATE MOOLA | R, BUT2, L, BUT1, U, BUT2, D, BUT1, L, BUT2, R, BUT1 (pad: R 0x80 L B1 U B2 D 0x40 …) | **0x204f4**: the 80-tick count and the **demolition of the whole level** |
+
+## Reading them
+
+`python3 scripts/formats/combos.py` prints every hammer's list as G.EXE
+has it (pad and keyboard spellings); `--check` compares the keyboard
+spellings with `SEQUENCES` in the clone's `client/src/scenes/combos.js`.
+
+In the clone (headless runs, level 0A): the sledge's keys only start
+from a windup already held overhead (R or L with BUT2) — D+BUT2 from a
+stand begins the sideways one — and the throw comes as BUT2 is let go,
+the windup spending the flag the last word set. The apocalypse's keys
+are played inside the sideways windup (BUT2 alone first).

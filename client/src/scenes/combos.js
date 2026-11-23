@@ -27,16 +27,17 @@ export const COMBO_IDLE = 10;
 export const SEQUENCES = {
   // 0x1dead: BUT1, released for three ticks, three times
   arm: [0x10, 0, 0, 0, 0x10, 0, 0, 0, 0x10, 0, 0, 0],
-  // 0x1e037: R R L, BUT1 five times, then a long cheat code
+  // 0x1e037: R R L, BUT1 ×5, BUT2 BUT1 BUT2, BUT1 ×6, BUT2 U D R L BUT1 BUT2 BUT1 BUT2
+  // (checked against G.EXE by scripts/formats/combos.py --check)
   warp: [2, 0, 2, 0, 1, 0, 16, 0, 16, 0, 16, 0, 16, 0, 16, 0, 32, 0, 16, 0, 32, 0, 16, 0, 16, 0,
-    16, 0, 16, 0, 16, 0, 32, 0, 4, 0, 8, 0, 2, 0, 1, 0, 16, 0, 32, 0, 16, 0, 32, 0],
+    16, 0, 16, 0, 16, 0, 16, 0, 32, 0, 4, 0, 8, 0, 2, 0, 1, 0, 16, 0, 32, 0, 16, 0, 32, 0],
   // hammer 20, 0x1dead: D+BUT2, BUT2 three times, then released
   sledge: [40, 32, 40, 32, 40, 32, 0],
   // hammer 29, 0x1dead: BUT2, L, BUT2, D, BUT2, L, BUT2, U, BUT2 — BUT2 held throughout
   apocalypse: [32, 33, 32, 40, 32, 33, 32, 36, 32],
   // hammer 33, 0x204c3: the warp's start, then BUT2 BUT1 BUT2 BUT1 BUT2
   dragon: [2, 0, 2, 0, 1, 0, 16, 0, 16, 0, 16, 0, 16, 0, 16, 0, 32, 0, 16, 0, 32, 0, 16, 0, 32, 0],
-  // hammer 34, 0x204f4
+  // hammer 34, 0x204f4: R BUT2 L BUT1 U BUT2 D BUT1 L BUT2 R BUT1
   moola: [2, 0, 32, 0, 1, 0, 16, 0, 4, 0, 32, 0, 8, 0, 16, 0, 1, 0, 32, 0, 2, 0, 16, 0],
 };
 
