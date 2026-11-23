@@ -31,10 +31,14 @@ hammer entity (0x28bf28) 62 px ahead in the way he faces and calls
 While faster than 2 px a tick it throws sparks (`start_effect` with
 0x28b918 = vy / 4). That is 117 ticks and about 1250 px.
 
-Once slower than 4 px a tick it starts turning: a frame every 3 ticks
-from 61; it stops rising at the top, and at frame 77 (about 48 ticks
-later) it becomes a falling weight: frame 60, vy 2000, **mass 12**, the
-striking flag, routine `sledge_trick_settle` (0x34747).
+Once slower than 4 px a tick it starts turning: a frame every 4 ticks
+from 61 (the timer +0x4a is tested for 0 before it is counted down, and
+set back to 3); it stops rising at the top, and at frame 77 (16 frames,
+64 ticks later) it becomes a falling weight: frame 60, vy 2000,
+**mass 12**, the striking flag, routine `sledge_trick_settle` (0x34747).
+
+In the clone (headless run, level 0A, Jack on the bridge): it rose
+1257 px, fell back at the 24 px cap and struck the bridge with mass 12.
 
 ## The fall
 

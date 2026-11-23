@@ -11,6 +11,7 @@ topic; start from `docs/re/INDEX.md`.
 | `ob.py` | `.OB` startup-code decoder (see `docs/re/formats/ob.md`) |
 | `anims.py` | Jack's animation table from `G.EXE` |
 | `hammers.py` | the 37-hammer catalogue (partial — see its docstring) |
+| `combos.py` | the hammers' key combinations (sequence, handler) from G.EXE; `--check` compares the keyboard ones with the clone's `combos.js` |
 | `states.py` | Jack's 46-state machine and its transitions |
 | `ccs.py` | the structural simulation: the collision map, the support counts, the falling groups, and what a blow does as it travels — run over the real levels |
 | `rle.py` | the shared scanline codec |
