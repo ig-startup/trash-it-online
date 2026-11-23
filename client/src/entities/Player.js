@@ -1879,6 +1879,11 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     body.setVelocityX(this._brake(body.velocity.x, ms / 1000));
     if (Phaser.Input.Keyboard.JustDown(cursors.left)) body.setVelocityX(body.velocity.x - WINDUP_NUDGE);
     if (Phaser.Input.Keyboard.JustDown(cursors.right)) body.setVelocityX(body.velocity.x + WINDUP_NUDGE);
+    // Up and Down do nothing in a windup but spell combos (D+BUT2 for the
+    // sledge): the game sees a press only on its tick, so one made here must
+    // not wait in Phaser's latch and duck him into the hat once he stands.
+    Phaser.Input.Keyboard.JustDown(cursors.up);
+    Phaser.Input.Keyboard.JustDown(cursors.down);
 
     if (swingHeld) {
       this._chargeTicks += ms / TICK_MS;
@@ -2170,7 +2175,9 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         if (word & HAMMER_SHOW) this._hammerHidden = false;
         if (spec.slot === 12 && (word & HAMMER_FRAME) <= 15) this._hammerHidden = true;
         this._hammerKey = String(word & HAMMER_FRAME);
-        this.hammer.setFrame(this._hammerKey);
+        // Away in the level (the sledge trick from its 8th tick), it is not
+        // his to draw: slot 66 goes on to frames the sledge's sheet lacks.
+        if (!this.hammerAway) this.hammer.setFrame(this._hammerKey);
       }
       this.hammer.setVisible(word !== null && !this._hammerHidden && !this.hammerAway);
     }

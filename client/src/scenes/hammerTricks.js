@@ -87,6 +87,8 @@ export default class HammerTricks {
     this._jacks.forEach((own) => {
       own.word = HammerTricks.wordOf(own.j.pad);
       for (own.acc += (delta * HZ) / 1000; own.acc >= 1; own.acc -= 1) own.watcher.step(own.word);
+      // jack_stand tests it first, before UP moves him on (to pushStand)
+      this._upAtFlag(own);
     });
   }
 
@@ -100,7 +102,6 @@ export default class HammerTricks {
     this._jacks.forEach((own) => {
       if (own.loose) own.loose.update(delta);
       if (own.flight) own.flight.update(delta);
-      this._upAtFlag(own);
     });
   }
 
@@ -169,7 +170,8 @@ export default class HammerTricks {
   /**
    * jack_stand (VA 0x22892): UP pressed alone, standing at his flag with his
    * loose hammer lying somewhere else, sends it to the flag — the palette
-   * flashes and his timmies go up as angels.
+   * flashes and his timmies go up as angels. The stand goes on as usual
+   * after it, so this runs before his state does (from `before`).
    */
   _upAtFlag(own) {
     const { player, pad } = own.j;
